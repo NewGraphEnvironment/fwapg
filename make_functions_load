@@ -9,8 +9,6 @@ all:
 	$(PSQL) -f sql/functions/ST_Safe_Repair.sql
 	$(PSQL) -f sql/functions/FWA_Downstream.sql
 	$(PSQL) -f sql/functions/FWA_Upstream.sql
-	$(PSQL) -f sql/tables/spatial/schema.sql
-	$(PSQL) -f sql/tables/non_spatial/schema.sql
 	$(PSQL) -f sql/functions/FWA_SliceWatershedAtPoint.sql
 	$(PSQL) -f sql/functions/FWA_WatershedAtMeasure.sql
 	$(PSQL) -f sql/functions/FWA_WatershedHex.sql
