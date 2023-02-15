@@ -6,7 +6,7 @@ SHELL=/bin/bash
 # provide db connection param to psql and ensure scripts stop on error
 PSQL = psql $(DATABASE_URL) -v ON_ERROR_STOP=1
 
-# Kludge to get the OGR to work with openshift container 
+# Kludge to get the OGR to work with openshift container
 # To avoid this issue, use a newer gdal
 # https://github.com/OSGeo/gdal/issues/4570
 DATABASE_URL_OGR=$(DATABASE_URL)?application_name=foo
@@ -71,8 +71,8 @@ clean_db:
 	$(PSQL) -f sql/functions/ST_Safe_Repair.sql
 	$(PSQL) -f sql/functions/FWA_Downstream.sql
 	$(PSQL) -f sql/functions/FWA_Upstream.sql
-	$(PSQL) -f sql/tables/spatial/schema.sql              
-	$(PSQL) -f sql/tables/non_spatial/schema.sql          
+	$(PSQL) -f sql/tables/spatial/schema.sql
+	$(PSQL) -f sql/tables/non_spatial/schema.sql
 	touch $@
 
 # spell out the loading of streams/linear boundaries/watersheds per wsg
@@ -128,7 +128,7 @@ $(WSD_TARGETS): .make/spatial_large_load
 	for wsg in $(GROUPS) ; do \
 		set -e ; $(PSQL) -f sql/tables/spatial/large/fwa_stream_networks_sp.sql -v wsg=$$wsg ; \
 	done
-	# create parent order lookup 
+	# create parent order lookup
 	# (not created/loaded above with max order table because it depends on optimized stream data for timely creation)
 	$(PSQL) -c "drop table if exists fwapg.fwa_stream_order_parent"
 	$(PSQL) -c "create table fwapg.fwa_stream_order_parent \
@@ -136,7 +136,7 @@ $(WSD_TARGETS): .make/spatial_large_load
 	for wsg in $(GROUPS) ; do \
 		$(PSQL) -v wsg=$$wsg -f sql/tables/temp/fwa_stream_order_parent.sql ; \
 	done
-	# load parent order values as updates 
+	# load parent order values as updates
 	for wsg in $(GROUPS) ; do \
 		echo "update whse_basemapping.fwa_stream_networks_sp s \
 		set stream_order_parent = p.stream_order_parent \
@@ -198,7 +198,7 @@ data/FWA_BC.gdb.zip:
 	wget --trust-server-names -qN ftp://ftp.geobc.gov.bc.ca/sections/outgoing/bmgs/FWA_Public/FWA_BC.zip -P data
 	mv data/FWA_BC.zip $@
 
-# load non spatial tables 
+# load non spatial tables
 .make/fwa_%: sql/tables/non_spatial/fwa_%.sql data/FWA_BC.gdb.zip .make/db
 	# load to temp fwapg schema
 	ogr2ogr \
@@ -320,6 +320,7 @@ data/WBD_National_GDB.zip:
 	$(PSQL) -f sql/functions/FWA_IndexPoint.sql
 	$(PSQL) -f sql/functions/FWA_LocateAlong.sql
 	$(PSQL) -f sql/functions/FWA_LocateAlongInterval.sql
+	$(PSQL) -f sql/functions/FWA_StreamsAsMVT.sql
 	touch $@
 
 # rather than generating these lookups (slow), download pre-generated data
