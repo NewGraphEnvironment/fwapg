@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>fwapg &mdash; fwapg 0.3.0 documentation</title>
+  <title>fwapg &mdash; fwapg 0.5.0 documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
@@ -15,7 +16,6 @@
         <script src="_static/underscore.js"></script>
         <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/sphinx_highlight.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -27,11 +27,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="#" class="icon icon-home"> fwapg
+
+          
+          
+          <a href="#" class="icon icon-home">
+            fwapg
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -58,7 +62,7 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="#" class="icon icon-home"></a></li>
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
       <li class="breadcrumb-item active">fwapg</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
@@ -69,7 +73,7 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="fwapg">
+  <section id="fwapg">
 <h1>fwapg<a class="headerlink" href="#fwapg" title="Permalink to this heading"></a></h1>
 <p><code class="docutils literal notranslate"><span class="pre">fwapg</span></code> extends British Columbia’s <a class="reference external" href="https://www2.gov.bc.ca/gov/content/data/geographic-data-services/topographic-data/freshwater">Freshwater Atlas</a> (FWA) with PostgreSQL/PostGIS. <code class="docutils literal notranslate"><span class="pre">fwapg</span></code> provides additional tables, indexes and functions to:</p>
 <ul class="simple">
@@ -88,9 +92,9 @@
 <li class="toctree-l1"><a class="reference internal" href="01_setup.html">Setup and data load</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="01_setup.html#dependencies">Dependencies</a></li>
 <li class="toctree-l2"><a class="reference internal" href="01_setup.html#create-the-database">Create the database</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_setup.html#adjust-search-path">Adjust search path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="01_setup.html#environment-variables">Environment variables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="01_setup.html#data-load">Data load</a></li>
-<li class="toctree-l2"><a class="reference internal" href="01_setup.html#partial-loads">Partial loads</a></li>
 <li class="toctree-l2"><a class="reference internal" href="01_setup.html#updates">Updates</a></li>
 <li class="toctree-l2"><a class="reference internal" href="01_setup.html#data-currency">Data currency</a></li>
 </ul>
@@ -119,12 +123,13 @@
 <li class="toctree-l2"><a class="reference internal" href="04_functions.html#fwa-locatealonginterval">FWA_LocateAlongInterval</a></li>
 <li class="toctree-l2"><a class="reference internal" href="04_functions.html#fwa-streamsasmvt">FWA_StreamsAsMVT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="04_functions.html#fwa-upstream">FWA_Upstream</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_functions.html#fwa-upstreamtrace">FWA_UpstreamTrace</a></li>
 <li class="toctree-l2"><a class="reference internal" href="04_functions.html#fwa-watershedatmeasure">FWA_WatershedAtMeasure</a></li>
 </ul>
 </li>
 </ul>
 </div>
-</div>
+</section>
 
 
            </div>
@@ -136,7 +141,7 @@
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2022, Simon Norris.</p>
+    <p>&#169; Copyright 2023, Simon Norris.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
