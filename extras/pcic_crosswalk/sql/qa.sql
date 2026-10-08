@@ -89,3 +89,31 @@ SELECT 'Cayoosh Creek, which joins the Seton through a side channel that touches
     SELECT 1 FROM fwapg.pcic_blk_paths
     WHERE blue_line_key = 356364387 AND 356364114 = ANY(path_blks)
   ) AS result;
+
+-- placements that put a tributary's outlet on the river it joins carry many times
+-- PCIC's flow. Measured: about 24 before side channels were handled, 358 when
+-- side-channel candidates were moved to the main stem outright, 85 with the
+-- current handling (17 on an added main-stem point; most of the rest are PCIC
+-- siblings one above the other on the FWA, listed in qa_report.sql for review
+-- in NewGraphEnvironment/fwapg#8). The ceiling guards against the 358 class.
+WITH annual AS (
+  SELECT m.subid, avg(m.q_acc) AS q_acc, avg(q.q_m3s) AS q_pcic
+  FROM fwapg.pcic_subbasins_monthly m
+  INNER JOIN fwapg.pcic_outlet_monthly q ON q.subid = m.subid AND q.month = m.month
+  GROUP BY m.subid
+)
+SELECT 'at most 100 placed outlets carry more than 10 times PCIC''s flow' AS test,
+  count(*) FILTER (WHERE q_acc > 10 * q_pcic AND q_acc > 1) <= 100 AND count(*) > 0 AS result
+FROM annual;
+
+-- a tributary entering the Skeena through a braid (code-check round 7)
+WITH annual AS (
+  SELECT m.subid, avg(m.q_acc) AS q_acc, avg(q.q_m3s) AS q_pcic
+  FROM fwapg.pcic_subbasins_monthly m
+  INNER JOIN fwapg.pcic_outlet_monthly q ON q.subid = m.subid AND q.month = m.month
+  WHERE m.subid = 8007998
+  GROUP BY m.subid
+)
+SELECT 'Kitsumkalum outlet 8007998 is placed and within 5% of PCIC' AS test,
+  coalesce(bool_and(abs(q_acc - q_pcic) <= 0.05 * q_pcic), false) AS result
+FROM annual;

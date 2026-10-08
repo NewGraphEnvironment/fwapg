@@ -40,8 +40,9 @@ The job:
    with no local code, and segments with no fundamental watershed. (`FWA_IndexPoint` keeps one segment
    per stream and can exclude only `6010`, so filtering its output loses the whole stream when its
    nearest segment is unusable: 651 streams with a usable segment in reach.) A candidate on a side
-   channel is moved to its main stem (within 1 km): PCIC's network is single-threaded, and a point on a
-   side channel receives only that channel's water. Outlets sit at confluences, so the point snapped is
+   channel also gets its main stem (within 1 km) as a candidate, which the outlets above choose between
+   in placement: PCIC's network is single-threaded, and a point on a side channel receives only that
+   channel's water, but FWA often codes a tributary's last reach as a side channel of the river it joins. Outlets sit at confluences, so the point snapped is
    up to 100 m back up the PCIC segment rather than the junction itself.
 
    Every position comparison in the job ("is b on or upstream of a?") uses the downstream path of each FWA
@@ -88,9 +89,9 @@ job's outputs and its `data/` cache; writes `data/qa_gauges.csv`):
 
 At each gauge it compares PCIC's own flow at the nearest PCIC segment (no crosswalk involved) with
 the flow on the FWA segment at the gauge, which isolates crosswalk error from PCIC's model error, and
-both with the gauge. In the 2026-10 build, at 538 gauges: FWA flow within 10% of PCIC's at 493
-(206 of 210 gauges of 100-1,000 km², 134 of 139 of 1,000-10,000 km²); 11 more where another PCIC
-branch at the confluence matches; 34 disagree, 27 of them under 100 km². The FWA stream picked by
+both with the gauge. In the 2026-10 build, at 538 gauges: FWA flow within 10% of PCIC's at 494
+(207 of 210 gauges of 100-1,000 km², 134 of 139 of 1,000-10,000 km²); 11 more where another PCIC
+branch at the confluence matches; 33 disagree, 27 of them under 100 km². The FWA stream picked by
 drainage area matched the gauge's area within 10% at 559 of 603 gauges. One gauge in detail:
 
     ./qa_gauge.sh 08EE003
@@ -145,6 +146,12 @@ drainage area matched the gauge's area within 10% at 559 of 603 gauges. One gaug
   22,184 m³/s (8%) of local runoff.
 - A side channel carries the flow of outlets placed on it and its share of local runoff, not the main
   channel's flow.
+- Known cases, listed by `sql/qa_report.sql` and open in NewGraphEnvironment/fwapg#8: 85 placed
+  outlets carry more than 10 times PCIC's flow (mostly PCIC siblings that sit one above the other on
+  the FWA, where flow follows the FWA); the Spillimacheen reaches the Columbia through a side channel
+  15 km above where PCIC joins it, so the Columbia between reads about 54% high; Ansedagan Creek joins
+  the Nass directly on the FWA while its PCIC outlet sits on a Nass side channel, so the creek carries
+  almost nothing.
 - Streams that leave BC before reaching their parent have no path, so their flow does not reach the
   parent in BC: the Okanagan, Kettle and Similkameen join the Columbia in the US, and their flow is not
   on the Columbia in BC (PCIC routes it through the US too).

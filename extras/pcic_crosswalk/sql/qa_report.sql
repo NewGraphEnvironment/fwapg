@@ -64,3 +64,34 @@ WHERE s.edge_type != 6010
 GROUP BY s.watershed_group_code
 HAVING count(d.linear_feature_id) > 0
 ORDER BY share, s.watershed_group_code;
+
+-- known cases (NewGraphEnvironment/fwapg#8): outlets carrying more than 10 times
+-- PCIC's flow, and two places where the FWA's network and PCIC's disagree
+-- - Columbia 5020143 to 5020177: the Spillimacheen side channel drains through
+--   Baldy Channel, and the Spillimacheen's flow reaches the Columbia 15 km above
+--   where PCIC puts it (about 54% high)
+-- - Ansedagan Creek (360884999): its PCIC outlet matches PCIC on a Nass side
+--   channel, but the FWA joins the creek straight to the Nass, so the creek's own
+--   segments carry almost nothing
+WITH annual AS (
+  SELECT m.subid, avg(m.q_acc) AS q_acc, avg(q.q_m3s) AS q_pcic
+  FROM fwapg.pcic_subbasins_monthly m
+  INNER JOIN fwapg.pcic_outlet_monthly q ON q.subid = m.subid AND q.month = m.month
+  GROUP BY m.subid
+)
+SELECT a.subid, x.blue_line_key, x.watershed_group_code, x.candidate_rank,
+  round(x.distance_to_stream::numeric, 1) AS distance_to_stream,
+  round(a.q_pcic::numeric, 3) AS q_pcic, round(a.q_acc::numeric, 3) AS q_fwa,
+  round((a.q_acc / nullif(a.q_pcic, 0))::numeric, 1) AS ratio
+FROM annual a
+INNER JOIN whse_basemapping.pcic_fwa_crosswalk x ON x.subid = a.subid
+WHERE (a.q_acc > 10 * a.q_pcic AND a.q_acc > 1)
+OR a.subid IN (5020143, 5020177)
+ORDER BY a.q_acc / nullif(a.q_pcic, 0) DESC;
+
+SELECT 'Ansedagan Creek (360884999) max flow' AS known_case,
+  round(max(d.q_m3s)::numeric, 3) AS q_m3s
+FROM whse_basemapping.fwa_stream_networks_sp s
+INNER JOIN whse_basemapping.fwa_stream_networks_discharge_monthly d ON d.linear_feature_id = s.linear_feature_id
+WHERE s.blue_line_key = 360884999;
+

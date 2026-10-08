@@ -19,7 +19,8 @@ FROM (SELECT subid, count(*) AS n FROM up GROUP BY subid) s
 WHERE o.subid = s.subid;
 
 -- the PCIC outlets up to three levels above each outlet, and which of their
--- candidates are "near" (within 25 m of their nearest): the voters for
+-- candidates are "near" (near_distance within 25 m of their nearest; a main-stem
+-- point added for a side channel counts as near as the side channel): the voters for
 -- pcic_crosswalk04_select.sql's look-ahead
 DROP TABLE IF EXISTS fwapg.pcic_voters;
 CREATE TABLE fwapg.pcic_voters AS
@@ -36,8 +37,8 @@ WITH RECURSIVE up AS (
 SELECT up.subid, up.voter, y.blue_line_key, y.downstream_route_measure
 FROM up
 INNER JOIN fwapg.pcic_candidates y ON y.subid = up.voter
-WHERE y.distance_to_stream <= (
-  SELECT min(z.distance_to_stream) FROM fwapg.pcic_candidates z WHERE z.subid = up.voter
+WHERE y.near_distance <= (
+  SELECT min(z.near_distance) FROM fwapg.pcic_candidates z WHERE z.subid = up.voter
 ) + 25;
 CREATE INDEX ON fwapg.pcic_voters (subid);
 ANALYZE fwapg.pcic_voters;
