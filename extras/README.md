@@ -18,3 +18,8 @@ When complete, upload to nrs.objectstore:
 	aws s3 cp lookups/fwa_watersheds_upstream_area.csv.gz s3://bchamp/fwapg/fwa_watersheds_upstream_area.csv.gz --acl public-read
 
 Note that no metadata is currently provided to link versions of these add-ons to a given version of the FWA data (this is a to-do).
+
+The PCIC crosswalk outputs (`pcic_crosswalk/`, NewGraph fork only) go to NewGraph's `fresh-bc` bucket rather than `bchamp`:
+
+	aws s3 cp pcic_crosswalk/fwa_stream_networks_discharge_monthly.csv.gz s3://fresh-bc/fwapg/fwa_stream_networks_discharge_monthly.csv.gz
+	aws s3 cp pcic_crosswalk/pcic_fwa_crosswalk.csv.gz s3://fresh-bc/fwapg/pcic_fwa_crosswalk.csv.gz
