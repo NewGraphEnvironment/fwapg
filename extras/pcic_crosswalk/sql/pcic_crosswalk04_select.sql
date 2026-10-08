@@ -4,11 +4,16 @@
 --
 -- Resolved from each tree's root upward, one depth at a time, so an outlet is
 -- always tested against an anchor that is already fixed. Among its valid
--- candidates an outlet takes the one that keeps the most of the PCIC network above
--- it placeable: the summed subtree size of its direct children that have a
--- candidate on or upstream of it, then the nearest. Without that look-ahead an
--- outlet at a confluence snaps to whichever branch is nearer, and a tributary
--- mouth chosen for a mainstem outlet breaks every outlet above it.
+-- candidates an outlet takes the one most of the PCIC network above it agrees
+-- with: the number of outlets up to three levels above it with a near candidate
+-- (within 25 m of their nearest) on or upstream of it; then the nearest.
+--
+-- One level is not enough either way. Counting a child's far candidates put the
+-- Nicola main stem's outlet on Clapperton Creek (the child's 86 m fallback tied
+-- with its 8.9 m candidate on the Nicola); ignoring them put an outlet in the
+-- Columbia Wetlands on a parallel channel coded as a tributary, because its only
+-- child's near candidate was on that channel while every outlet above the child
+-- was on the Columbia.
 --
 -- An outlet with no valid candidate is left unplaced and flagged, and the outlets
 -- above it are tested against its own anchor instead.
@@ -67,15 +72,10 @@ BEGIN
       SELECT
         x.*,
         (
-          SELECT coalesce(sum(ch.subtree_size), 0)
-          FROM fwapg.pcic_outlets ch
-          WHERE ch.dowsubid = o.subid
-          AND EXISTS (
-            SELECT 1
-            FROM fwapg.pcic_candidates y
-            WHERE y.subid = ch.subid
-            AND fwapg.pcic_on_or_upstream(x.blue_line_key, x.downstream_route_measure, y.blue_line_key, y.downstream_route_measure)
-          )
+          SELECT count(DISTINCT v.voter)
+          FROM fwapg.pcic_voters v
+          WHERE v.subid = o.subid
+          AND fwapg.pcic_on_or_upstream(x.blue_line_key, x.downstream_route_measure, v.blue_line_key, v.downstream_route_measure)
         ) AS score
       FROM outlets o
       INNER JOIN fwapg.pcic_candidates x ON x.subid = o.subid

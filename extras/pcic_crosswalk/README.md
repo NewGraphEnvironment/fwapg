@@ -39,8 +39,10 @@ The job:
    Excluded: subsurface flow edges (`1425`), streams off the network (watershed codes under `999`) or
    with no local code, and segments with no fundamental watershed. (`FWA_IndexPoint` keeps one segment
    per stream and can exclude only `6010`, so filtering its output loses the whole stream when its
-   nearest segment is unusable: 651 streams with a usable segment in reach.) Outlets sit at confluences,
-   so the point snapped is up to 100 m back up the PCIC segment rather than the junction itself.
+   nearest segment is unusable: 651 streams with a usable segment in reach.) A candidate on a side
+   channel is moved to its main stem (within 1 km): PCIC's network is single-threaded, and a point on a
+   side channel receives only that channel's water. Outlets sit at confluences, so the point snapped is
+   up to 100 m back up the PCIC segment rather than the junction itself.
 
    Every position comparison in the job ("is b on or upstream of a?") uses the downstream path of each FWA
    blue line (`fwapg.pcic_blk_paths`): the chain of blue lines its water passes to the sea, with the
@@ -56,8 +58,8 @@ The job:
    outlets on the wrong side of tributaries.
 4. **Placement.** Outlets are placed from each tree's root upward so that every outlet lies on or upstream
    of the nearest placed outlet below it, keeping PCIC's routing chain intact on the FWA. Among valid
-   candidates an outlet takes the one that keeps the most of the PCIC network above it placeable, then the
-   nearest. An outlet with no series is not placed (`no_series`). An outlet with no valid candidate is
+   candidates an outlet takes the one most of the PCIC network above it agrees with (outlets up to three
+   levels above whose near candidates lie on or upstream of it), then the nearest. An outlet with no series is not placed (`no_series`). An outlet with no valid candidate is
    left unplaced (`broken_chain`); where the outlet that broke carries most of its parent's network and
    fits once the parent is skipped, the parent is `demoted` instead and placement reruns, until stable.
 5. **Flow at outlets.** PCIC's network and the FWA do not always join streams at the same place, so
@@ -79,7 +81,17 @@ The job:
    then prints `sql/qa_report.sql`, writes both output tables to `.csv.gz`, and drops the `fwapg.pcic_*`
    staging tables.
 
-To check against a Water Survey of Canada gauge (observed monthly means over the same years):
+To check against every Water Survey of Canada gauge in BC with discharge in the PCIC years (needs the
+job's outputs and its `data/` cache; writes `data/qa_gauges.csv`):
+
+    ./qa_gauges.sh
+
+At each gauge it compares PCIC's own flow at the nearest PCIC segment (no crosswalk involved) with
+the flow on the FWA segment at the gauge, which isolates crosswalk error from PCIC's model error, and
+both with the gauge. In the 2026-10 build, at 538 gauges: FWA flow within 10% of PCIC's at 493
+(206 of 210 gauges of 100-1,000 km², 134 of 139 of 1,000-10,000 km²); 11 more where another PCIC
+branch at the confluence matches; 34 disagree, 27 of them under 100 km². The FWA stream picked by
+drainage area matched the gauge's area within 10% at 559 of 603 gauges. One gauge in detail:
 
     ./qa_gauge.sh 08EE003
 

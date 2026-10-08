@@ -174,6 +174,6 @@ $PSQL -f sql/qa_report.sql
 $PSQL -c "\copy whse_basemapping.pcic_fwa_crosswalk TO 'pcic_fwa_crosswalk.csv' DELIMITER ',' CSV HEADER"
 $PSQL -c "\copy whse_basemapping.fwa_stream_networks_discharge_monthly TO 'fwa_stream_networks_discharge_monthly.csv' DELIMITER ',' CSV HEADER"
 gzip -f pcic_fwa_crosswalk.csv fwa_stream_networks_discharge_monthly.csv
-$PSQL -c "DROP TABLE fwapg.pcic_rivers, fwapg.pcic_lakes, fwapg.pcic_outlets, fwapg.pcic_candidates, fwapg.pcic_blk_parents, fwapg.pcic_blk_paths, fwapg.pcic_demoted, fwapg.pcic_outlet_monthly, fwapg.pcic_subbasins, fwapg.pcic_subbasins_monthly"
+$PSQL -c "DROP TABLE fwapg.pcic_rivers, fwapg.pcic_lakes, fwapg.pcic_outlets, fwapg.pcic_candidates, fwapg.pcic_blk_parents, fwapg.pcic_blk_paths, fwapg.pcic_voters, fwapg.pcic_demoted, fwapg.pcic_outlet_monthly, fwapg.pcic_subbasins, fwapg.pcic_subbasins_monthly"
 $PSQL -c "DROP FUNCTION fwapg.pcic_on_or_upstream"
 echo 'PCIC crosswalk complete, see whse_basemapping.pcic_fwa_crosswalk and whse_basemapping.fwa_stream_networks_discharge_monthly'

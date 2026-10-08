@@ -12,6 +12,13 @@ Final build on local fresh-db (2026-10-08):
 - Limitation kept: 2,184 sub-basins (8% of local runoff) have no local area because of the watershed lookup at tributary mouths.
 Wrong turns, kept for the record: snapping the junction point itself (tributary mouths won at confluences); local-code repair (copied bad codes); collecting flow by FWA nesting with PCIC outflows (double counting); demoting on PCIC/FWA disagreement (unplaced whole tributaries); unbounded geometric junctions (Okanagan on the Columbia in BC); same-main-only side channels (17,200 braids orphaned).
 
+### Gauge validation (after the PR opened, 2026-10-08)
+`extras/pcic_crosswalk/qa_gauges.sh` over 538 WSC gauges (PCIC flow at the nearest PCIC segment vs FWA flow at the gauge). The first run found three misplacement classes the internal tests could not see, each fixed and re-measured:
+- Nicola main stem placed on Clapperton Creek: the one-level look-ahead counted a child's 86 m fallback candidate as a tie with its 8.9 m Nicola candidate. Restricting to near candidates (≤ nearest + 25 m) fixed it but put an upper Columbia outlet on a parallel channel coded as a tributary; replaced by a three-level vote of descendants' near candidates.
+- Upper Columbia (Columbia Wetlands) outlets placed on side channels, leaving ~230 main-stem outlets unplaceable: side-channel candidates are now moved to their main stem.
+- The check's own flaws: nearest PCIC segment is sometimes the other branch at a confluence (now reported separately), and area-matched snaps can pick a side channel (main stem preferred within 10% area).
+Result: placed 36,527 → 37,402; broken chain 2,075 → 1,157; FWA within 10% of PCIC at 493 of 538 gauges (481 before, by a slightly different check), 11 ambiguous, 34 disagree (27 under 100 km²; remaining classes: Nechako reservoir lakes (Eutsuk, Laventie, MacIvor, Corkscrew), Swalwell Lake / Clark Creek, Sinclair Creek, and two big rivers snapped to unnamed FWA lines (Quesnel near Quesnel, Taku)). Listed for #8.
+
 ## Evidence
 Review findings: `review-round*.md` in this directory. Build logs (local, not tracked): `extras/pcic_crosswalk/data/build*.log`, `data/export.log`.
 
