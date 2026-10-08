@@ -33,3 +33,4 @@
   - acyclicity argument false in principle (a main stem could take a same-code round edge to its own braid) → round edges at the same code only from side channels; header invariant restated.
   - 1,888 side channels with no path though their main stem has one (Seton side channel 355995374 cut off Cayoosh Creek: 49 broken outlets, 0 of 7,560 segments with flow) → step 5 side-channel fallback onto own main stem (local-code equality, else nearest point within 1 km), then rounds again. QA test added.
 - Result: 36,527 placed; 3,375,280 segments; 99.1% within 5% of PCIC (99.9% > 100 m3/s); side channels without a path 232 of 74,431; Cayoosh 7,498 of 7,560 segments with flow; 10/10 QA tests pass.
+- Export run end to end through the script's step 5 (2.5 min): QA 10/10, pcic_fwa_crosswalk.csv.gz (48,716 rows, 1.7 MB), fwa_stream_networks_discharge_monthly.csv.gz (40,503,360 rows, 217 MB); staging tables and function dropped. Not uploaded (destination s3://fresh-bc/fwapg/).

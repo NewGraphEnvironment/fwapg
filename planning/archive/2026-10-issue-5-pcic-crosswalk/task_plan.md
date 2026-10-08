@@ -22,7 +22,7 @@ Branch off `newgraph`; PR targets `newgraph`.
 - [x] Local FWA area per sub-basin = upstream area at the outlet's FWA position minus the area upstream of its direct upstream outlets' positions (from `fwa_watersheds_upstream_area` + `fwa_streams_watersheds_lut`)
 - [x] `sql/pcic_crosswalk03_segments.sql`, per WSG: for each FWA segment assigned to a sub-basin (downstream of the upstream outlets, upstream of or at this outlet), `q = Σ Q_out(upstream PCIC outlets above the segment) + local_inflow × (local FWA area upstream of segment / sub-basin local FWA area)`
 - [x] Output `whse_basemapping.fwa_stream_networks_discharge_monthly (linear_feature_id, watershed_group_code, month, q_m3s)`, PK `(linear_feature_id, month)`; tables are created by the job, not added to `db/schema.sql`
-- [ ] `\copy` both outputs to `.csv.gz`; drop the `fwapg.pcic_*` staging tables
+- [x] `\copy` both outputs to `.csv.gz`; drop the `fwapg.pcic_*` staging tables
 
 ## Phase 4: QA and docs
 - [x] `extras/pcic_crosswalk/sql/qa.sql` in the `result = t` style: every non-flagged outlet's segment `q` ≈ PCIC `Q_out` (mass balance), monthly `q` is non-decreasing downstream along a sample mainstem, flagged share under a stated threshold
@@ -33,9 +33,9 @@ Branch off `newgraph`; PR targets `newgraph`.
 
 ## Validation
 - [x] Tests pass (`psql $DATABASE_URL -f extras/pcic_crosswalk/sql/qa.sql`, all `t`)
-- [ ] `/code-check` clean on each commit
-- [ ] PWF checkboxes match landed work
-- [ ] `/planning-archive` on completion
+- [x] `/code-check` clean on each commit
+- [x] PWF checkboxes match landed work
+- [x] `/planning-archive` on completion
 
 ## Out of scope
 - Water temperature and DO-saturation (same pipeline later; the issue says "can come the same way")
