@@ -19,23 +19,33 @@
 --    the Lillooet: 2 km and 18 m3/s apart).
 -- 2. the line its mouth touches (within 1 m) that is further down by watershed
 --    code, or a side channel's own main stem (watershed_key).
--- 3. in rounds, until no line is added: the line its mouth touches, at its own
---    watershed code or further down, that already has a parent. Braids rejoin
---    their main stem through sibling braids; without this, 17,200 side channels
---    (and the Kitsumkalum, which enters the Skeena through one) had no path.
--- 4. the deferred code junctions of 1, for main stems still without a parent;
---    then 3 again.
--- 5. otherwise nowhere: the line has no path. These are lines whose water leaves
+-- 3. in rounds, until no line is added: the line its mouth touches that already
+--    has a parent, further down by watershed code or (for a side channel only) at
+--    its own code. Braids rejoin their main stem through sibling braids; without
+--    this, 17,200 side channels (and the Kitsumkalum, which enters the Skeena
+--    through one) had no path.
+-- 4. when the rounds stop adding lines: the deferred code junctions of 1, for main
+--    stems still without a parent; then rounds again.
+-- 5. then, for side channels still without a parent: their own main stem, at the
+--    lowest main-stem segment whose local code equals the side channel's lowest
+--    one, or else the main stem's nearest point within 1 km of the mouth (the
+--    Seton River side channel that Cayoosh Creek drains through ends 619 m from
+--    the Seton and touches nothing); then rounds again.
+-- 6. otherwise nowhere: the line has no path. These are lines whose water leaves
 --    BC before it reaches its parent (the Okanagan, Kettle and Similkameen reach
---    the Columbia in the US; the Smoky, Tatshenshini and others) and lines with no
---    parent code in BC. Projecting their mouths onto the nearest point of their
---    parent put 160 m3/s of US-routed flow on the Columbia in BC.
+--    the Columbia in the US; the Smoky, Tatshenshini and others), lines with no
+--    parent code in BC, and their side channels. Projecting mouths onto the
+--    nearest point of a parent they never reach put 160 m3/s of US-routed flow
+--    on the Columbia in BC.
 --
--- The parents cannot form a cycle. Edges from 1, 2 and 4 go to a lower watershed
--- code, or from a side channel to its main stem (so 2 * code depth + is_side
--- always falls), and an edge from 3 goes only to a line that had a parent in an
--- earlier round. Among touched lines the expected parent is preferred, then the
--- deepest code, then the nearest.
+-- The parents cannot form a cycle. Every edge goes to a line at the same
+-- watershed code or further down. Main stems always leave their code (edges from
+-- 1, 2, 3 and 4 go to a lower code). A same-code edge comes only from a side
+-- channel: to its own main stem (2, 5), which then leaves the code, or in a round
+-- of 3 to a line that had a parent in an earlier round. So a cycle could only be
+-- made of round edges between side channels, and each of those points back in
+-- time. Among touched lines the expected parent is preferred, then the deepest
+-- code, then the nearest.
 --
 -- junction_gap_m is the distance from the line's mouth to the junction.
 -- Watershed codes under 999 (not on the network) have no path.
@@ -46,6 +56,7 @@ WITH blks AS (
     blue_line_key,
     watershed_key,
     wscode_ltree,
+    localcode_ltree,
     -- FWA streams are digitized from their downstream end (measure 0)
     ST_StartPoint(ST_GeometryN(geom, 1)) AS mouth
   FROM whse_basemapping.fwa_stream_networks_sp
@@ -66,6 +77,7 @@ SELECT
   b.watershed_key,
   b.mouth,
   b.wscode_ltree,
+  b.localcode_ltree,
   b.blue_line_key = b.watershed_key AS is_main,
   CASE
     WHEN b.blue_line_key != b.watershed_key THEN b.watershed_key
@@ -134,6 +146,36 @@ CROSS JOIN LATERAL (
 WHERE b.is_main
 AND b.expected_parent != b.blue_line_key;
 
+-- 5. a side channel's junction on its own main stem, for side channels the other
+-- steps leave without a parent
+CREATE TEMPORARY TABLE pcic_side_fallback AS
+SELECT
+  b.blue_line_key,
+  b.watershed_key AS parent_blue_line_key,
+  coalesce(c.junction_measure, g.junction_measure) AS junction_measure,
+  coalesce(c.gap, g.gap) AS junction_gap_m
+FROM pcic_blks b
+LEFT JOIN LATERAL (
+  SELECT s.downstream_route_measure AS junction_measure, ST_Distance(s.geom, b.mouth) AS gap
+  FROM whse_basemapping.fwa_stream_networks_sp s
+  WHERE s.blue_line_key = b.watershed_key
+  AND s.localcode_ltree = b.localcode_ltree
+  ORDER BY s.downstream_route_measure
+  LIMIT 1
+) c ON true
+LEFT JOIN LATERAL (
+  SELECT
+    s.downstream_route_measure + ST_LineLocatePoint(ST_LineMerge(s.geom), b.mouth) * s.length_metre AS junction_measure,
+    ST_Distance(s.geom, b.mouth) AS gap
+  FROM whse_basemapping.fwa_stream_networks_sp s
+  WHERE s.blue_line_key = b.watershed_key
+  AND ST_DWithin(s.geom, b.mouth, 1000)
+  ORDER BY ST_Distance(s.geom, b.mouth)
+  LIMIT 1
+) g ON true
+WHERE NOT b.is_main
+AND coalesce(c.junction_measure, g.junction_measure) IS NOT NULL;
+
 DROP TABLE IF EXISTS fwapg.pcic_blk_parents;
 
 CREATE TABLE fwapg.pcic_blk_parents (
@@ -141,7 +183,7 @@ CREATE TABLE fwapg.pcic_blk_parents (
   parent_blue_line_key integer,
   junction_measure double precision,
   junction_gap_m double precision,
-  junction_method text,          -- code, touch, touch_round, code_deferred
+  junction_method text,          -- code, touch, touch_round, code_deferred, side_fallback
   round integer
 );
 
@@ -160,13 +202,14 @@ WHERE (NOT t.same_code OR (NOT b.is_main AND t.touched = b.watershed_key))
 AND NOT EXISTS (SELECT 1 FROM pcic_code_junctions c WHERE c.blue_line_key = t.blue_line_key)
 ORDER BY t.blue_line_key, t.is_expected DESC, t.touched_depth DESC, t.gap;
 
--- 3 and 4. rounds of touching a line that already has a parent; then deferred
--- code junctions; then rounds again
+-- 3, 4 and 5. rounds of touching a line that already has a parent; when they stop,
+-- the deferred code junctions, then rounds again; when they stop again, the side
+-- channel fallback, then rounds again
 DO $$
 DECLARE
   r integer := 0;
   n integer;
-  deferred_done boolean := false;
+  stage integer := 0;
 BEGIN
   LOOP
     r := r + 1;
@@ -174,19 +217,30 @@ BEGIN
     SELECT DISTINCT ON (t.blue_line_key)
       t.blue_line_key, t.touched, t.junction_measure, t.gap, 'touch_round', r
     FROM pcic_touches t
+    INNER JOIN pcic_blks b ON b.blue_line_key = t.blue_line_key
     INNER JOIN fwapg.pcic_blk_parents p ON p.blue_line_key = t.touched AND p.round < r
     WHERE NOT EXISTS (SELECT 1 FROM fwapg.pcic_blk_parents q WHERE q.blue_line_key = t.blue_line_key)
+    -- main stems leave their code (see the header: this keeps the parents acyclic)
+    AND (NOT t.same_code OR NOT b.is_main)
     ORDER BY t.blue_line_key, t.is_expected DESC, t.touched_depth DESC, t.gap;
     GET DIAGNOSTICS n = ROW_COUNT;
 
     IF n = 0 THEN
-      EXIT WHEN deferred_done;
-      INSERT INTO fwapg.pcic_blk_parents
-      SELECT blue_line_key, parent_blue_line_key, junction_measure, junction_gap_m, 'code_deferred', r
-      FROM pcic_code_junctions c
-      WHERE c.deferred
-      AND NOT EXISTS (SELECT 1 FROM fwapg.pcic_blk_parents q WHERE q.blue_line_key = c.blue_line_key);
-      deferred_done := true;
+      stage := stage + 1;
+      IF stage = 1 THEN
+        INSERT INTO fwapg.pcic_blk_parents
+        SELECT blue_line_key, parent_blue_line_key, junction_measure, junction_gap_m, 'code_deferred', r
+        FROM pcic_code_junctions c
+        WHERE c.deferred
+        AND NOT EXISTS (SELECT 1 FROM fwapg.pcic_blk_parents q WHERE q.blue_line_key = c.blue_line_key);
+      ELSIF stage = 2 THEN
+        INSERT INTO fwapg.pcic_blk_parents
+        SELECT blue_line_key, parent_blue_line_key, junction_measure, junction_gap_m, 'side_fallback', r
+        FROM pcic_side_fallback f
+        WHERE NOT EXISTS (SELECT 1 FROM fwapg.pcic_blk_parents q WHERE q.blue_line_key = f.blue_line_key);
+      ELSE
+        EXIT;
+      END IF;
     END IF;
   END LOOP;
 END $$;

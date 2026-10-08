@@ -83,3 +83,9 @@ SELECT 'the Kitsumkalum, which joins the Skeena through a braid, has a path to t
     SELECT 1 FROM fwapg.pcic_blk_paths
     WHERE blue_line_key = 360883243 AND 360887278 = ANY(path_blks)
   ) AS result;
+
+SELECT 'Cayoosh Creek, which joins the Seton through a side channel that touches nothing, has a path to the Fraser' AS test,
+  EXISTS (
+    SELECT 1 FROM fwapg.pcic_blk_paths
+    WHERE blue_line_key = 356364387 AND 356364114 = ANY(path_blks)
+  ) AS result;

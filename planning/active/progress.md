@@ -26,3 +26,10 @@
 - Result: 36,474 placed; 3,364,206 segments × 12; within 5% of PCIC at 99.1% of placed outlets (99.9% > 100 m3/s); 9/9 QA tests pass; Columbia and Birkenhead equal PCIC; Kitsumkalum has flow.
 - Review cost: 5 rounds (round 2 and 4 and 5 each found defects inside the previous fixes). Round-5 fixes verified by measurement and new QA tests, not yet by a 6th reviewer.
 - Not yet run: the export/drop step of the script end to end.
+
+## Session 2026-10-08 (review round 6)
+
+- Round 6 (focused on the round-5 fix in `01_paths`): Birkenhead, Columbia, Kitsumkalum right; no deferred tributary enters upstream; no wrong-neighbour round edges. Two findings, both fixed:
+  - acyclicity argument false in principle (a main stem could take a same-code round edge to its own braid) → round edges at the same code only from side channels; header invariant restated.
+  - 1,888 side channels with no path though their main stem has one (Seton side channel 355995374 cut off Cayoosh Creek: 49 broken outlets, 0 of 7,560 segments with flow) → step 5 side-channel fallback onto own main stem (local-code equality, else nearest point within 1 km), then rounds again. QA test added.
+- Result: 36,527 placed; 3,375,280 segments; 99.1% within 5% of PCIC (99.9% > 100 m3/s); side channels without a path 232 of 74,431; Cayoosh 7,498 of 7,560 segments with flow; 10/10 QA tests pass.

@@ -48,7 +48,9 @@ The job:
    segment whose local code equals its watershed code, unless its mouth enters a side channel of that
    main stem, in which case it joins where the side channel rejoins. Otherwise (and for side channels) a
    line joins the line its mouth touches, within 1 m, including a braid that rejoins its main stem
-   through a sibling braid. A line whose mouth touches nothing at or below its own code has no path.
+   through a sibling braid; a side channel that touches nothing joins its own main stem (at the segment
+   with its lowest local code, or the nearest point within 1 km). Other lines whose mouths touch nothing
+   at or below their own code have no path.
    `FWA_Upstream` is not used: it orders positions by comparing local codes, and local codes nest more than one level deep, run
    out of order along blue lines, and are compared across main and side channels, each of which put
    outlets on the wrong side of tributaries.
