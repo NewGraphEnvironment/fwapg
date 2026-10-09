@@ -53,15 +53,15 @@ Branch off `newgraph` (not main); PR `--base newgraph`; `gh -R NewGraphEnvironme
 - [x] Update the path references in `research/fwa_position_codes.md`
 
 ## Phase 2: Tree job (tests first)
-- [ ] `extras/mainflow_tree/sql/qa.sql` (`name|bool`, PCIC's pattern), written before the build so it fails first. Tests:
+- [x] `extras/mainflow_tree/sql/qa.sql` (`name|bool`, PCIC's pattern), written before the build so it fails first. Tests:
   - no splits province-wide (a node that is the upstream end of more than 1 tree segment, nodes snapped to 1 cm)
   - cut-offs at or below a measured ceiling (a tree segment whose downstream node is an upstream node in the full network but not in the tree)
   - all 26 listed 1450 connectors are in the tree at measure 0
   - for each of the 4 tributaries, the side channel is kept from 0 to the entry measure and dropped above it
   - the Chilako (`100.567134.069486`) reaches the Nechako (`100.567134`) through tree segments
-- [ ] `extras/mainflow_tree/sql/mainflow_tree.sql`: main flow (codes not null and not `999`, all edge types) plus side-channel extents. The extents come from walking `fwapg.blk_parents` from every main-flow line through side channels until a main-flow line is reached; on each side channel the tree keeps the segments with `downstream_route_measure` < the maximum junction measure. Output `whse_basemapping.fwa_stream_networks_mainflow_tree (linear_feature_id PK, watershed_group_code, blue_line_key, reattached boolean)`
-- [ ] `extras/mainflow_tree/mainflow_tree.sh`: shared paths → build → `data/qa_cutoffs.csv` → QA (stop on failure) → export `.csv.gz`
-- [ ] Run it province-wide and record the splits and cut-offs by cause. Add `overrides.csv` (`linear_feature_id`, include/exclude, note) **only if** there are splits the rule gets wrong; cut-offs at FWA gaps are listed, not overridden
+- [x] `extras/mainflow_tree/sql/mainflow_tree.sql`: main flow (codes not null and not `999`, all edge types) plus side-channel extents. The extents come from walking `fwapg.blk_parents` from every main-flow line through side channels until a main-flow line is reached; on each side channel the tree keeps the segments with `downstream_route_measure` < the maximum junction measure. Output `whse_basemapping.fwa_stream_networks_mainflow_tree (linear_feature_id PK, watershed_group_code, blue_line_key, reattached boolean)`
+- [x] `extras/mainflow_tree/mainflow_tree.sh`: shared paths → build → `data/qa_cutoffs.csv` → QA (stop on failure) → export `.csv.gz`
+- [x] Run it province-wide and record the splits and cut-offs by cause. Add `overrides.csv` (`linear_feature_id`, include/exclude, note) **only if** there are splits the rule gets wrong; cut-offs at FWA gaps are listed, not overridden
 
 ## Phase 3: SSNbler acceptance
 - [ ] Install `SSNbler` from CRAN (a machine change: one R package)
