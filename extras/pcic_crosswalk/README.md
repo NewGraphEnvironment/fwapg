@@ -80,7 +80,8 @@ The job:
    accumulated flow. Local runoff can be negative in a month (routing losses), so `q` is clamped at zero.
 7. **QA and export.** Runs the tests in `sql/qa.sql` and stops, keeping the staging tables, if any fails;
    then prints `sql/qa_report.sql`, writes both output tables to `.csv.gz`, and drops the `fwapg.pcic_*`
-   staging tables.
+   staging tables. The QA tables `fwapg.pcic_qa_drainage` (step 7's drainage check) and
+   `fwapg.pcic_qa_gauges` (`qa_gauges.sh`) are kept for review.
 
 To check against every Water Survey of Canada gauge in BC with discharge in the PCIC years (needs the
 job's outputs and its `data/` cache; writes `data/qa_gauges.csv`):
@@ -95,6 +96,19 @@ branch at the confluence matches; 33 disagree, 27 of them under 100 km². The FW
 drainage area matched the gauge's area within 10% at 559 of 603 gauges. One gauge in detail:
 
     ./qa_gauge.sh 08EE003
+
+The job's QA step also checks drainage size at every placed outlet (`sql/qa_drainage.sql`, written to
+`data/qa_drainage.csv`), which flow agreement cannot: a chain of outlets shifted onto a neighbouring
+stream still adds up. PCIC publishes no sub-basin areas, so PCIC's drainage is measured as its upstream
+river length and its mean flow, each per FWA km² at the placed segment and normalised by the watershed
+group's median (the province's, for groups with fewer than 20 main-stem placements). An outlet is flagged `small` (both < 0.2: a small PCIC outlet on a much bigger FWA
+stream) or `big` (both > 5). Side channels are not checked: the watershed lookup gives them their main
+river's area. In the 2026-10 build: 218 `small` and 126 `big` of 37,040 main-stem placements, with 82
+of the 85 outlets carrying more than 10 times PCIC's flow among the `small`. Seeded errors (the Nicola
+main stem on Clapperton Creek; outlets moved onto streams with 10 times, or a tenth of, the area) are
+flagged; a wrong stream of similar size (within about 5 times) is not. Flags are a review list
+(NewGraphEnvironment/fwapg#8): lake connector lines, double-line river construction lines and regulated
+flow (the Cheslatta River) trip it too.
 
 
 ## Output tables

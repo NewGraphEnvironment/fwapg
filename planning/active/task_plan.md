@@ -15,29 +15,29 @@ Before trusting the check, **seed known errors** and confirm it fires: place the
 
 
 ## Phase 1: Rebuild and measure
-- [ ] Rebuild the staging tables from the job's `data/` cache (network load, `00`–`07`; no download) on local fresh-db
-- [ ] PCIC upstream river length per outlet (recursive over `dowsubid`, `ST_Length` of `fwapg.pcic_rivers`; lakes contribute 0)
-- [ ] FWA upstream area at each placed outlet's segment and at its rank-1 candidate
-- [ ] Distribution of length / area by watershed group; pick the normalisation (WSG median) and the outlier threshold from it, with numbers in `findings.md`
+- [x] Rebuild the staging tables from the job's `data/` cache (network load, `00`–`07`; no download) on local fresh-db
+- [x] PCIC upstream river length per outlet (recursive over `dowsubid`, `ST_Length` of `fwapg.pcic_rivers`; lakes contribute 0)
+- [x] FWA upstream area at each placed outlet's segment and at its rank-1 candidate
+- [x] Distribution of length / area by watershed group; pick the normalisation (WSG median) and the outlier threshold from it, with numbers in `findings.md`
 
 ## Phase 2: Validate the check
-- [ ] Seed known misplacements in a scratch crosswalk (Nicola 3000039 on Clapperton Creek; tributary outlets placed on the river they join, from the round-7 list) and confirm each is flagged
-- [ ] Cross-tabulate the outliers against existing evidence: the 85 outlets > 10× PCIC, the gauge disagreements (`data/qa_gauges.csv`), `candidate_rank > 1`, placed vs rank-1 area difference
-- [ ] Inspect the largest outliers that no other check flags (a handful, by query and `ST_Distance`), and record what they are
+- [x] Seed known misplacements in a scratch crosswalk (Nicola 3000039 on Clapperton Creek; tributary outlets placed on the river they join, from the round-7 list) and confirm each is flagged
+- [x] Cross-tabulate the outliers against existing evidence: the 85 outlets > 10× PCIC, the gauge disagreements (`data/qa_gauges.csv`), `candidate_rank > 1`, placed vs rank-1 area difference
+- [x] Inspect the largest outliers that no other check flags (a handful, by query and `ST_Distance`), and record what they are
 
 ## Phase 3: Encode in the job
-- [ ] `extras/pcic_crosswalk/sql/qa_drainage.sql`: builds `fwapg.pcic_qa_drainage` (per placed outlet: PCIC length, FWA area, normalised ratio, placed vs rank-1 area, flags) and prints the outlier report
-- [ ] `pcic_crosswalk.sh` step 5: run it before the export and cleanup, `\copy` the table to `data/qa_drainage.csv`
-- [ ] A test in `sql/qa.sql` with a ceiling on the outlier count, set from Phase 1's measurement (and confirmed to fail on Phase 2's seeded errors)
-- [ ] `extras/pcic_crosswalk/README.md`: what the check measures, its threshold, the result
+- [x] `extras/pcic_crosswalk/sql/qa_drainage.sql`: builds `fwapg.pcic_qa_drainage` (per placed outlet: PCIC length, FWA area, normalised ratio, placed vs rank-1 area, flags) and prints the outlier report
+- [x] `pcic_crosswalk.sh` step 5: run it before the export and cleanup, `\copy` the table to `data/qa_drainage.csv`
+- [x] A test in `sql/qa.sql` with a ceiling on the outlier count, set from Phase 1's measurement (and confirmed to fail on Phase 2's seeded errors)
+- [x] `extras/pcic_crosswalk/README.md`: what the check measures, its threshold, the result
 
 ## Phase 4: Hand off
-- [ ] Comment the outlier list on #8 as its review sample (with the > 10× and gauge lists already there)
-- [ ] Record measurements in `findings.md` and `progress.md`
+- [x] Comment the outlier list on #8 as its review sample (with the > 10× and gauge lists already there)
+- [x] Record measurements in `findings.md` and `progress.md`
 
 ## Validation
-- [ ] Tests pass (`psql -f sql/qa.sql`, all `t`, and the new test fails on the seeded errors)
-- [ ] `/code-check` clean (each commit, or once over the branch with `/code-check branch`)
-- [ ] PWF checkboxes match landed work
+- [x] Tests pass (`psql -f sql/qa.sql`, all `t`, and the new test fails on the seeded errors)
+- [x] `/code-check` clean (each commit, or once over the branch with `/code-check branch`)
+- [x] PWF checkboxes match landed work
 - [ ] `/planning-archive` on completion
 
