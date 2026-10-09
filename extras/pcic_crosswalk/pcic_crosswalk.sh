@@ -162,6 +162,10 @@ $PSQL -c "ANALYZE whse_basemapping.fwa_stream_networks_discharge_monthly"
 # ----------
 # 5. QA, export, clean up
 # ----------
+# drainage size at every placed outlet (fwapg#7), tested in qa.sql
+$PSQL -f sql/qa_drainage.sql
+$PSQL -c "\copy (SELECT * FROM fwapg.pcic_qa_drainage ORDER BY subid) TO 'data/qa_drainage.csv' WITH (FORMAT csv, HEADER)"
+
 # keep the staging tables for debugging when a test fails; a NULL result (a test
 # over no rows) prints "name|" and fails too
 qa=$($PSQL -tXA -f sql/qa.sql)

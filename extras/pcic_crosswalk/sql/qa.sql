@@ -117,3 +117,18 @@ WITH annual AS (
 SELECT 'Kitsumkalum outlet 8007998 is placed and within 5% of PCIC' AS test,
   coalesce(bool_and(abs(q_acc - q_pcic) <= 0.05 * q_pcic), false) AS result
 FROM annual;
+
+-- drainage size at every placed outlet (qa_drainage.sql, NewGraphEnvironment/fwapg#7):
+-- outlets on a main stem whose PCIC drainage (river length and flow) is far from
+-- the FWA area they sit on. Measured 218 'small' and 126 'big' of 37,040; the
+-- ceilings catch a class of misplacement (seeding 200 small outlets onto streams
+-- with 10 times the area takes 'small' past 400), not each one, which #8 reviews.
+-- An outlet with no FWA area or median is 'unmeasured' and fails the test, so a
+-- missing or partly loaded area table cannot pass as "nothing flagged"
+SELECT 'at most 300 main-stem outlets flagged small and 200 big by the drainage check, none unmeasured' AS test,
+  count(*) FILTER (WHERE main_stem) > 0
+  AND count(*) FILTER (WHERE flag = 'unmeasured') = 0
+  AND count(*) FILTER (WHERE flag = 'small') <= 300
+  AND count(*) FILTER (WHERE flag = 'big') <= 200 AS result
+FROM fwapg.pcic_qa_drainage;
+
