@@ -46,7 +46,7 @@ The job:
    up to 100 m back up the PCIC segment rather than the junction itself.
 
    Every position comparison in the job ("is b on or upstream of a?") uses the downstream path of each FWA
-   blue line (`fwapg.pcic_blk_paths`): the chain of blue lines its water passes to the sea, with the
+   blue line (`fwapg.blk_paths`, built by `extras/blue_line_paths`): the chain of blue lines its water passes to the sea, with the
    measure at which it joins each. A main stem joins the main stem of its parent watershed code at the
    segment whose local code equals its watershed code, unless its mouth enters a side channel of that
    main stem, in which case it joins where the side channel rejoins. Otherwise (and for side channels) a

@@ -16,7 +16,7 @@ Patching inputs (repairing out-of-order codes) reproduced the defect one axis ov
 
 ## What works: blue-line downstream paths
 
-Give every blue line its parent line and the measure where it joins, and compare positions by walking that chain (`extras/pcic_crosswalk/sql/pcic_crosswalk01_paths.sql`; 4-6 min province-wide, max 16 hops, mean 3.9). Junction sources, in order, and what each fixed:
+Give every blue line its parent line and the measure where it joins, and compare positions by walking that chain (`extras/blue_line_paths/sql/blue_line_paths.sql`, moved there from the PCIC job in fwapg#2; about 35 min province-wide measured 2026-10-09, not the 4-6 min first recorded, max 16 hops, mean 3.9). Junction sources, in order, and what each fixed:
 
 1. **Code equality** (main stems): lowest segment of the parent-code main stem whose `localcode = tributary wscode` (the same join `load/fwa_stream_networks_order_parent.sql` uses). An equality is immune to ordering defects; within 10 m of the traced junction on all but ~100 of 1.5M lines. Deferred when the mouth touches a side channel of the parent: the water enters where the side channel rejoins (Birkenhead on the Lillooet: 2 km and 18 m3/s apart).
 2. **Touch** (≤ 1 m from the mouth) to a lower code or a side channel's own main stem.

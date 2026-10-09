@@ -20,7 +20,7 @@
 -- they agree.
 
 -- fwa_parent_subid: the nearest placed outlet downstream on the FWA, found by
--- walking the outlet's own blue line down, then its path (fwapg.pcic_blk_paths)
+-- walking the outlet's own blue line down, then its path (fwapg.blk_paths)
 -- to the sea: the first blue line with a placed outlet at or below the outlet's
 -- position, and on it the highest such outlet (by segment, then measure). At the
 -- same point, the outlet nearer PCIC's root is below. This is the order pcic_crosswalk07_segments.sql
@@ -48,7 +48,7 @@ FROM (
     -- step i: the i-th blue line on its path, at or below where its water joins
     SELECT c.subid, c.depth, u.step, u.blk, NULL, u.measure
     FROM placed c
-    INNER JOIN fwapg.pcic_blk_paths bp ON bp.blue_line_key = c.blue_line_key
+    INNER JOIN fwapg.blk_paths bp ON bp.blue_line_key = c.blue_line_key
     CROSS JOIN LATERAL unnest(bp.path_blks, bp.path_measures) WITH ORDINALITY AS u(blk, measure, step)
   )
   SELECT DISTINCT ON (st.subid)

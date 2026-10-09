@@ -23,7 +23,7 @@ AND EXISTS (
   WHERE y.subid = s.subid
   AND (
     g.subid IS NULL
-    OR fwapg.pcic_on_or_upstream(g.blue_line_key, g.downstream_route_measure, y.blue_line_key, y.downstream_route_measure)
+    OR fwapg.blk_on_or_upstream(g.blue_line_key, g.downstream_route_measure, y.blue_line_key, y.downstream_route_measure)
   )
 )
 ON CONFLICT DO NOTHING;

@@ -101,8 +101,14 @@ its mouth touches side channel 355995648, itself a `side_fallback` with a 929 m 
 
 Province-wide junction gaps over 1 m: `code` 386 of 1,467,190; `code_deferred` 37 of 37; `side_fallback` 2,250 of 2,250.
 
+## Phase 1 measurements (2026-10-09)
+
+- Paths build 14:45:41 -> 15:20:58 UTC (35 min, incl. a ~1 min snapshot). A 2,634-line sample of the touches lateral took 3.2 s (1.2 ms/line), so ~33 min for 1.6M lines: the research note's "4-6 min" was wrong for this host.
+- PCIC steps 02-07 + drainage + QA after the paths: 7 min.
+
 ## Errors Encountered
 
 | Error | Resolution |
 |-------|------------|
+| Python `str.index('-- 4. overrides')` matched the header comment, duplicating mainflow_tree.sql (`relation "net_nodes" already exists`) | anchor replacements on a unique string; check with grep -c |
 | `psql $DATABASE_URL` unset / password prompt on localhost | `docker exec -i fresh-db psql -U postgres -d fwapg` |

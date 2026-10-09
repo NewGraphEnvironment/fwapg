@@ -75,7 +75,7 @@ BEGIN
           SELECT count(DISTINCT v.voter)
           FROM fwapg.pcic_voters v
           WHERE v.subid = o.subid
-          AND fwapg.pcic_on_or_upstream(x.blue_line_key, x.downstream_route_measure, v.blue_line_key, v.downstream_route_measure)
+          AND fwapg.blk_on_or_upstream(x.blue_line_key, x.downstream_route_measure, v.blue_line_key, v.downstream_route_measure)
         ) AS score
       FROM outlets o
       INNER JOIN fwapg.pcic_candidates x ON x.subid = o.subid
@@ -83,7 +83,7 @@ BEGIN
       AND EXISTS (SELECT 1 FROM fwapg.pcic_outlet_monthly q WHERE q.subid = x.subid)
       AND (
         o.a_subid IS NULL
-        OR fwapg.pcic_on_or_upstream(o.a_blk, o.a_drm, x.blue_line_key, x.downstream_route_measure)
+        OR fwapg.blk_on_or_upstream(o.a_blk, o.a_drm, x.blue_line_key, x.downstream_route_measure)
       )
     ),
 

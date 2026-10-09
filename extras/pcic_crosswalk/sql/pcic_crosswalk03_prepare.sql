@@ -1,7 +1,7 @@
 -- Setup for placing outlets (pcic_crosswalk04_select.sql, pcic_crosswalk05_demote.sql):
 -- the size of each outlet's PCIC subtree, the look-ahead voters, and an empty list
 -- of demoted outlets.
--- The position test, fwapg.pcic_on_or_upstream, is in pcic_crosswalk01_paths.sql.
+-- The position test, fwapg.blk_on_or_upstream, is in extras/blue_line_paths/sql/blue_line_paths.sql.
 
 -- number of PCIC outlets at or above each outlet
 ALTER TABLE fwapg.pcic_outlets DROP COLUMN IF EXISTS subtree_size;

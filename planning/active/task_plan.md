@@ -46,11 +46,11 @@ SSN2/SSNbler models need a dendritic network. FWA braids, so each project has be
 Branch off `newgraph` (not main); PR `--base newgraph`; `gh -R NewGraphEnvironment/fwapg`.
 
 ## Phase 1: Shared blue-line paths
-- [ ] `git mv` `extras/pcic_crosswalk/sql/pcic_crosswalk01_paths.sql` → `extras/blue_line_paths/sql/blue_line_paths.sql`. Rename the tables to `fwapg.blk_parents` / `fwapg.blk_paths` and the function to `fwapg.blk_on_or_upstream`, and make the header neutral (not PCIC-specific)
-- [ ] `extras/blue_line_paths/blue_line_paths.sh` (runs the SQL, then the cycle check already in it) and a `README.md` (junction rules, runtime 4–6 min, table layout)
-- [ ] PCIC job calls the shared script; rename the references in `pcic_crosswalk03`–`07`, `qa.sql`, `pcic_crosswalk.sh` cleanup (the shared tables persist; PCIC stops dropping them), and the README step 3 text
-- [ ] Verify there is no behaviour change. Snapshot the current `whse_basemapping.pcic_fwa_crosswalk` and `fwa_stream_networks_discharge_monthly` first, rerun the PCIC job from its `data/` cache, then compare: identical placements, |Δq| ≈ 0, QA 10/10
-- [ ] Update the path references in `research/fwa_position_codes.md`
+- [x] `git mv` `extras/pcic_crosswalk/sql/pcic_crosswalk01_paths.sql` → `extras/blue_line_paths/sql/blue_line_paths.sql`. Rename the tables to `fwapg.blk_parents` / `fwapg.blk_paths` and the function to `fwapg.blk_on_or_upstream`, and make the header neutral (not PCIC-specific)
+- [x] `extras/blue_line_paths/blue_line_paths.sh` (runs the SQL, then the cycle check already in it) and a `README.md` (junction rules, runtime 4–6 min, table layout)
+- [x] PCIC job calls the shared script; rename the references in `pcic_crosswalk03`–`07`, `qa.sql`, `pcic_crosswalk.sh` cleanup (the shared tables persist; PCIC stops dropping them), and the README step 3 text
+- [x] Verify there is no behaviour change. Snapshot the current `whse_basemapping.pcic_fwa_crosswalk` and `fwa_stream_networks_discharge_monthly` first, rerun the PCIC job from its `data/` cache, then compare: identical placements, |Δq| ≈ 0, QA 10/10
+- [x] Update the path references in `research/fwa_position_codes.md`
 
 ## Phase 2: Tree job (tests first)
 - [ ] `extras/mainflow_tree/sql/qa.sql` (`name|bool`, PCIC's pattern), written before the build so it fails first. Tests:
