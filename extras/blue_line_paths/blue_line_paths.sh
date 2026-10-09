@@ -7,7 +7,10 @@ set -euxo pipefail
 cd "$(dirname "$0")"
 PSQL="psql $DATABASE_URL -v ON_ERROR_STOP=1"
 
-$PSQL -f sql/blue_line_paths.sql
+# one transaction: the tables are dropped and rebuilt, and a job reading them
+# (pcic_crosswalk, mainflow_tree) waits on the lock rather than finding them
+# missing or half filled
+$PSQL -1 -f sql/blue_line_paths.sql
 
 # a NULL result (a test over no rows) prints "name|" and fails too
 qa=$($PSQL -tXA -f sql/qa.sql)

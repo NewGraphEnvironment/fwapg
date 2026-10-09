@@ -13,7 +13,9 @@ is not used for this.
 
     ./blue_line_paths.sh
 
-Builds the tables (about 35 min province-wide, measured 2026-10-09 on a local Docker database; almost all of it is matching each mouth to the lines it touches, about 1.2 ms per line), then runs the tests in `sql/qa.sql` and stops if any fails.
+Builds the tables in one transaction (about 35 min province-wide, measured 2026-10-09 on a local Docker database; almost all of it is matching each mouth to the lines it touches, about 1.2 ms per line), then runs the tests in `sql/qa.sql` and stops if any fails. Each job that uses the tables rebuilds them
+first, so do not run `pcic_crosswalk.sh` and `mainflow_tree.sh` at the same time: the second job's rebuild
+waits for the first job's reads, then replaces the tables under the rest of its run.
 
 A line's parent and junction come from, in order (the header of `sql/blue_line_paths.sql` has the detail and
 the cases each rule fixed):

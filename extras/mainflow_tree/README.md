@@ -38,7 +38,8 @@ as a whole is digitized in the direction of flow, with no per-segment exceptions
 
     ./mainflow_tree.sh
 
-Rebuilds the blue line paths (about 35 min), builds the tree (about 1 min), finds splits and cut-offs from the network geometry
+Rebuilds the blue line paths (about 35 min; not while `pcic_crosswalk.sh` is running, see
+`extras/blue_line_paths`), builds the tree (about 1 min), finds splits and cut-offs from the network geometry
 (`sql/qa_topology.sql`, written to `data/qa_topology.csv` and kept as `fwapg.mainflow_tree_qa`), runs the
 tests in `sql/qa.sql` (stopping before export if any fails) and writes `fwa_stream_networks_mainflow_tree.csv.gz`.
 
@@ -97,13 +98,15 @@ In the 2026-10 build (4,907,441 network segments):
 ## SSNbler check
 
 `ssnbler_check.R` builds a landscape network from a tree subset with `SSNbler::lines_to_lsn(check_topology =
-TRUE)`, reversing every line, and fails on any node error or more than one outlet:
+TRUE)`, reversing every line. It fails on any node error, and on an outlet count other than the third
+argument when one is given. SSNbler needs its parallel path (about 2 GB per worker) at 46,340 lines or more, so
+check large basins a watershed group at a time:
 
-    ogr2ogr -f GPKG data/skeena.gpkg PG:"$DATABASE_URL" -nln streams -sql \
+    ogr2ogr -f GPKG data/klum.gpkg PG:"$DATABASE_URL" -nln streams -sql \
       "SELECT s.linear_feature_id, s.geom FROM whse_basemapping.fwa_stream_networks_sp s
        INNER JOIN whse_basemapping.fwa_stream_networks_mainflow_tree t ON t.linear_feature_id = s.linear_feature_id
-       WHERE s.wscode_ltree <@ '400'"
-    Rscript ssnbler_check.R data/skeena.gpkg data/lsn_skeena
+       WHERE s.wscode_ltree <@ '400' AND s.watershed_group_code = 'KLUM'"
+    Rscript ssnbler_check.R data/klum.gpkg data/lsn_klum 1
 
 SSNBLER
 
