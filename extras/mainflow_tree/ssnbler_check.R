@@ -29,10 +29,17 @@ sf::st_geometry(streams) <- sf::st_reverse(sf::st_geometry(streams))
 # an old one, so a rerun into the same directory would read stale errors
 unlink(file.path(args[2], "node_errors.gpkg"))
 
-# SSNbler rounds node coordinates to one decimal place fewer than snap_tolerance
-# has (to 1 m when it is 0), which joins the two ends of a segment a few cm long
-# into one node: 1.6 and 2.9 cm main-flow segments in USKE and MSKE read as
-# divergences at 0.01. 0.001 rounds to 1 cm, as qa_topology.sql does.
+# snap_tolerance is the distance within which line ends join a node, and it sets
+# the precision nodes are rounded to: one decimal place fewer than it has
+# (lines_to_lsn: ndec <- get_decimals(snap_tolerance) - 1), so 0.001 rounds to
+# 1 cm, as qa_topology.sql does, 0.01 to 0.1 m and the default 0 to 10 m.
+# topo_tolerance flags nodes closer than it that are not joined.
+#
+# Two spots still report errors, each a main-flow segment a few cm long whose
+# geometry is a plain chain: 239055049 (1.6 cm, USKE) and 141013301 (2.9 cm,
+# MSKE). At snap_tolerance 0.01 its two ends round to one node (a "Downstream
+# Divergence"); at 0.001 they stay apart but are flagged as an "Unsnapped Node"
+# and a divergence, with topo_tolerance 1 m and 1 cm alike.
 lsn <- SSNbler::lines_to_lsn(
   streams,
   lsn_path = args[2],

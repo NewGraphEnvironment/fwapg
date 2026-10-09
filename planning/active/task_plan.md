@@ -64,14 +64,14 @@ Branch off `newgraph` (not main); PR `--base newgraph`; `gh -R NewGraphEnvironme
 - [x] Run it province-wide and record the splits and cut-offs by cause. Add `overrides.csv` (`linear_feature_id`, include/exclude, note) **only if** there are splits the rule gets wrong; cut-offs at FWA gaps are listed, not overridden
 
 ## Phase 3: SSNbler acceptance
-- [ ] Install `SSNbler` from CRAN (a machine change: one R package)
-- [ ] `extras/mainflow_tree/ssnbler_check.R`: read the tree subsets for the Skeena (`wscode <@ 400`, 9 groups) and the Nechako (`wscode <@ 100.567134`, 12 groups), reverse every line, then `lines_to_lsn(check_topology = TRUE)`. Report node errors and outlets. The test subset is the whole basin, which is stricter than the issue's "subset that connects the sites", because the site lists live in repos that are not cloned here
-- [ ] Record the results in findings
+- [x] Install `SSNbler` from CRAN (a machine change: one R package)
+- [x] `extras/mainflow_tree/ssnbler_check.R`: read the tree subsets for the Skeena (`wscode <@ 400`, 9 groups) and the Nechako (`wscode <@ 100.567134`, 12 groups), reverse every line, then `lines_to_lsn(check_topology = TRUE)`. Report node errors and outlets. The test subset is the whole basin, which is stricter than the issue's "subset that connects the sites", because the site lists live in repos that are not cloned here
+- [x] Record the results in findings
 
 ## Phase 4: Docs
-- [ ] `extras/mainflow_tree/README.md`: method, table, how to query (join on `linear_feature_id`), caveats (cut-offs at FWA gaps; watershed area on reattached segments is fwapg#4)
-- [ ] `extras/README.md`: the fresh-bc upload line
-- [ ] `research/fwa_mainflow_tree.md` (verdict, with the provenance line) and a row in `research/README.md`
+- [x] `extras/mainflow_tree/README.md`: method, table, how to query (join on `linear_feature_id`), caveats (cut-offs at FWA gaps; watershed area on reattached segments is fwapg#4)
+- [x] `extras/README.md`: the fresh-bc upload line
+- [x] `research/fwa_mainflow_tree.md` (verdict, with the provenance line) and a row in `research/README.md`
 
 ## Validation
 

@@ -108,7 +108,21 @@ check large basins a watershed group at a time:
        WHERE s.wscode_ltree <@ '400' AND s.watershed_group_code = 'KLUM'"
     Rscript ssnbler_check.R data/klum.gpkg data/lsn_klum 1
 
-SSNBLER
+In the 2026-10 build, every watershed group holding the Skeena (`400`) or the Nechako (`100.567134`), each
+group's share of the basin checked on its own (one at a time: peak memory grew from 1.5 GB at 5,500 lines to
+39 GB at 24,000):
+
+- **24 of 26 groups: 0 node errors**, including KLUM, which holds the four side-channel paths in the tests.
+  Each group has 1-3 outlets: the point where the basin leaves the group, plus any dead ends.
+- **USKE and MSKE: 4 errors each, at one spot each**, a main-flow segment a few cm long whose geometry is a
+  plain chain (239055049, 1.6 cm; 141013301, 2.9 cm). SSNbler reports its two ends as an unsnapped node and
+  a divergence; the SQL check, on the same nodes at 1 cm, finds no split. At `snap_tolerance` 0.01 the two
+  ends round to one node instead (SSNbler rounds nodes to one decimal place fewer than the tolerance).
+- Not run: LSKE, BULK and FRAN (29,000-30,000 lines, about 60 GB at that growth); the Skeena's share of SPAT and TAKL and
+  the Nechako's of TABR are one segment each, which `lines_to_lsn` cannot build (an error inside its own `left_join`).
+- Whole basins, counted in SQL with SSNbler's definition of an outlet: the Skeena has **1 outlet** (its
+  mouth); the Nechako 8, its mouth on the Fraser and 7 dead ends (side channels reached by a fallback junction
+  in LEUT, UEUT, TAKL, FRAN, LTRE and STUR).
 
 ## Caveats
 
