@@ -17,3 +17,9 @@
 - Dead ends added to the topology QA: a tree mouth that touches no network segment on a line the paths give a parent. 473 province-wide (354 main stems off their code junction, 119 fallback side channels); ceiling test; 9/9 tests pass. Found because the Nechako basin had 8 outlets (its mouth + 7 reservoir-group side channels) while the cut-off count said 0 there.
 - SSNbler whole-basin run (8 PSOCK workers, ~14 GB, 20+ min, machine compressing 26 GB) stopped; switched to per watershed group (serial, under SSNbler's 46,340-line parallel threshold). KLUM: 24,732 lines, 0 node errors, 1 outlet, 3 min.
 - Session restart wiped the scratchpad (SSNbler exports and logs); rerunning into `extras/mainflow_tree/data/ssnbler/` (gitignored)
+
+## Session 2026-10-09 (after restarts)
+
+- Two machine restarts (~16:07 and ~16:50 UTC) wiped the scratchpad and stopped background work; review round 1 (spawned 16:41) never wrote its file, so it is re-run as round 1b (19:57); not recorded as clean
+- SSNbler per watershed group (extras/mainflow_tree/data/ssnbler/, gitignored): before the second restart 16 of 18 Nechako groups completed, all 0 node errors (outlets 1-3 per group: the group's exit plus any dead ends); TABR (one segment) fails inside SSNbler's left_join; resuming FRAN, UNRS and the 13 Skeena groups other than KLUM
+- Review checklist (full soul code-check conventions, 637 KB) kept at extras/mainflow_tree/data/review-checklist.md, not committed
