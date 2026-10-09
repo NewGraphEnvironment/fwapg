@@ -111,4 +111,7 @@ Province-wide junction gaps over 1 m: `code` 386 of 1,467,190; `code_deferred` 3
 | Error | Resolution |
 |-------|------------|
 | Python `str.index('-- 4. overrides')` matched the header comment, duplicating mainflow_tree.sql (`relation "net_nodes" already exists`) | anchor replacements on a unique string; check with grep -c |
+| `ls grp_*.gpkg \| xargs` passed colour escape codes (ls is aliased to colourise), every SSNbler run failed on a missing file | `find -print` instead of `ls` in pipelines |
+| SSNbler `in_edges contains 160582 edges, which is >= 46340. Set use_parallel = TRUE` | per watershed group, serial; parallel workers hold ~2 GB each |
+| SSNbler `left_join()` error on a one-line network (TABR's single Nechako segment) | SSNbler edge case, reported not worked around |
 | `psql $DATABASE_URL` unset / password prompt on localhost | `docker exec -i fresh-db psql -U postgres -d fwapg` |

@@ -44,7 +44,9 @@ tests in `sql/qa.sql` (stopping before export if any fails) and writes `fwa_stre
 
 A *split* is a node that is the upstream end of more than one tree segment. A *cut-off* is a tree segment
 whose downstream end is no tree segment's upstream end, but is some network segment's: its water continues
-only through segments the tree dropped.
+only through segments the tree dropped. A *dead end* is a tree segment whose downstream end is no network
+segment's upstream end, on a line the blue line paths give a parent: the water continues, the geometry does
+not.
 
 
 ## Output
@@ -82,6 +84,10 @@ In the 2026-10 build (4,907,441 network segments):
 - **Cut-offs: 8**, against 28,870 for main flow alone. 28,824 main-flow lines drain through a side channel.
   Each of the 8 is a reattached side channel whose downstream node has two ways down, which following does not
   choose between (BARR, GOLD, KITR, KUSR, LFRA, MESI, OWIK, TATR; listed in `data/qa_topology.csv`).
+- **Dead ends: 473**, all gaps in the geometry that no choice of segments closes: 354 main stems whose mouth
+  is off their code junction (more than 1 cm), 119 side channels reached by a fallback junction (their mouth
+  touches nothing). Each adds an outlet to any subset that contains it. The 26,697 other tree outlets are
+  lines with no parent: the sea, borders, closed basins.
 - Reattachment alone (no main-flow-node rule, no following, no override) gave 7 split nodes and 97 cut-offs.
   6 of the splits were tributaries whose mouth is on a main-flow node, given as parent a side channel 0.7-1 m
   away near its top; the 7th is the Beaver River. Of the cut-offs, 65 were junctions more than 1 m from the
@@ -103,7 +109,8 @@ SSNBLER
 
 ## Caveats
 
-- The 8 cut-offs are not repaired: the segments above each form a drainage with its own outlet.
+- The 8 cut-offs and 473 dead ends are not repaired: the segments above each form a drainage with its own
+  outlet. A model subset that needs one outlet has to leave them out or close the gap itself.
 - Following is geometric, so it can take a route the blue line paths would not (a side channel of a
   neighbouring tributary). It runs only where there is one way down.
 - Watershed area on reattached side-channel segments is not handled here (NewGraphEnvironment/fwapg#4).

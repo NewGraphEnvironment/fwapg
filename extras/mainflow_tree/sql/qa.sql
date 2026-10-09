@@ -20,6 +20,14 @@ SELECT 'at most 8 cut-off segments' AS test,
 FROM fwapg.mainflow_tree_qa
 WHERE kind = 'cut_off';
 
+-- the ceiling is the 2026-10 province-wide count (README): 354 main stems whose
+-- mouth is off their code junction, 119 side channels reached by a fallback
+-- junction. Gaps in the geometry, which no choice of segments closes.
+SELECT 'at most 473 dead ends' AS test,
+  count(*) <= 473 AS result
+FROM fwapg.mainflow_tree_qa
+WHERE kind = 'dead_end';
+
 -- the edge type 1450 connectors a hand-built Skeena network had to add back
 -- (fwapg#2): 24 are main flow, 360222215 and 360237491 are side channels
 SELECT 'the 26 Skeena 1450 connectors are in the tree at measure 0' AS test,

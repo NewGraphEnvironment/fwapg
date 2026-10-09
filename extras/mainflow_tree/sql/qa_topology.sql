@@ -8,6 +8,11 @@
 -- cut_off: a tree segment whose downstream node is no tree segment's upstream
 --          node, but is some network segment's upstream node: its water continues
 --          only through segments the tree dropped.
+-- dead_end: a tree segment whose downstream node is no network segment's
+--          upstream node, on a line the blue line paths give a parent: the water
+--          continues, but the geometry does not (a junction more than 1 cm from
+--          the mouth). Lines with no parent end at the sea, a border or a closed
+--          basin, and are outlets.
 --
 -- Computed from the network geometry, independently of how mainflow_tree.sql
 -- chose the segments.
@@ -15,6 +20,7 @@
 CREATE TEMPORARY TABLE qa_nodes AS
 SELECT
   s.linear_feature_id,
+  s.blue_line_key,
   t.linear_feature_id IS NOT NULL AS in_tree,
   t.source = 'mainflow' AS in_mainflow,
   round(ST_X(ST_StartPoint(s.geom)) * 100)::bigint AS dn_x,
@@ -55,6 +61,15 @@ problems AS (
     SELECT 1 FROM qa_nodes d
     WHERE d.up_x = n.dn_x AND d.up_y = n.dn_y
   )
+  UNION ALL
+  SELECT n.linear_feature_id, 'dead_end'
+  FROM qa_nodes n
+  WHERE n.in_tree
+  AND NOT EXISTS (
+    SELECT 1 FROM qa_nodes d
+    WHERE d.up_x = n.dn_x AND d.up_y = n.dn_y
+  )
+  AND EXISTS (SELECT 1 FROM fwapg.blk_parents p WHERE p.blue_line_key = n.blue_line_key)
 )
 SELECT
   p.kind,
