@@ -6,6 +6,10 @@ PostgreSQL/PostGIS extension of BC's Freshwater Atlas (FWA): extra tables, index
 
 **Repository:** NewGraphEnvironment/fwapg (fork of smnorris/fwapg — `upstream` remote)
 **Branch:** `newgraph` carries NGE-specific changes; keep `main` tracking upstream
+- Branch issue work off `newgraph`, and open PRs with `--base newgraph`.
+- Pass `-R NewGraphEnvironment/fwapg` to `gh`. There is an `upstream` remote and no gh default repo, so a bare `gh` can act on smnorris/fwapg.
+- A `Closes #N` in a PR into `newgraph` does not close the issue (GitHub only acts on merges into the default branch, `main`). Close it by hand after the merge, with a comment naming the PR.
+- Outputs of NGE-only extras (e.g. `extras/pcic_crosswalk`) go to `s3://fresh-bc/fwapg/`, not upstream's `bchamp` bucket.
 **Primary Language:** SQL (PL/pgSQL), shell, Python
 **Load:** `psql $DATABASE_URL -f db/schema.sql && ./load.sh` (see `docker/loader/Dockerfile` for deps)
 
