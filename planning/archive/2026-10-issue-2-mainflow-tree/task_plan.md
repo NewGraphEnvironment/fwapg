@@ -75,7 +75,7 @@ Branch off `newgraph` (not main); PR `--base newgraph`; `gh -R NewGraphEnvironme
 
 ## Validation
 
-- [ ] Tests pass (`qa.sql` all true; PCIC QA unchanged)
-- [ ] `/code-check` clean (each commit, or once over the branch with `/code-check branch`)
-- [ ] PWF checkboxes match landed work
-- [ ] `/planning-archive` on completion
+- [x] Tests pass (`qa.sql` all true; PCIC QA unchanged)
+- [x] `/code-check` clean (each commit, or once over the branch with `/code-check branch`)
+- [x] PWF checkboxes match landed work
+- [x] `/planning-archive` on completion
