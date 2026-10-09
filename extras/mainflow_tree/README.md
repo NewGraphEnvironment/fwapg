@@ -39,7 +39,8 @@ as a whole is digitized in the direction of flow, with no per-segment exceptions
     ./mainflow_tree.sh
 
 Rebuilds the blue line paths (about 35 min; not while `pcic_crosswalk.sh` is running, see
-`extras/blue_line_paths`), builds the tree (about 1 min), finds splits and cut-offs from the network geometry
+`extras/blue_line_paths`), builds the tree (about 1 min), finds splits, cut-offs, dead ends and outlets with no parent inside BC from the
+network geometry (about 35 min, nearly all of it testing whether each mouth with no parent is at BC's edge)
 (and dead ends; `sql/qa_topology.sql`, written to `data/qa_topology.csv` and kept as `fwapg.mainflow_tree_qa`), runs the
 tests in `sql/qa.sql` (stopping before export if any fails) and writes `fwa_stream_networks_mainflow_tree.csv.gz`.
 
@@ -88,10 +89,13 @@ In the 2026-10 build (4,907,441 network segments):
 - **Dead ends: 473**, all gaps in the geometry that no choice of segments closes: 354 main stems whose mouth
   is off their code junction (more than 1 cm), 119 side channels reached by a fallback junction (their mouth
   touches nothing). Each adds an outlet to any subset that contains it.
-- **Side channels with no parent: 16**, reattached side channels whose mouth touches nothing and which the
-  paths give no parent (their own main stem more than 1 km away), some mid-basin (UEUT in the Nechako, GRNL and
-  LNIC under the Thompson). The other 26,697 tree outlets are main-flow lines with no parent: water that leaves
-  BC or ends at the sea or a closed basin.
+- **Outlets with no parent.** 26,713 tree mouths touch nothing, on lines the paths give no parent. 26,690 lie
+  within 50 m of BC's edge (the coast or a land border: 26,686 main-flow lines, 4 side channels) and are
+  outlets. 23 lie inside BC (`no_parent`): 11 main-flow lines and 12 reattached side channels, each a gap in the
+  paths or a closed basin (for example SLOC 380887813, 15 m from the Slocan River; UEUT 355995011 in the
+  Nechako).
+- Every tree segment whose downstream end continues nowhere in the tree is one of these: 8 cut-offs, 473 dead
+  ends, 26,690 outlets at BC's edge, 23 `no_parent`.
 - Reattachment alone (no main-flow-node rule, no following, no override) gave 7 split nodes and 97 cut-offs.
   6 of the splits were tributaries whose mouth is on a main-flow node, given as parent a side channel 0.7-1 m
   away near its top; the 7th is the Beaver River. Of the cut-offs, 65 were junctions more than 1 m from the
@@ -116,7 +120,8 @@ group's share of the basin checked on its own (one at a time: peak memory grew f
 39 GB at 24,000):
 
 - **24 of 26 groups: 0 node errors**, including KLUM, which holds three of the four side channels in the
-  tests. Each group has 1-3 outlets: where the basin leaves it (by two streams in 13 groups) and any dead ends.
+  tests. Each group has 1-3 outlets: where the basin leaves it (by two streams in 13 groups), plus any dead ends
+  and `no_parent` outlets.
 - The fourth, 360216952, is in LSKE (29,000 lines, too large): the tree within 5 km of it (783 lines) has 0
   node errors inside the window; the 5 reported, converging nodes at outlets, are each where the tree segment
   below lies outside the window.
@@ -128,11 +133,11 @@ group's share of the basin checked on its own (one at a time: peak memory grew f
   the Nechako's of TABR are one segment each, which `lines_to_lsn` cannot build (an error inside its own `left_join`).
 - Whole basins, counted in SQL with SSNbler's definition of an outlet: the Skeena has **1 outlet** (its
   mouth); the Nechako 8, its mouth on the Fraser, 6 dead ends (side channels reached by a fallback junction in FRAN,
-  LEUT, LTRE (2), STUR and TAKL) and a side channel with no parent (UEUT).
+  LEUT, LTRE (2), STUR and TAKL) and a `no_parent` side channel (UEUT).
 
 ## Caveats
 
-- The 8 cut-offs, 473 dead ends and 16 side channels with no parent are not repaired: the segments above each form a drainage with its own
+- The 8 cut-offs, 473 dead ends and 23 outlets with no parent inside BC are not repaired: the segments above each form a drainage with its own
   outlet. A model subset that needs one outlet has to leave them out or close the gap itself.
 - Following is geometric, so it can take a route the blue line paths would not (a side channel of a
   neighbouring tributary). It runs only where there is one way down.

@@ -28,10 +28,11 @@ SELECT 'at most 473 dead ends' AS test,
 FROM fwapg.mainflow_tree_qa
 WHERE kind = 'dead_end';
 
--- the ceiling is the 2026-10 province-wide count (README): reattached side
--- channels whose mouth touches nothing and which the paths give no parent
-SELECT 'at most 16 side channels with no parent' AS test,
-  count(*) <= 16 AS result
+-- the ceiling is the 2026-10 province-wide count (README): mouths that touch
+-- nothing, inside BC, on lines the paths give no parent (11 main-flow lines,
+-- 12 side channels)
+SELECT 'at most 23 outlets with no parent inside BC' AS test,
+  count(*) <= 23 AS result
 FROM fwapg.mainflow_tree_qa
 WHERE kind = 'no_parent';
 

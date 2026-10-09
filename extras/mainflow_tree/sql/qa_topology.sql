@@ -1,5 +1,5 @@
--- Splits and cut-offs in the main-flow tree, for review and for the tests in
--- qa.sql. Nodes are segment ends snapped to 1 cm; segments are digitized from
+-- Splits, cut-offs, dead ends and outlets with no parent inside BC in the
+-- main-flow tree, for review and for the tests in qa.sql. Nodes are segment ends snapped to 1 cm; segments are digitized from
 -- their downstream end, so a segment's start is its downstream node (dn) and its
 -- end its upstream node (up).
 --
@@ -12,11 +12,10 @@
 --          upstream node, on a line the blue line paths give a parent: the water
 --          continues, but the geometry does not (a junction more than 1 cm from
 --          the mouth).
--- no_parent: the same, on a side channel the paths give no parent (its mouth
---          touches nothing, and its own main stem is more than 1 km away): the
---          water's way on is unknown. Main-flow lines with no parent are not
---          listed: their water leaves BC or ends at the sea or a closed basin
---          (extras/blue_line_paths, rule 6).
+-- no_parent: the same, on a line the paths give no parent, with its mouth
+--          inside BC (a 50 m circle around it lies within fwa_bcboundary): a gap
+--          in the paths or a closed basin. Mouths with no parent within 50 m of
+--          BC's edge (the coast or a land border) are outlets and are not listed.
 --
 -- Computed from the network geometry, independently of how mainflow_tree.sql
 -- chose the segments.
@@ -37,6 +36,19 @@ LEFT JOIN whse_basemapping.fwa_stream_networks_mainflow_tree t
 
 CREATE INDEX ON qa_nodes (up_x, up_y);
 ANALYZE qa_nodes;
+
+-- tree mouths that touch nothing, on lines the paths give no parent (about
+-- 27,000); the BC test below runs on these only
+CREATE TEMPORARY TABLE orphan_mouths AS
+SELECT n.linear_feature_id, ST_StartPoint(s.geom) AS mouth
+FROM qa_nodes n
+INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = n.linear_feature_id
+WHERE n.in_tree
+AND NOT EXISTS (
+  SELECT 1 FROM qa_nodes d
+  WHERE d.up_x = n.dn_x AND d.up_y = n.dn_y
+)
+AND NOT EXISTS (SELECT 1 FROM fwapg.blk_parents p WHERE p.blue_line_key = n.blue_line_key);
 
 DROP TABLE IF EXISTS fwapg.mainflow_tree_qa;
 
@@ -75,15 +87,12 @@ problems AS (
   )
   AND EXISTS (SELECT 1 FROM fwapg.blk_parents p WHERE p.blue_line_key = n.blue_line_key)
   UNION ALL
-  SELECT n.linear_feature_id, 'no_parent'
-  FROM qa_nodes n
-  WHERE n.in_tree
-  AND NOT n.in_mainflow
-  AND NOT EXISTS (
-    SELECT 1 FROM qa_nodes d
-    WHERE d.up_x = n.dn_x AND d.up_y = n.dn_y
-  )
-  AND NOT EXISTS (SELECT 1 FROM fwapg.blk_parents p WHERE p.blue_line_key = n.blue_line_key)
+  SELECT o.linear_feature_id, 'no_parent'
+  FROM orphan_mouths o
+  WHERE coalesce(ST_Covers(
+    (SELECT ST_Union(b.geom) FROM whse_basemapping.fwa_bcboundary b
+     WHERE ST_Intersects(b.geom, ST_Buffer(o.mouth, 50))),
+    ST_Buffer(o.mouth, 50)), false)
 )
 SELECT
   p.kind,
