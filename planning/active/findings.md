@@ -106,6 +106,14 @@ Province-wide junction gaps over 1 m: `code` 386 of 1,467,190; `code_deferred` 3
 - Paths build 14:45:41 -> 15:20:58 UTC (35 min, incl. a ~1 min snapshot). A 2,634-line sample of the touches lateral took 3.2 s (1.2 ms/line), so ~33 min for 1.6M lines: the research note's "4-6 min" was wrong for this host.
 - PCIC steps 02-07 + drainage + QA after the paths: 7 min.
 
+## SSNbler memory (2026-10-09)
+
+`SSNbler::lines_to_lsn(check_topology = TRUE)` (1.1.2), serial path, peak memory footprint:
+UTRE 5,533 lines 1.5 GB (7 s); BABL 24,043 lines 39 GB (82 s) — roughly quadratic in lines; topo_tolerance 0 vs 1 m
+makes no difference (1.55 vs 1.55 GB on UTRE). Three ~24-30k-line groups at once (xargs -P 3) need > 100 GB on a 64 GB
+host that also runs an 18 GB Docker VM: the machine rebooted three times today (~16:07, ~16:50, ~20:05 UTC), each time
+during a -P 3 run. Groups above ~25k lines (LSKE, BULK, FRAN) are not run through SSNbler here.
+
 ## Errors Encountered
 
 | Error | Resolution |
@@ -114,4 +122,6 @@ Province-wide junction gaps over 1 m: `code` 386 of 1,467,190; `code_deferred` 3
 | `ls grp_*.gpkg \| xargs` passed colour escape codes (ls is aliased to colourise), every SSNbler run failed on a missing file | `find -print` instead of `ls` in pipelines |
 | SSNbler `in_edges contains 160582 edges, which is >= 46340. Set use_parallel = TRUE` | per watershed group, serial; parallel workers hold ~2 GB each |
 | SSNbler `left_join()` error on a one-line network (TABR's single Nechako segment) | SSNbler edge case, reported not worked around |
+| machine reboots during SSNbler `xargs -P 3` (39 GB per 24k-line group) | one group at a time under an RSS watchdog on the R pid itself (the first watchdog watched `/usr/bin/time`, not R) |
+| `cd X && ... ( ... ) &` backgrounded the whole list; the foreground loop ran in the old cwd | `&` binds to the whole `&&` list (code-check-shell.md) |
 | `psql $DATABASE_URL` unset / password prompt on localhost | `docker exec -i fresh-db psql -U postgres -d fwapg` |
