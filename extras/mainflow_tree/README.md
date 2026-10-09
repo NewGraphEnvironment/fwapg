@@ -40,7 +40,7 @@ as a whole is digitized in the direction of flow, with no per-segment exceptions
 
 Rebuilds the blue line paths (about 35 min; not while `pcic_crosswalk.sh` is running, see
 `extras/blue_line_paths`), builds the tree (about 1 min), finds splits and cut-offs from the network geometry
-(`sql/qa_topology.sql`, written to `data/qa_topology.csv` and kept as `fwapg.mainflow_tree_qa`), runs the
+(and dead ends; `sql/qa_topology.sql`, written to `data/qa_topology.csv` and kept as `fwapg.mainflow_tree_qa`), runs the
 tests in `sql/qa.sql` (stopping before export if any fails) and writes `fwa_stream_networks_mainflow_tree.csv.gz`.
 
 A *split* is a node that is the upstream end of more than one tree segment. A *cut-off* is a tree segment
@@ -83,12 +83,15 @@ In the 2026-10 build (4,907,441 network segments):
 
 - **Splits: 0** province-wide. The network has 74,426 nodes where water leaves by more than one segment.
 - **Cut-offs: 8**, against 28,870 for main flow alone. 28,824 main-flow lines drain through a side channel.
-  Each of the 8 is a reattached side channel whose downstream node has two ways down, which following does not
-  choose between (BARR, GOLD, KITR, KUSR, LFRA, MESI, OWIK, TATR; listed in `data/qa_topology.csv`).
+  Each of the 8 is a segment added by following whose downstream node has two ways down, which following does
+  not choose between (BARR, GOLD, KITR, KUSR, LFRA, MESI, OWIK, TATR; listed in `data/qa_topology.csv`).
 - **Dead ends: 473**, all gaps in the geometry that no choice of segments closes: 354 main stems whose mouth
   is off their code junction (more than 1 cm), 119 side channels reached by a fallback junction (their mouth
-  touches nothing). Each adds an outlet to any subset that contains it. The 26,697 other tree outlets are
-  lines with no parent: the sea, borders, closed basins.
+  touches nothing). Each adds an outlet to any subset that contains it.
+- **Side channels with no parent: 16**, reattached side channels whose mouth touches nothing and which the
+  paths give no parent (their own main stem more than 1 km away), some mid-basin (UEUT in the Nechako, GRNL and
+  LNIC under the Thompson). The other 26,697 tree outlets are main-flow lines with no parent: water that leaves
+  BC or ends at the sea or a closed basin.
 - Reattachment alone (no main-flow-node rule, no following, no override) gave 7 split nodes and 97 cut-offs.
   6 of the splits were tributaries whose mouth is on a main-flow node, given as parent a side channel 0.7-1 m
   away near its top; the 7th is the Beaver River. Of the cut-offs, 65 were junctions more than 1 m from the
@@ -112,8 +115,11 @@ In the 2026-10 build, every watershed group holding the Skeena (`400`) or the Ne
 group's share of the basin checked on its own (one at a time: peak memory grew from 1.5 GB at 5,500 lines to
 39 GB at 24,000):
 
-- **24 of 26 groups: 0 node errors**, including KLUM, which holds the four side-channel paths in the tests.
-  Each group has 1-3 outlets: the point where the basin leaves the group, plus any dead ends.
+- **24 of 26 groups: 0 node errors**, including KLUM, which holds three of the four side channels in the
+  tests. Each group has 1-3 outlets: where the basin leaves it (by two streams in 13 groups) and any dead ends.
+- The fourth, 360216952, is in LSKE (29,000 lines, too large): the tree within 5 km of it (783 lines) has 0
+  node errors inside the window; the 5 reported, converging nodes at outlets, are each where the tree segment
+  below lies outside the window.
 - **USKE and MSKE: 4 errors each, at one spot each**, a main-flow segment a few cm long whose geometry is a
   plain chain (239055049, 1.6 cm; 141013301, 2.9 cm). SSNbler reports its two ends as an unsnapped node and
   a divergence; the SQL check, on the same nodes at 1 cm, finds no split. At `snap_tolerance` 0.01 the two
@@ -121,12 +127,12 @@ group's share of the basin checked on its own (one at a time: peak memory grew f
 - Not run: LSKE, BULK and FRAN (29,000-30,000 lines, about 60 GB at that growth); the Skeena's share of SPAT and TAKL and
   the Nechako's of TABR are one segment each, which `lines_to_lsn` cannot build (an error inside its own `left_join`).
 - Whole basins, counted in SQL with SSNbler's definition of an outlet: the Skeena has **1 outlet** (its
-  mouth); the Nechako 8, its mouth on the Fraser and 7 dead ends (side channels reached by a fallback junction
-  in LEUT, UEUT, TAKL, FRAN, LTRE and STUR).
+  mouth); the Nechako 8, its mouth on the Fraser, 6 dead ends (side channels reached by a fallback junction in FRAN,
+  LEUT, LTRE (2), STUR and TAKL) and a side channel with no parent (UEUT).
 
 ## Caveats
 
-- The 8 cut-offs and 473 dead ends are not repaired: the segments above each form a drainage with its own
+- The 8 cut-offs, 473 dead ends and 16 side channels with no parent are not repaired: the segments above each form a drainage with its own
   outlet. A model subset that needs one outlet has to leave them out or close the gap itself.
 - Following is geometric, so it can take a route the blue line paths would not (a side channel of a
   neighbouring tributary). It runs only where there is one way down.

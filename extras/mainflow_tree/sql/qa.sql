@@ -12,9 +12,9 @@ FROM fwapg.mainflow_tree_qa_counts;
 SELECT 'no splits' AS test,
   NOT EXISTS (SELECT 1 FROM fwapg.mainflow_tree_qa WHERE kind = 'split') AS result;
 
--- the ceiling is the 2026-10 province-wide count (README): each is a reattached
--- side channel whose downstream node has two ways down, which the following
--- step does not choose between
+-- the ceiling is the 2026-10 province-wide count (README): each is a segment
+-- added by following whose downstream node has two ways down, which following
+-- does not choose between
 SELECT 'at most 8 cut-off segments' AS test,
   count(*) <= 8 AS result
 FROM fwapg.mainflow_tree_qa
@@ -27,6 +27,13 @@ SELECT 'at most 473 dead ends' AS test,
   count(*) <= 473 AS result
 FROM fwapg.mainflow_tree_qa
 WHERE kind = 'dead_end';
+
+-- the ceiling is the 2026-10 province-wide count (README): reattached side
+-- channels whose mouth touches nothing and which the paths give no parent
+SELECT 'at most 16 side channels with no parent' AS test,
+  count(*) <= 16 AS result
+FROM fwapg.mainflow_tree_qa
+WHERE kind = 'no_parent';
 
 -- the edge type 1450 connectors a hand-built Skeena network had to add back
 -- (fwapg#2): 24 are main flow, 360222215 and 360237491 are side channels

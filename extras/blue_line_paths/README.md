@@ -43,7 +43,7 @@ one).
      blue_line_key        | integer          | primary key
      parent_blue_line_key | integer          | the line its water enters
      junction_measure     | double precision | measure on the parent where it enters
-     junction_gap_m       | double precision | distance from the mouth to the junction (0 when it touches)
+     junction_gap_m       | double precision | distance from the mouth to the junction (up to 1 m on a touch)
      junction_method      | text             | code, touch, touch_round, code_deferred, side_fallback
      round                | integer          |
 

@@ -11,8 +11,12 @@
 -- dead_end: a tree segment whose downstream node is no network segment's
 --          upstream node, on a line the blue line paths give a parent: the water
 --          continues, but the geometry does not (a junction more than 1 cm from
---          the mouth). Lines with no parent end at the sea, a border or a closed
---          basin, and are outlets.
+--          the mouth).
+-- no_parent: the same, on a side channel the paths give no parent (its mouth
+--          touches nothing, and its own main stem is more than 1 km away): the
+--          water's way on is unknown. Main-flow lines with no parent are not
+--          listed: their water leaves BC or ends at the sea or a closed basin
+--          (extras/blue_line_paths, rule 6).
 --
 -- Computed from the network geometry, independently of how mainflow_tree.sql
 -- chose the segments.
@@ -70,6 +74,16 @@ problems AS (
     WHERE d.up_x = n.dn_x AND d.up_y = n.dn_y
   )
   AND EXISTS (SELECT 1 FROM fwapg.blk_parents p WHERE p.blue_line_key = n.blue_line_key)
+  UNION ALL
+  SELECT n.linear_feature_id, 'no_parent'
+  FROM qa_nodes n
+  WHERE n.in_tree
+  AND NOT n.in_mainflow
+  AND NOT EXISTS (
+    SELECT 1 FROM qa_nodes d
+    WHERE d.up_x = n.dn_x AND d.up_y = n.dn_y
+  )
+  AND NOT EXISTS (SELECT 1 FROM fwapg.blk_parents p WHERE p.blue_line_key = n.blue_line_key)
 )
 SELECT
   p.kind,

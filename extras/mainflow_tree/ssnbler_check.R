@@ -32,8 +32,9 @@ unlink(file.path(args[2], "node_errors.gpkg"))
 # snap_tolerance is the distance within which line ends join a node, and it sets
 # the precision nodes are rounded to: one decimal place fewer than it has
 # (lines_to_lsn: ndec <- get_decimals(snap_tolerance) - 1), so 0.001 rounds to
-# 1 cm, as qa_topology.sql does, 0.01 to 0.1 m and the default 0 to 10 m.
-# topo_tolerance flags nodes closer than it that are not joined.
+# 1 cm, the precision of qa_topology.sql (which joins ends in the same 1 cm cell
+# rather than by distance), 0.01 to 0.1 m and the default 0 to 10 m.
+# topo_tolerance changed nothing here (1 m and 1 cm gave the same errors).
 #
 # Two spots still report errors, each a main-flow segment a few cm long whose
 # geometry is a plain chain: 239055049 (1.6 cm, USKE) and 141013301 (2.9 cm,
