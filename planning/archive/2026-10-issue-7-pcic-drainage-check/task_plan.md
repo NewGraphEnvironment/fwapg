@@ -39,5 +39,5 @@ Before trusting the check, **seed known errors** and confirm it fires: place the
 - [x] Tests pass (`psql -f sql/qa.sql`, all `t`, and the new test fails on the seeded errors)
 - [x] `/code-check` clean (each commit, or once over the branch with `/code-check branch`)
 - [x] PWF checkboxes match landed work
-- [ ] `/planning-archive` on completion
+- [x] `/planning-archive` on completion
 
