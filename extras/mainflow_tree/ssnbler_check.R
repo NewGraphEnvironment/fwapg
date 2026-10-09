@@ -25,11 +25,19 @@ streams <- sf::st_cast(streams, "LINESTRING", warn = FALSE)
 if (is.na(sf::st_crs(streams))) sf::st_crs(streams) <- 3005
 sf::st_geometry(streams) <- sf::st_reverse(sf::st_geometry(streams))
 
+# lines_to_lsn writes node_errors.gpkg only when it finds errors and never removes
+# an old one, so a rerun into the same directory would read stale errors
+unlink(file.path(args[2], "node_errors.gpkg"))
+
+# SSNbler rounds node coordinates to one decimal place fewer than snap_tolerance
+# has (to 1 m when it is 0), which joins the two ends of a segment a few cm long
+# into one node: 1.6 and 2.9 cm main-flow segments in USKE and MSKE read as
+# divergences at 0.01. 0.001 rounds to 1 cm, as qa_topology.sql does.
 lsn <- SSNbler::lines_to_lsn(
   streams,
   lsn_path = args[2],
   check_topology = TRUE,
-  snap_tolerance = 0.01,
+  snap_tolerance = 0.001,
   topo_tolerance = 1,
   overwrite = TRUE,
   use_parallel = nrow(streams) >= 46340,
