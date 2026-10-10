@@ -94,6 +94,20 @@ Reviewer read 436a4ea and aaa8acc, probing in a copy. Folded in:
   same two subids differ (edge_type of the chosen segment).
 - `diff` in this shell is a wrapper around `git diff`; comparisons use `/usr/bin/diff`.
 
+## PCIC rerun with lowest-id tie-break (2026-10-10, `extras/pcic_crosswalk/data/run13b.log`)
+
+- 16:18:01-16:45:50 (27.8 min), exit 0, QA 13/13 (paths 3, crosswalk 10). Paths 16.2 min.
+- Against #11: **449 crosswalk rows differ**, nearly all ties (421 of 422 paired rows have the same measure within
+  1 mm). About 1% of outlets sit on a vertex two segments of one blue line share. Monthly: 40,524,600 rows (one
+  segment fewer), sum 178168440.449780 (vs 178169881.209890, -0.0008%); qa_drainage one row fewer. Diff kept in
+  `extras/pcic_crosswalk/data/run13b_crosswalk.diff`.
+- So #11's choice was the KNN index scan's order, not a rule: run 1 matched it on all but 2 only because the two
+  machines' indexes were built alike. Lowest id is just as arbitrary.
+- **Decision (user, 2026-10-10): upstream segment.** Tie-break `downstream_route_measure DESC` (the segment
+  starting at the vertex; FWA measures run [drm, urm)), then `linear_feature_id`. At a tributary junction that is
+  the segment above it, which is what a PCIC sub-basin outlet there drains. The `LIMIT :num_features` cut across
+  different blue lines keeps `linear_feature_id` (no positional order between lines).
+
 ## Errors Encountered
 
 | Error | Resolution |

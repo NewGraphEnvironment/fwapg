@@ -62,9 +62,10 @@ CROSS JOIN LATERAL (
       ORDER BY s.geom <-> o.probe_geom
       LIMIT 100
     ) s
-    -- a probe on a vertex two segments share is equally near both: break the tie
-    -- by id, or the segment (and its edge type) depends on the plan
-    ORDER BY s.blue_line_key, ST_Distance(s.geom, o.probe_geom), s.linear_feature_id
+    -- a probe on a vertex two segments share is equally near both: take the one
+    -- starting there (FWA measures run [downstream, upstream)), which at a
+    -- tributary junction is the segment above it; untied, the plan chose
+    ORDER BY s.blue_line_key, ST_Distance(s.geom, o.probe_geom), s.downstream_route_measure DESC, s.linear_feature_id
   ) nearest_per_stream
   WHERE distance_to_stream <= :tolerance
   ORDER BY distance_to_stream, linear_feature_id
@@ -103,7 +104,7 @@ CROSS JOIN LATERAL (
     WHERE l.linear_feature_id = s.linear_feature_id
   )
   AND ST_DWithin(s.geom, o.probe_geom, 1000)
-  ORDER BY ST_Distance(s.geom, o.probe_geom), s.linear_feature_id
+  ORDER BY ST_Distance(s.geom, o.probe_geom), s.downstream_route_measure DESC, s.linear_feature_id
   LIMIT 1
 ) m
 WHERE c.blue_line_key != c.watershed_key;
