@@ -14,10 +14,10 @@
 - [ ] Update the comment and the README's runtime note. The check is that the rows match exactly, not just the count; it is verified in Phase 4.
 
 ## Phase 3: SSNbler driver with a memory watchdog (`extras/mainflow_tree/ssnbler_check.sh`, committed)
-- [ ] `ssnbler_check.sh <cap_gb> <name> <wscode> [group] [expected outlets]`: exports the tree subset to `data/ssnbler/<name>.gpkg` (the README's ogr2ogr recipe), then runs `ssnbler_check.R` and kills it above the cap
-- [ ] The watchdog sums RSS over the R process **and its children**, because the parallel path (≥ 46,340 lines) forks workers that a master-only sample misses. It logs peak RSS, wall time, lines, node errors and outlets in one line per run.
-- [ ] Runs one at a time, enforced by a lock file, so two checks are never in memory together
-- [ ] Add a README section with usage. An exit status other than 0 (a kill, or an error from R) fails loudly.
+- [x] `ssnbler_check.sh <cap_gb> <name> <wscode> [group] [expected outlets]`: exports the tree subset to `data/ssnbler/<name>.gpkg` (the README's ogr2ogr recipe), then runs `ssnbler_check.R` and kills it above the cap
+- [x] The watchdog sums RSS over the R process **and its children**, because the parallel path (≥ 46,340 lines) forks workers that a master-only sample misses. It logs peak RSS, wall time, lines, node errors and outlets in one line per run.
+- [x] Runs one at a time, enforced by a lock file, so two checks are never in memory together
+- [x] Add a README section with usage. An exit status other than 0 (a kill, or an error from R) fails loudly.
 
 ## Phase 4: Run the pipelines (never two at once; both rebuild the shared paths)
 - [ ] `extras/pcic_crosswalk/pcic_crosswalk.sh`, log under `data/`. Expect: blue line paths QA 3/3, crosswalk QA 10/10, `pcic_fwa_crosswalk` 48,716 rows, `fwa_stream_networks_discharge_monthly` 40,524,612 rows, sum(round(q_m3s,6)) = 178169881.209890

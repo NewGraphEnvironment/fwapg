@@ -115,6 +115,15 @@ check large basins a watershed group at a time:
        WHERE s.wscode_ltree <@ '400' AND s.watershed_group_code = 'KLUM'"
     Rscript ssnbler_check.R data/klum.gpkg data/lsn_klum 1
 
+`ssnbler_check.sh` does both, one run at a time, and kills the run when R and its workers together hold more
+than a cap (in GB):
+
+    ./ssnbler_check.sh 60 klum 400 KLUM 1      # <cap_gb> <name> <wscode> [group|-] [expected outlets]
+
+It writes `data/ssnbler/klum.gpkg`, `data/ssnbler/lsn_klum` and `data/ssnbler/klum.log`, appends a line
+with the exit status, peak memory, minutes, lines and result to `data/ssnbler/runs.log`, and exits with R's
+status, or 3 when the run was killed at the cap.
+
 In the 2026-10 build, every watershed group holding the Skeena (`400`) or the Nechako (`100.567134`), each
 group's share of the basin checked on its own (one at a time: peak memory grew from 1.5 GB at 5,500 lines to
 39 GB at 24,000):
