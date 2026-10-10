@@ -9,8 +9,8 @@
 - [x] Record free memory with the DB running (`vm_stat` / `memory_pressure`) → this sets the watchdog cap
 
 ## Phase 2: Topology QA, BC outline built once (`extras/mainflow_tree/sql/qa_topology.sql`)
-- [ ] Build a temp `bc_outline`: `ST_Subdivide(ST_Union(fwa_bcboundary.geom))`, GiST-indexed, analyzed
-- [ ] The `no_parent` test covers each mouth's 50 m buffer with the union of only the subdivided pieces it intersects. The semantics are unchanged; it is only faster.
+- [x] Build a temp `bc_outline`: `ST_Subdivide(ST_Union(fwa_bcboundary.geom))`, GiST-indexed, analyzed
+- [x] The `no_parent` test covers each mouth's 50 m buffer with the union of only the subdivided pieces it intersects. The semantics are unchanged; it is only faster.
 - [ ] Update the comment and the README's runtime note. The check is that the rows match exactly, not just the count; it is verified in Phase 4.
 
 ## Phase 3: SSNbler driver with a memory watchdog (`extras/mainflow_tree/ssnbler_check.sh`, committed)

@@ -50,6 +50,16 @@ AND NOT EXISTS (
 )
 AND NOT EXISTS (SELECT 1 FROM fwapg.blk_parents p WHERE p.blue_line_key = n.blue_line_key);
 
+-- BC's outline, built once and subdivided, so each mouth's test below unions a
+-- few small pieces. Unioning the fwa_bcboundary pieces at each mouth instead took
+-- about 34 minutes.
+CREATE TEMPORARY TABLE bc_outline AS
+SELECT ST_Subdivide(ST_Union(geom)) AS geom
+FROM whse_basemapping.fwa_bcboundary;
+
+CREATE INDEX ON bc_outline USING gist (geom);
+ANALYZE bc_outline;
+
 DROP TABLE IF EXISTS fwapg.mainflow_tree_qa;
 
 CREATE TABLE fwapg.mainflow_tree_qa AS
@@ -90,7 +100,7 @@ problems AS (
   SELECT o.linear_feature_id, 'no_parent'
   FROM orphan_mouths o
   WHERE coalesce(ST_Covers(
-    (SELECT ST_Union(b.geom) FROM whse_basemapping.fwa_bcboundary b
+    (SELECT ST_Union(b.geom) FROM bc_outline b
      WHERE ST_Intersects(b.geom, ST_Buffer(o.mouth, 50))),
     ST_Buffer(o.mouth, 50)), false)
 )
