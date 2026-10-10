@@ -23,3 +23,7 @@ The PCIC crosswalk outputs (`pcic_crosswalk/`, NewGraph fork only) go to NewGrap
 
 	aws s3 cp pcic_crosswalk/fwa_stream_networks_discharge_monthly.csv.gz s3://fresh-bc/fwapg/fwa_stream_networks_discharge_monthly.csv.gz
 	aws s3 cp pcic_crosswalk/pcic_fwa_crosswalk.csv.gz s3://fresh-bc/fwapg/pcic_fwa_crosswalk.csv.gz
+
+The main-flow tree (`mainflow_tree/`, NewGraph fork only) goes there too:
+
+	aws s3 cp mainflow_tree/fwa_stream_networks_mainflow_tree.csv.gz s3://fresh-bc/fwapg/fwa_stream_networks_mainflow_tree.csv.gz

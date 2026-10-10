@@ -130,7 +130,7 @@ cat data/monthly/*.csv | $PSQL -c "\copy fwapg.pcic_outlet_monthly FROM STDIN WI
 # 3. Snap outlets to the FWA and place them so PCIC's routing chain holds
 # ----------
 # downstream path of every FWA blue line, used for every position comparison
-$PSQL -f sql/pcic_crosswalk01_paths.sql
+../blue_line_paths/blue_line_paths.sh
 $PSQL -v tolerance=150 -v num_features=5 -f sql/pcic_crosswalk02_candidates.sql
 $PSQL -f sql/pcic_crosswalk03_prepare.sql
 # place, then demote outlets that misplaced the chain above them, until stable
@@ -178,6 +178,5 @@ $PSQL -f sql/qa_report.sql
 $PSQL -c "\copy whse_basemapping.pcic_fwa_crosswalk TO 'pcic_fwa_crosswalk.csv' DELIMITER ',' CSV HEADER"
 $PSQL -c "\copy whse_basemapping.fwa_stream_networks_discharge_monthly TO 'fwa_stream_networks_discharge_monthly.csv' DELIMITER ',' CSV HEADER"
 gzip -f pcic_fwa_crosswalk.csv fwa_stream_networks_discharge_monthly.csv
-$PSQL -c "DROP TABLE fwapg.pcic_rivers, fwapg.pcic_lakes, fwapg.pcic_outlets, fwapg.pcic_candidates, fwapg.pcic_blk_parents, fwapg.pcic_blk_paths, fwapg.pcic_voters, fwapg.pcic_demoted, fwapg.pcic_outlet_monthly, fwapg.pcic_subbasins, fwapg.pcic_subbasins_monthly"
-$PSQL -c "DROP FUNCTION fwapg.pcic_on_or_upstream"
+$PSQL -c "DROP TABLE fwapg.pcic_rivers, fwapg.pcic_lakes, fwapg.pcic_outlets, fwapg.pcic_candidates, fwapg.pcic_voters, fwapg.pcic_demoted, fwapg.pcic_outlet_monthly, fwapg.pcic_subbasins, fwapg.pcic_subbasins_monthly"
 echo 'PCIC crosswalk complete, see whse_basemapping.pcic_fwa_crosswalk and whse_basemapping.fwa_stream_networks_discharge_monthly'

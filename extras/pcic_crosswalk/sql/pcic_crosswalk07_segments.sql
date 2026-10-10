@@ -2,7 +2,7 @@
 --
 -- A segment belongs to the sub-basin of the nearest placed PCIC outlet on or
 -- below it: walking down its own blue line from the segment itself, then its path
--- (fwapg.pcic_blk_paths), the first blue line with a placed outlet, and on it the
+-- (fwapg.blk_paths), the first blue line with a placed outlet, and on it the
 -- highest one (the order fwa_parent_subid uses, see pcic_crosswalk06_subbasins.sql).
 -- Its flow is the accumulated flow of the outlets directly above that sub-basin
 -- whose water passes the segment, plus the flow generated in the sub-basin scaled
@@ -53,7 +53,7 @@ steps AS (
   -- step i: the i-th blue line on its path, at or below where its water joins
   SELECT s.linear_feature_id, u.step, u.blk, u.measure
   FROM segments s
-  INNER JOIN fwapg.pcic_blk_paths bp ON bp.blue_line_key = s.blue_line_key
+  INNER JOIN fwapg.blk_paths bp ON bp.blue_line_key = s.blue_line_key
   CROSS JOIN LATERAL unnest(bp.path_blks, bp.path_measures) WITH ORDINALITY AS u(blk, measure, step)
 ),
 nearest AS (
@@ -93,7 +93,7 @@ LEFT JOIN outlets c
   AND (
     (c.blue_line_key = s.blue_line_key AND c.seg_measure >= s.downstream_route_measure)
     OR (c.blue_line_key != s.blue_line_key
-      AND fwapg.pcic_on_or_upstream(s.blue_line_key, s.downstream_route_measure, c.blue_line_key, c.downstream_route_measure))
+      AND fwapg.blk_on_or_upstream(s.blue_line_key, s.downstream_route_measure, c.blue_line_key, c.downstream_route_measure))
   )
 LEFT JOIN fwapg.pcic_subbasins cb ON c.subid = cb.subid
 GROUP BY s.linear_feature_id, s.subid, s.upstream_area_ha, sb.linear_feature_id, sb.local_area_ha;
