@@ -74,7 +74,28 @@ Reviewer read 436a4ea and aaa8acc, probing in a copy. Folded in:
   when its pid is gone; a floor on `kern.memorystatus_level` (10%).
 - Probe: a dummy master + one tagged worker holding 2 GB sampled at 2,062,336 KB; ERR after exit.
 
+## PCIC crosswalk, first full run (2026-10-10, `extras/pcic_crosswalk/data/run13.log`)
+
+- `pcic_crosswalk.sh` as committed, exit 0, 15:46:58-16:15:34 (28.6 min). Stages (PS4 timestamps): PCIC load
+  from cache 13 s; outlets 3.2 min; monthly series from cache 1 s (every batch already reduced); blue line paths
+  16.6 min (35 min on the #11 build machine); candidates 32 s; prepare 5 s; placement 3 rounds 15 s; subbasins
+  27 s; segments 6.0 min; drainage QA 11 s; QA + report + export + gzip + cleanup 1 min.
+- `fwa_stream_networks_discharge_monthly`: identical to #11 (sorted md5), 40,524,612 rows, sum 178169881.209890.
+- `pcic_fwa_crosswalk`: 48,716 rows, **2 differ** from #11: subids 5013950 (SMAR) and 5019556 (UARL) placed on
+  707670668 / 707720978 instead of 707670667 / 707720975. Same blue line and measure: each probe sits on the vertex
+  two segments of one blue line share, so the two are equally near, and `pcic_crosswalk02_candidates.sql` ordered
+  by distance with no tie-break (`DISTINCT ON (blue_line_key) ... ORDER BY blue_line_key, ST_Distance`, the
+  watershed-key lookup's `ORDER BY ST_Distance LIMIT 1`, and the `LIMIT :num_features` cut). Which segment won
+  depended on the plan. Fixed with `linear_feature_id` as the tie-break (lowest id, which #11 happened to pick in
+  both cases). The KNN `ORDER BY geom <-> probe LIMIT 100` is left alone: a second sort key would drop the index
+  ordering. Monthly flow was unaffected (both choices are the same point).
+- `qa_drainage.csv`: the reference CSV (21:47 Oct 8) predates the last `qa_drainage.sql` commit (22:02), so the
+  build machine's `fwapg.pcic_qa_drainage` table was exported as `ref_11/qa_drainage_db.csv`. Against it only the
+  same two subids differ (edge_type of the chosen segment).
+- `diff` in this shell is a wrapper around `git diff`; comparisons use `/usr/bin/diff`.
+
 ## Errors Encountered
 
 | Error | Resolution |
 |-------|------------|
+| `diff` printed a git-style diff and `grep -c "^<"` counted 0 | `diff` is a shell wrapper; use `/usr/bin/diff` |
