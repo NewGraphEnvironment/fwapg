@@ -3,10 +3,10 @@
 **If we do it:** the three extras jobs on `newgraph` (`blue_line_paths`, `pcic_crosswalk`, `mainflow_tree`) have each run end to end in their committed form, and are ready to be cut into upstream PRs. **If we don't:** they go upstream having been read but never run as scripts. In #2 every SQL file ran, but piece by piece, so the scripts' shell parts never did. `pcic_crosswalk.sh` has not run in full since the blue line paths moved out of it.
 
 ## Phase 1: Set up the run machine
-- [ ] rsync the #11 build machine's `extras/pcic_crosswalk/data/` to the same path on the run machine (gitignored, reused rather than downloaded again)
-- [ ] Copy the #11 build machine's #11 outputs to `extras/*/data/ref_11/` (gitignored) as the comparison reference: the three `*.csv.gz` files, `qa_topology.csv`, `qa_drainage.csv`
-- [ ] Install SSNbler 1.1.2 on the run machine, the same version as the #11 build (a change to the machine, stated here)
-- [ ] Record free memory with the DB running (`vm_stat` / `memory_pressure`) → this sets the watchdog cap
+- [x] rsync the #11 build machine's `extras/pcic_crosswalk/data/` to the same path on the run machine (gitignored, reused rather than downloaded again)
+- [x] Copy the #11 build machine's #11 outputs to `extras/*/data/ref_11/` (gitignored) as the comparison reference: the three `*.csv.gz` files, `qa_topology.csv`, `qa_drainage.csv`
+- [x] Install SSNbler 1.1.2 on the run machine, the same version as the #11 build (a change to the machine, stated here)
+- [x] Record free memory with the DB running (`vm_stat` / `memory_pressure`) → this sets the watchdog cap
 
 ## Phase 2: Topology QA, BC outline built once (`extras/mainflow_tree/sql/qa_topology.sql`)
 - [ ] Build a temp `bc_outline`: `ST_Subdivide(ST_Union(fwa_bcboundary.geom))`, GiST-indexed, analyzed

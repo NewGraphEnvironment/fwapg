@@ -46,6 +46,18 @@ A full provincial fwapg (`fwa_stream_networks_sp`, `fwa_streams_watersheds_lut`,
 - Docker VM reports ~118 GB: R and Postgres share RAM, so the SSNbler cap comes from measured free memory.
 - The #2 watchdog (gitignored `serial.sh`) sampled only the R master PID; the parallel path forks workers.
 
+## Phase 1 (2026-10-10)
+
+- PCIC cache copied (650 MB with the reference files; 244 monthly batch files).
+- References in `extras/*/data/ref_11/` (gitignored): the three #11 exports, `qa_drainage.csv`, `qa_topology.csv`.
+  The committed-era `qa_topology.csv` predates the `no_parent` class (8 cut_off + 473 dead_end only), so the full
+  504-row QA table (8 / 473 / 23 `no_parent`) was exported from the build machine's `fwapg.mainflow_tree_qa` as
+  `qa_topology_db.csv`. Build machine DB counts match the issue: crosswalk 48,716; monthly 40,524,612 rows, sum
+  178169881.209890; tree 4,510,368.
+- SSNbler 1.1.2 from CRAN (R 4.5.2), the version used in #2.
+- Memory at idle: the Docker VM process holds 55.4 GB RSS (its configured ceiling is ~118 GB), other apps ~6 GB.
+  So R has about 60 GB now; the cap is re-measured before Phase 5, because the VM can grow during the pipelines.
+
 ## Errors Encountered
 
 | Error | Resolution |
