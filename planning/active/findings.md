@@ -58,6 +58,22 @@ A full provincial fwapg (`fwa_stream_networks_sp`, `fwa_streams_watersheds_lut`,
 - Memory at idle: the Docker VM process holds 55.4 GB RSS (its configured ceiling is ~118 GB), other apps ~6 GB.
   So R has about 60 GB now; the cap is re-measured before Phase 5, because the VM can grow during the pipelines.
 
+## Review of the watchdog and BC outline (2026-10-10, `review-watchdog.md`)
+
+Reviewer read 436a4ea and aaa8acc, probing in a copy. Folded in:
+- BC outline: equivalent to the per-mouth union in exact arithmetic (fwa_bcboundary parts are the dump of
+  one union, interiors disjoint). Subdivision moves the edge by ~1e-10 m where cut lines cross it, so only a
+  50 m circle tangent to BC's edge within 1e-10 m could flip. Phase 4 adds the tangency check to make the
+  row diff conclusive.
+- Watchdog, all fixed: RSS on macOS excludes compressed memory (the Docker VM showed 112 GB footprint, 82 GB
+  compressed), so the cap now sums `top`'s footprint; a TERM/HUP to the script left R running unwatched and
+  freed the lock, so cleanup now stops R and its workers (TERM, KILL after 10 s); `workRSOCK` matched every R
+  cluster on the machine, so ssnbler_check.R now sets `parallel:::setDefaultClusterOptions(outfile=)` and the
+  script matches that absolute path (PSOCK workers have ppid 1, confirmed); a failed sample read as 0 and
+  disabled the cap, so it now returns ERR and three in a row stop the run (exit 4); stale lock is taken over
+  when its pid is gone; a floor on `kern.memorystatus_level` (10%).
+- Probe: a dummy master + one tagged worker holding 2 GB sampled at 2,062,336 KB; ERR after exit.
+
 ## Errors Encountered
 
 | Error | Resolution |

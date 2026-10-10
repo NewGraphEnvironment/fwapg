@@ -29,6 +29,13 @@ sf::st_geometry(streams) <- sf::st_reverse(sf::st_geometry(streams))
 # an old one, so a rerun into the same directory would read stale errors
 unlink(file.path(args[2], "node_errors.gpkg"))
 
+# SSNbler's parallel path starts a PSOCK cluster with makeCluster()'s defaults.
+# Logging its workers to <lsn directory>.workers.log keeps their errors and puts
+# that absolute path on their command lines, which is how ssnbler_check.sh tells
+# this run's workers from any other R cluster on the machine.
+lsn_abs <- if (startsWith(args[2], "/")) args[2] else file.path(getwd(), args[2])
+parallel:::setDefaultClusterOptions(outfile = paste0(lsn_abs, ".workers.log"))
+
 # snap_tolerance is the distance within which line ends join a node, and it sets
 # the precision nodes are rounded to: one decimal place fewer than it has
 # (lines_to_lsn: ndec <- get_decimals(snap_tolerance) - 1), so 0.001 rounds to
