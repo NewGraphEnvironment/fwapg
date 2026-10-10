@@ -4,7 +4,7 @@ Scope: `git diff --cached`. I read qa_drainage.sql (new), qa.sql, pcic_crosswalk
 
 ## Mechanism and enumeration
 
-**The mechanism behind R1's first finding is "a guard that fails toward pass".** A state that could not be measured was folded into the state that means "measured and fine". A NULL ratio matched neither CASE arm, so it fell through to the implicit ELSE. The ELSE is NULL, which the report calls `ok` and the ceiling counts as "not flagged". The checklist remedy is to treat unreadable as a third state, give it a name, assert on it, and enumerate the complement, so every outcome is a deliberate resting place. The `unmeasured` label did that, but only for NULL. The same collapse happens when a missing measurement is written as a *valid value* (a `0`) rather than as NULL: a null check cannot see that by construction (checklist rows stac_airphoto_bc#21 and rtj#265).
+**The mechanism behind R1's first finding is "a guard that fails toward pass".** A state that could not be measured was folded into the state that means "measured and fine". A NULL ratio matched neither CASE arm, so it fell through to the implicit ELSE. The ELSE is NULL, which the report calls `ok` and the ceiling counts as "not flagged". The checklist remedy is to treat unreadable as a third state, give it a name, assert on it, and enumerate the complement, so every outcome is a deliberate resting place. The `unmeasured` label did that, but only for NULL. The same collapse happens when a missing measurement is written as a *valid value* (a `0`) rather than as NULL: a null check cannot see that by construction (two earlier checklist rows).
 
 Every test, filter or CASE in the diff whose NULL, empty or missing outcome could read as a pass:
 

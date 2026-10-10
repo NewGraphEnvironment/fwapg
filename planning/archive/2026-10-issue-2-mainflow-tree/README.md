@@ -8,7 +8,7 @@ Added a main-flow tree (`extras/mainflow_tree`, `whse_basemapping.fwa_stream_net
 - Acceptance (fwapg#2): all 26 Skeena connectors, the four side-channel paths and the Chilako-Nechako connection reproduced (10/10 QA tests). SSNbler: 24 of 26 Skeena/Nechako groups 0 node errors; USKE and MSKE one spot each at a 1.6 / 2.9 cm segment (geometry a plain chain); the LSKE window around 360216952 clean. Skeena basin 1 outlet; Nechako 8 (mouth, 6 dead ends, 1 no-parent).
 - PCIC refactor: parents/paths identical (1,570,499 lines); crosswalk and 40,524,612 monthly rows identical, max |dq| 0.
 - Runtimes: paths 35 min (not the 4-6 min recorded before), tree 1 min, topology QA ~35 min. SSNbler 1.5 GB at 5,500 lines, 39 GB at 24,000.
-- Wrong turns kept: first build had 7 splits (strict-measure and near-top touches); SSNbler "divergences" first blamed on `topo_tolerance` (no change at 1 cm), then traced to `snap_tolerance` rounding; three parallel SSNbler runs caused three kernel panics (rtj#379); outlet labels corrected over code-check rounds 3-4 until every outlet was classified by query.
+- Wrong turns kept: first build had 7 splits (strict-measure and near-top touches); SSNbler "divergences" first blamed on `topo_tolerance` (no change at 1 cm), then traced to `snap_tolerance` rounding; three parallel SSNbler runs crashed the machine three times; outlet labels corrected over code-check rounds 3-4 until every outlet was classified by query.
 - Code-check: plan review + 4 rounds (round 1 rerun after a reboot lost it); findings and fixes in `review-*.md`; ended by enumeration of all 27,194 non-continuing tree segments.
 
 ## Evidence
