@@ -111,8 +111,42 @@ drift at all) or in 1,500 translations of the five real drifting lines placed on
 not reproducible, so it stays out of the PR and is mentioned there; if a run ever flags a pair of
 nodes ~1e-10 m apart, taking ends from `st_coordinates()` is the fix.
 
+## Phase 4: R CMD check (2026-10-11)
+
+`rcmdcheck(args = c("--no-manual", "--as-cran"))`, R 4.5.2 aarch64: 0 errors, 0 warnings, 1 NOTE
+("Version contains large components (1.1.2.9000)", the dev version upstream set). Tests inside the
+check: `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 188 ]` with `NOT_CRAN=true` (so the parallel test ran).
+
+The first attempt reported `ERRORS 0 WARNINGS 0 NOTES 0` while the check had **halted** at "checking
+CRAN incoming feasibility" (`archive.rds` timeout, "Execution halted"): rcmdcheck counts the
+findings it parsed, and an aborted check has none. Re-run with `_R_CHECK_CRAN_INCOMING_REMOTE_=false`.
+Read the log's `* DONE` / `Status:` line, not the counts.
+
+## /code-check on the fork branch (2026-10-11, 3 rounds, `review-round{1,2,3}.md`)
+
+| Round | Findings | Fixed | Accepted | Inside previous fix? |
+|-------|----------|-------|----------|----------------------|
+| 1 | 0 (Clean; noted pdist looks single precision) | wording: the mechanism was wrong (cancellation -> single precision) | 2 pre-existing, outside the diff | — |
+| 2 | 3 wording (figures true only at one magnitude; "1 cm at 2e5" was 1.6; "500-node" is a cap) | 3 | 0 | **y** (the round-1 rewording) |
+| 3 | 7 wording, one mechanism | all, by removing range claims | 0 | **y** |
+
+Code was clean in all three rounds. **pdist rounds each coordinate to float on its own
+(`as.single()` in `pdist.R`, `float` in `pdist.c`)**: a pair reads 0 exactly when x and y each round
+to the same float, so whether a given pair reads 0 is a coincidence of position, not a threshold. Every
+wrong figure had been a value seen at one configuration (one magnitude, one axis, one position, one
+network size) stated as a constant. Ended by enumeration: the 13 factual claims in NEWS, code and test
+comments and the four commit messages, each matched to a computation or measurement (float spacing
+2^(e-23): 0.0625 at 1e6, 0.125 at 1,261,000; "five pdist() calls" by `git grep`; "up to 500" over
+n <= 3e6; "every chunk after the first" reproduced on base, 701-node fixture -> 249 250; the NA
+`fromedge` probed). The NEWS entry now states the mechanism and says "can", with no ranges.
+
+Pushed: NewGraphEnvironment/SSNbler `fix-pdist-precision-parallel-unsnapped` at **37ca338**
+(commits 8818f36 tests, eb66682 precision, ca0def8 offsets, 37ca338 drop). The branch was rewritten
+twice before the push (wording only; code and tests byte-identical, checked with `git diff --quiet`).
+
 ## Errors Encountered
 
 | Error | Resolution |
 |-------|------------|
+| rcmdcheck `ERRORS 0 WARNINGS 0 NOTES 0` on a check that halted (CRAN `archive.rds` timeout) | `_R_CHECK_CRAN_INCOMING_REMOTE_=false`; trust `Status:` in 00check.log |
 | `gh repo fork --org NewGraphEnvironment`: HTTP 422, login for a user account | Fork without `--org` (authenticated as that user) |

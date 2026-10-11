@@ -26,8 +26,8 @@ SSNbler 1.1.2 reports false node errors on FWA data (pet221/SSNbler#8). Fix it o
 - [x] Restore-the-bug, one defect at a time on an installed reverted tree: precision only, offsets only, `drop` only; each makes at least one new test fail
 
 ## Phase 4: R CMD check (fork)
-- [ ] `devtools::check()`: 0 errors and 0 warnings, with any NOTE explained
-- [ ] Push the fork branch and record the pinned commit SHA
+- [x] `devtools::check()`: 0 errors and 0 warnings, with any NOTE explained
+- [x] Push the fork branch and record the pinned commit SHA
 
 ## Phase 5: Acceptance test (fwapg)
 - [ ] `ssnbler_check.R` prints `packageVersion("SSNbler")` and the RemoteSha, so each runs.log line names its build (review AC3); during iteration install from the local clone, pin the SHA once at the end
@@ -53,6 +53,6 @@ SSNbler 1.1.2 reports false node errors on FWA data (pet221/SSNbler#8). Fix it o
 ## Validation
 
 - [ ] Tests pass (fork: `devtools::test()` + `check()`; fwapg: acceptance runs)
-- [ ] `/code-check` clean (each commit, or once over the branch with `/code-check branch`)
+- [x] `/code-check` clean (each commit, or once over the branch with `/code-check branch`)
 - [ ] PWF checkboxes match landed work
 - [ ] `/planning-archive` on completion
