@@ -31,8 +31,9 @@
 -- float noise. A move
 -- of more than 1 m leaves the outlet off its candidate, so candidate_rank is
 -- cleared. Placement is done by now and compares measures, which this lowers by at
--- most a segment's length. Vertex and junction are compared within 1 mm: adjacent
--- segments' measures differ in the last digits. Not moved, so that qa.sql's test
+-- most a segment's length. Vertex and junction are compared within 1 mm: a
+-- measure interpolated along a segment can differ from the segment start it names
+-- by float noise. Not moved, so that qa.sql's test
 -- that none is left stops the job for review (NewGraphEnvironment/fwapg#14): an
 -- outlet at its line's mouth (no segment below), and one with another placed
 -- outlet on its line between where it is and where it would land, within 1 mm
@@ -50,7 +51,7 @@ FROM (
   SELECT DISTINCT ON (x.subid)
     x.subid,
     b.linear_feature_id,
-    least(x.downstream_route_measure, b.upstream_route_measure) - 0.001 AS downstream_route_measure,
+    least(x.downstream_route_measure, b.upstream_route_measure, b.top_measure) - 0.001 AS downstream_route_measure,
     b.wscode_ltree,
     b.localcode_ltree,
     b.watershed_group_code,
@@ -63,7 +64,15 @@ FROM (
   INNER JOIN fwapg.blk_paths bp ON bp.blue_line_key = c.blue_line_key
   CROSS JOIN LATERAL unnest(bp.path_blks, bp.path_measures) AS u(blk, measure)
   CROSS JOIN LATERAL (
-    SELECT b.*
+    -- top_measure: where the segment directly above b starts, which is where lines
+    -- joining at b's upper end join (b's upstream_route_measure can differ from it
+    -- by up to 1 cm; downstream_route_measure + length agrees)
+    SELECT b.*, (
+      SELECT min(n.downstream_route_measure)
+      FROM whse_basemapping.fwa_stream_networks_sp n
+      WHERE n.blue_line_key = b.blue_line_key
+      AND n.downstream_route_measure > b.downstream_route_measure + 0.001
+    ) AS top_measure
     FROM whse_basemapping.fwa_stream_networks_sp b
     WHERE b.blue_line_key = x.blue_line_key
     AND b.downstream_route_measure < s.downstream_route_measure - 0.001
@@ -87,7 +96,7 @@ FROM (
     WHERE y.flag IS NULL
     AND y.subid != x.subid
     AND y.blue_line_key = x.blue_line_key
-    AND y.downstream_route_measure >= least(x.downstream_route_measure, b.upstream_route_measure) - 0.002
+    AND y.downstream_route_measure >= least(x.downstream_route_measure, b.upstream_route_measure, b.top_measure) - 0.002
     AND y.downstream_route_measure < x.downstream_route_measure + 0.001
   )
   ORDER BY x.subid

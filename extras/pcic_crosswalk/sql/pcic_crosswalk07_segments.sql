@@ -14,7 +14,8 @@
 -- above the segment's start. A tributary's junction is the start of the main-stem
 -- segment above it (FWA measures run [downstream, upstream)), so its water passes
 -- the segment below the junction and not that one. Junction and segment start are
--- compared within 1 mm: adjacent segments' measures differ in the last digits, and
+-- compared within 1 mm: a measure interpolated along a segment can differ from the
+-- segment start it names by float noise, and
 -- an outlet on the segment below a junction can sit a hair above the junction's
 -- measure (1e-14 m left a 2,130 ha tributary with no flow before
 -- NewGraphEnvironment/fwapg#14).

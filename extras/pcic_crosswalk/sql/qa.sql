@@ -106,8 +106,8 @@ FROM annual;
 -- below to move to, and the step > 0 rules of 06 and 07 would parent the
 -- descendant below the outlet, so such a case has to be looked at. So is an outlet
 -- left on its vertex because another placed outlet is stacked on it. Vertex and
--- junction are compared within 1 mm: adjacent FWA segments' measures differ in
--- the last digits
+-- junction are compared within 1 mm: a measure interpolated along a segment can
+-- differ from the segment start it names by float noise
 SELECT 'no placed outlet sits above a confluence its PCIC child joins at' AS test, NOT EXISTS (
   SELECT 1
   FROM whse_basemapping.pcic_fwa_crosswalk x
