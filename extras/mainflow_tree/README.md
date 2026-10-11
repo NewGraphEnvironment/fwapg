@@ -169,9 +169,9 @@ group's share of the basin checked on its own on the serial path with SSNbler 1.
   basin leaves it (by two streams in 13 groups), plus any dead ends and `no_parent` outlets.
 - **USKE and MSKE: 4 errors each, at one spot each, all false.** Each is a main-flow segment a few cm long in
   a plain chain (239055049, 1.6 cm; 141013301, 2.9 cm), and the SQL check finds no split there. It is the
-  precision defect: shifted to small coordinates, both cm segments' errors go away. One error remained in one
-  group or the other depending on the shift (two shifts tried), consistent with `pdist` still being off by a
-  few mm at 10⁵ m.
+  precision defect. Shifted to small coordinates, the errors mostly go away but not entirely: an integer offset
+  took USKE from 4 to 0 and MSKE to 1, a bounding-box corner MSKE to 0 and USKE to 1, consistent with `pdist`
+  still being off by about 9 mm at 10⁵ m.
 - Not checkable: the Skeena's share of SPAT and TAKL and the Nechako's of TABR are one segment each, which
   `lines_to_lsn` cannot build (an error inside its own `left_join`).
 - Whole basins, on the parallel path: the Nechako has **0 node errors and 8 outlets**, its mouth on the Fraser,
@@ -185,9 +185,12 @@ Re-run on the fork at 37ca338 (2026-10-11), the same exports:
 
 - **USKE and MSKE: 0 node errors**, 1 outlet each, with 239055049 (1.6 cm) and 141013301 (2.9 cm) present.
 - **The whole Skeena, parallel: 0 node errors and 1 outlet**, and 261,763 relationships for 261,764 lines,
-  none flowing into two. (Run on the branch one wording commit before 37ca338; the R code is identical.)
+  none flowing into two.
 - The Bulkley (52,293 lines, parallel, clean on 1.1.2): `relationships.csv`, `noderelationships.csv` and
   `nodexy.csv` byte-identical to 1.1.2's.
+- The Skeena and the Bulkley ran on a local build of the branch one wording-only rewrite before 37ca338
+  (`runs.log` reads `local`); the R code is identical. USKE and MSKE ran on both, the second time installed
+  from GitHub at 37ca338.
 
 ## Caveats
 

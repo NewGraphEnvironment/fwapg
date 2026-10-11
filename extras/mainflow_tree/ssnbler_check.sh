@@ -182,7 +182,8 @@ fi
 lines=$(grep -o 'lines: [0-9]*' "$log" || true)
 result=$(grep -o 'node errors: [0-9]*  outlets: [0-9]*' "$log" || true)
 build=$(grep -o '^ssnbler: .*[^ ]' "$log" | head -1 | tr -d '\n' || true)
-summary="$(date '+%F %T') $name wscode=$wscode group=$group exit=$final r_exit=$r_rc peak_gb=$(awk -v k="$peak" 'BEGIN { printf "%.1f", k / 1048576 }') minutes=$((($(date +%s) - start + 59) / 60)) ${lines:-lines: ?} ${result:-node errors: ?} ${build:-ssnbler: ?}"
+rels=$(grep -o 'relationships: [0-9]*  expected: [0-9]*  edges into two: [0-9]*' "$log" || true)
+summary="$(date '+%F %T') $name wscode=$wscode group=$group exit=$final r_exit=$r_rc peak_gb=$(awk -v k="$peak" 'BEGIN { printf "%.1f", k / 1048576 }') minutes=$((($(date +%s) - start + 59) / 60)) ${lines:-lines: ?} ${result:-node errors: ?} ${rels:-relationships: ?} ${build:-ssnbler: ?}"
 # the log first, so a closed stdout cannot lose the line
 echo "$summary" >> "$dir/runs.log" || echo "could not append to $dir/runs.log" >&2
 echo "$summary" || true

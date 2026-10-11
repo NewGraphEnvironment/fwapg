@@ -22,9 +22,13 @@ if (!length(args) %in% c(2, 3)) {
   stop("usage: Rscript ssnbler_check.R <streams file> <lsn directory> [expected outlets]")
 }
 
-# the build that ran: the version, and the commit for an install from GitHub
-sha <- packageDescription("SSNbler")$RemoteSha
-cat("ssnbler:", as.character(packageVersion("SSNbler")), if (is.null(sha)) "local" else substr(sha, 1, 7), "\n")
+# the build that ran: the version, and where it came from (owner/repo@commit for
+# an install from GitHub, CRAN, the remote type pak recorded, or local)
+d <- packageDescription("SSNbler")
+src <- if (identical(d$RemoteType, "github")) {
+  paste0(d$RemoteUsername, "/", d$RemoteRepo, "@", substr(d$RemoteSha, 1, 7))
+} else if (!is.null(d$RemoteType)) d$RemoteType else if (!is.null(d$Repository)) d$Repository else "local"
+cat("ssnbler:", d$Version, src, "\n")
 
 streams <- sf::st_read(args[1], quiet = TRUE)
 streams <- sf::st_zm(streams)
