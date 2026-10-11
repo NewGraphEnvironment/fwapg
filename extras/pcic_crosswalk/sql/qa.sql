@@ -122,6 +122,19 @@ SELECT 'no placed outlet sits above a confluence its PCIC child joins at' AS tes
   AND abs(u.measure - x.downstream_route_measure) < 0.001
 ) AS result;
 
+-- an outlet on the segment below a junction, but a hair above the junction's
+-- measure, still receives the tributary: blue line 356567538 (2,130 ha) joins
+-- 356369704 1e-14 m below outlet 5012573 and carried no flow in any month before
+-- NewGraphEnvironment/fwapg#14
+SELECT 'tributary 356567538 carries flow' AS test,
+  coalesce(min(m.q) > 0, false) AS result
+FROM (
+  SELECT max(d.q_m3s) AS q
+  FROM whse_basemapping.fwa_stream_networks_sp s
+  INNER JOIN whse_basemapping.fwa_stream_networks_discharge_monthly d ON d.linear_feature_id = s.linear_feature_id
+  WHERE s.blue_line_key = 356567538
+) m;
+
 -- every placed outlet whose FWA parent is on another blue line joins the parent's
 -- line at least 1 mm above the start of the parent's segment, line mouths
 -- included: otherwise the parent's own segment would not carry the child's flow

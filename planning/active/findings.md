@@ -77,6 +77,14 @@ The reviewer found no defect in the current build and two guard blind spots with
 - An outlet at its line's mouth whose PCIC descendant joins there. The strict step>0 rule parents the descendant below it, and the move cannot help (no segment below). Fix: QA test 1 no longer exempts measure 0, so such a case stops the job. Measured: 7000406 (GRAI) and 8002298 (KITL) sit at mouths where lines join, and no placed outlet is on those lines.
 - A stacked pair (two placed outlets within 1 mm on one line). Moving one below the other would reverse them on the FWA. Fix: the move skips such an outlet, which stays on its vertex, so QA test 1 stops the job. Mutation test: planting a duplicate of 4000204 on temp tables made the move select 5 outlets instead of 6 (4000204 skipped).
 
+## Code-check round 2 (planning/active/review-round2.md)
+
+- **Bug, in the pre-branch build too:** the step>0 test `o.downstream_route_measure <= st.measure` had no tolerance. Outlets 5012573, 5017485 and 206006820 sit on the segment below a junction but 1e-14 to 1e-10 m above its measure, so their tributaries skipped them. Reproduced: blue line 356567538 (2,130 ha, joining 356369704 at 73.6866952293771, outlet 5012573 at 73.68669522937711) has 0 m3/s in all 12 months on all 360 segments, in both builds. Its segments went to 5012569, whose local area is -28,693 ha (share 0). Fix: `<= st.measure + 0.001` in 06 and 07, plus a QA regression test ("tributary 356567538 carries flow", `f` on the pre-branch build).
+- **Inside a fix (the 1 mm landing):** `least(x.drm, b.urm - 0.001)` returns the junction measure itself wherever the segment below overlaps the vertex by more than 1 mm (2.2% of FWA boundaries). Fix: `least(x.drm, b.urm) - 0.001`.
+- **Inside a fix (round 1's stacked check):** it looked only within 1 mm of the old position, but a move can go up to 100 m. Fix: the check covers the band the move crosses, from the landing (less 1 mm) to the old position.
+
+Enumeration that ends the class (comparisons of measures with no tolerance, across sources): every comparison of measures in 06, 07 and `qa.sql` was listed by grep. Those across sources (a path's junction measure against a segment start or an outlet's interpolated measure; an outlet's measure against a vertex) all carry 1 mm: 06:69, 82, 84, 90-91, 143; 07:79, 112; qa 120, 122, 151, 189, 194. Those left exact compare two FWA segment starts on the same line from the same table (07:78, 105; 06's step-0 tuple; `s.drm > 0` at 06:81), which are equal by construction where they should be.
+
 ## Errors Encountered
 
 | Error | Resolution |

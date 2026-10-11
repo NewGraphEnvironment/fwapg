@@ -14,7 +14,10 @@
 -- above the segment's start. A tributary's junction is the start of the main-stem
 -- segment above it (FWA measures run [downstream, upstream)), so its water passes
 -- the segment below the junction and not that one. Junction and segment start are
--- compared within 1 mm: adjacent segments' measures differ in the last digits.
+-- compared within 1 mm: adjacent segments' measures differ in the last digits, and
+-- an outlet on the segment below a junction can sit a hair above the junction's
+-- measure (1e-14 m left a 2,130 ha tributary with no flow before
+-- NewGraphEnvironment/fwapg#14).
 -- (fwapg.blk_on_or_upstream compares points, where on-the-junction counts as
 -- upstream, and stays so for placement; NewGraphEnvironment/fwapg#14.)
 --
@@ -73,7 +76,7 @@ nearest AS (
     ON o.blue_line_key = st.blk
     AND (
       (st.step = 0 AND o.seg_measure <= st.measure)
-      OR (st.step > 0 AND o.downstream_route_measure <= st.measure AND o.seg_measure < st.measure - 0.001)
+      OR (st.step > 0 AND o.downstream_route_measure <= st.measure + 0.001 AND o.seg_measure < st.measure - 0.001)
     )
   ORDER BY st.linear_feature_id, st.step, o.seg_measure DESC, o.downstream_route_measure DESC, o.depth DESC, o.subid DESC
 )

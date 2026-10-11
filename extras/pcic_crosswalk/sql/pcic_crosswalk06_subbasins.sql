@@ -26,16 +26,17 @@
 -- child, or one anchored to it through unplaced children), the outlet's flow
 -- includes it, so the outlet belongs below the confluence: it moves to the nearest
 -- usable segment below on its blue line (the next one, unless that one has no
--- fundamental watershed; then up to 100 m down), 1 mm inside the segment's upper
--- end, so that which junctions it sits below does not rest on float noise. A move
+-- fundamental watershed; then up to 100 m down), 1 mm below both the junction and
+-- the segment's upper end, so that which junctions it sits below does not rest on
+-- float noise. A move
 -- of more than 1 m leaves the outlet off its candidate, so candidate_rank is
 -- cleared. Placement is done by now and compares measures, which this lowers by at
 -- most a segment's length. Vertex and junction are compared within 1 mm: adjacent
 -- segments' measures differ in the last digits. Not moved, so that qa.sql's test
 -- that none is left stops the job for review (NewGraphEnvironment/fwapg#14): an
 -- outlet at its line's mouth (no segment below), and one with another placed
--- outlet within 1 mm on its line (moving one of a stacked pair below the other
--- would reverse their order on the FWA).
+-- outlet on its line between where it is and where it would land, within 1 mm
+-- (moving it past that outlet would reverse their order on the FWA).
 UPDATE whse_basemapping.pcic_fwa_crosswalk x
 SET
   linear_feature_id = m.linear_feature_id,
@@ -49,7 +50,7 @@ FROM (
   SELECT DISTINCT ON (x.subid)
     x.subid,
     b.linear_feature_id,
-    least(x.downstream_route_measure, b.upstream_route_measure - 0.001) AS downstream_route_measure,
+    least(x.downstream_route_measure, b.upstream_route_measure) - 0.001 AS downstream_route_measure,
     b.wscode_ltree,
     b.localcode_ltree,
     b.watershed_group_code,
@@ -86,7 +87,8 @@ FROM (
     WHERE y.flag IS NULL
     AND y.subid != x.subid
     AND y.blue_line_key = x.blue_line_key
-    AND abs(y.downstream_route_measure - x.downstream_route_measure) < 0.001
+    AND y.downstream_route_measure >= least(x.downstream_route_measure, b.upstream_route_measure) - 0.002
+    AND y.downstream_route_measure < x.downstream_route_measure + 0.001
   )
   ORDER BY x.subid
 ) m
@@ -98,7 +100,8 @@ WHERE x.subid = m.subid;
 -- position, and on it the highest such outlet (by segment, then measure). On the
 -- lines of its path, an outlet is below the point where the water joins only if
 -- its segment starts below it: water joining at a segment's start does not pass
--- that segment (see the move above). At the
+-- that segment (see the move above). Measures are compared within 1 mm, as in
+-- pcic_crosswalk07_segments.sql. At the
 -- same point, the outlet nearer PCIC's root is below. This is the order pcic_crosswalk07_segments.sql
 -- assigns segments in.
 CREATE INDEX IF NOT EXISTS pcic_fwa_crosswalk_blk_idx
@@ -137,7 +140,7 @@ FROM (
     AND (
       (st.step = 0 AND
         (o.seg_measure, o.downstream_route_measure, o.depth, o.subid) < (st.seg_measure, st.measure, st.depth, st.subid))
-      OR (st.step > 0 AND o.downstream_route_measure <= st.measure AND o.seg_measure < st.measure - 0.001)
+      OR (st.step > 0 AND o.downstream_route_measure <= st.measure + 0.001 AND o.seg_measure < st.measure - 0.001)
     )
   ORDER BY st.subid, st.step, o.seg_measure DESC, o.downstream_route_measure DESC, o.depth DESC, o.subid DESC
 ) p
