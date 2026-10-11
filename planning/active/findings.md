@@ -167,6 +167,19 @@ Database: a local fwapg holding the main-flow tree (`DATABASE_URL` set to a pg s
   NEWS.md and the `dist_xy.R` header comment only.
 - `pak` installing 37ca338 also updated 1 and added 3 dependency packages in the user library.
 
+## /code-check on the fwapg branch (2026-10-11, 2 rounds, `review-fw-round{1,2}.md`)
+
+| Round | Findings | Fixed | Accepted | Inside previous fix? |
+|-------|----------|-------|----------|----------------------|
+| 1 | 5 (README shift text stale; build label "local" for CRAN; Bulkley caveat missing; runs.log lacked the relationships line; archive name unfixed) | 4 | 1 (archive name: used exactly) | — |
+| 2 | 1 (pak CRAN installs read `standard`, not CRAN) | 1 | 0 | **y** |
+
+Ended by enumeration: every (RemoteType, Repository) pair in the user library (198 packages, 5 pairs)
+through the label: `<none>/CRAN` -> CRAN, `standard/CRAN` (pak) -> CRAN, `github` -> owner/repo@sha7,
+`local` and `<none>/<none>` -> local.
+
+Review spend for #16: 6 agents (plan review, 3 fork rounds, 2 fwapg rounds), one past the ~5 bound.
+
 ## Errors Encountered
 
 | Error | Resolution |

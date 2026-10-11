@@ -54,5 +54,5 @@ SSNbler 1.1.2 reports false node errors on FWA data (pet221/SSNbler#8). Fix it o
 
 - [x] Tests pass (fork: `devtools::test()` + `check()`; fwapg: acceptance runs)
 - [x] `/code-check` clean (each commit, or once over the branch with `/code-check branch`)
-- [ ] PWF checkboxes match landed work
+- [x] PWF checkboxes match landed work
 - [ ] `/planning-archive` on completion

@@ -23,11 +23,12 @@ if (!length(args) %in% c(2, 3)) {
 }
 
 # the build that ran: the version, and where it came from (owner/repo@commit for
-# an install from GitHub, CRAN, the remote type pak recorded, or local)
+# an install from GitHub, the repository (CRAN) for a repository install, the remote
+# type pak recorded for anything else, or local)
 d <- packageDescription("SSNbler")
 src <- if (identical(d$RemoteType, "github")) {
   paste0(d$RemoteUsername, "/", d$RemoteRepo, "@", substr(d$RemoteSha, 1, 7))
-} else if (!is.null(d$RemoteType)) d$RemoteType else if (!is.null(d$Repository)) d$Repository else "local"
+} else if (!is.null(d$Repository)) d$Repository else if (!is.null(d$RemoteType)) d$RemoteType else "local"
 cat("ssnbler:", d$Version, src, "\n")
 
 streams <- sf::st_read(args[1], quiet = TRUE)

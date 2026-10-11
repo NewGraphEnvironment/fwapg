@@ -181,7 +181,7 @@ group's share of the basin checked on its own on the serial path with SSNbler 1.
   ends (rows 462 and 463 of their chunk) applied to rows 462 and 463 of the whole list. USKE's two ends fall
   in different chunks, so neither is flagged.
 
-Re-run on the fork at 37ca338 (2026-10-11), the same exports:
+Re-run on the fork at 37ca338 (2026-10-10 and 11), the same exports:
 
 - **USKE and MSKE: 0 node errors**, 1 outlet each, with 239055049 (1.6 cm) and 141013301 (2.9 cm) present.
 - **The whole Skeena, parallel: 0 node errors and 1 outlet**, and 261,763 relationships for 261,764 lines,
