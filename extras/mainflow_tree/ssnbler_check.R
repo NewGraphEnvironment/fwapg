@@ -10,9 +10,10 @@
 # errors, and exits 1 if there is a node error, or if [expected outlets] is given
 # and the network has a different number of outlets.
 #
-# SSNbler needs its parallel path at 46,340 lines or more, and each worker holds
-# about 2 GB on a 160,000-line subset; a watershed group at a time stays under
-# the limit and runs serially.
+# SSNbler needs its parallel path at 46,340 lines or more. Below that it runs
+# serially, with memory growing as the square of the lines (52 GB at 30,000);
+# the parallel path's unsnapped-node test is computed per chunk and is not
+# reliable (README.md).
 
 args <- commandArgs(trailingOnly = TRUE)
 if (!length(args) %in% c(2, 3)) {

@@ -30,12 +30,12 @@
 ## Phase 5: SSNbler groups, one at a time
 - [x] LSKE, BULK and FRAN whole (Skeena `400` / Nechako `100.567134` share), with peak RSS and runtime per group
 - [x] Rerun the USKE and MSKE spots to confirm the #2 results reproduce on the run machine
-- [ ] Ladder, which stops at the first rung over the cap: about 50k lines, about 100k lines, then the Nechako whole (about 210k lines). Rung subsets are picked by wscode and counted in SQL first. The goal is to measure the memory, and whether the parallel path works above 46,340 lines.
+- [x] Ladder, which stops at the first rung over the cap: about 50k lines, about 100k lines, then the Nechako whole (about 210k lines). Rung subsets are picked by wscode and counted in SQL first. The goal is to measure the memory, and whether the parallel path works above 46,340 lines.
 
 ## Phase 6: Record
-- [ ] `extras/mainflow_tree/README.md`: LSKE/BULK/FRAN results, the ladder's memory curve, the new topology QA runtime. The machine is described by its capacity only (128 GB, local Docker database), with no host names.
+- [x] `extras/mainflow_tree/README.md`: LSKE/BULK/FRAN results, the ladder's memory curve, the new topology QA runtime. The machine is described by its capacity only (128 GB, local Docker database), with no host names.
 - [x] `extras/blue_line_paths/README.md` and `extras/pcic_crosswalk/README.md`: measured runtimes, plus a note that the full script ran
-- [ ] `research/fwa_mainflow_tree.md`: revise the SSNbler memory finding with the measured curve (update the `Verified:` line)
+- [x] `research/fwa_mainflow_tree.md`: revise the SSNbler memory finding with the measured curve (update the `Verified:` line)
 
 ## Phase 7: Upstream branches (drafted, not posted)
 - [ ] `upstream-blue-line-paths` off `upstream/main`: `git checkout newgraph -- extras/blue_line_paths`, plus its entry in `extras/README.md`

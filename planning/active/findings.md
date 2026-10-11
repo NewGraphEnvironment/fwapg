@@ -167,6 +167,49 @@ footprint, which top prints in whole GB above 10 GB.
   #5 against staging tables that the job's cleanup drops.
 - Paths, three runs: 16.6, 16.2, ~16 min.
 
+## SSNbler ladder and the parallel path (2026-10-10, `runs.log`, scratchpad `par_*.log`)
+
+| subset | lines | path | node errors | outlets | peak | minutes |
+|---|---|---|---|---|---|---|
+| Bulkley `400.431358` | 52,293 | parallel | 0 | 1 | 3.5 GB | 2 |
+| North Thompson `100.190442.998192` | 106,048 | parallel | 0 | 2 | 7.5 GB | 6 |
+| Nechako `100.567134` | 209,531 | parallel | 0 | 8 | 15.8 GB | 23 |
+| Skeena `400` | 261,764 | parallel | 6 | 1 | 19.9 GB | 35 |
+
+- No rung reached the 90 GB cap. Parallel-path memory grows ~linearly (~75 MB per 1,000 lines); the serial path
+  is quadratic (52 GB at 30k). Worker logs (`lsn_*.workers.log`) exist for every parallel run, so the workers
+  carried the tag the watchdog matches.
+- Nechako: 0 errors, 8 outlets = the SQL count (mouth, 6 dead ends, 1 no_parent).
+- Skeena: 1 outlet (= SQL). 6 errors: Downstream Divergence at both ends of 239055049 (USKE) and 141013301 (MSKE),
+  and Unsnapped Node at SSNbler nodes 462 (pseudonode) and 463 (confluence) in ZYMO, 1.6 km apart, both exact
+  tree nodes with no other tree segment end within 2 m.
+- Discriminating runs on identical gpkgs, serial (committed script) vs parallel (scratch copy with
+  `use_parallel = TRUE`): ZYMO 0 / 0 errors; MSKE 4 (2 divergence + 2 unsnapped) / 2 (divergence only).
+- Mechanism in SSNbler 1.1.2's code: `get_pdist_nodes()` splits nodes into chunks of <= 500 rows;
+  `pdist_node_coords()` computes `dbl_tonodes` from the chunk's rows only and returns `unsnapped_tonodes` as
+  chunk-local row numbers; `lines_to_lsn()` does `unsnapped_connection[unsnapped_tonodes] <- TRUE` on the global
+  vector with no offset. n_flow and snap_check are per-row and concatenated in order, so they are unaffected.
+  Mapping 462/463 to the real unsnapped nodes failed: the known spot nodes fall at chunk rows 399, 117, 483, 484
+  by `nodes.gpkg` pointid, so the internal node order is not the pointid order. Not traced further.
+- So: whole-basin unsnapped-node results are not reliable; the serial group runs stay authoritative, and
+  ssnbler_check.R keeps SSNbler's own threshold (making every run parallel was considered and dropped).
+- SSNbler is third-party: upstream issue drafted (below), not posted.
+
+### Draft SSNbler issue (not posted; needs approval)
+
+> **lines_to_lsn(use_parallel = TRUE): unsnapped-node check is chunk-local**
+>
+> In 1.1.2, `get_pdist_nodes()` splits the node matrix into chunks of at most 500 rows and runs
+> `pdist_node_coords()` on each. For `node_dir = "to"`, that function computes
+> `dbl_tonodes <- which(colSums(dist_matrix == 0) > 1)` over the chunk's rows only, and returns
+> `unsnapped_tonodes <- which(rowSums(...) > 0)`, row numbers within the chunk. `lines_to_lsn()` then sets
+> `unsnapped_connection[unsnapped_tonodes] <- TRUE` on the full node vector without adding the chunk's offset.
+> Two coincident nodes in different chunks are never seen, and a hit in any chunk after the first marks a node
+> in the first chunk. Observed on identical input (24,732 lines, forced parallel vs serial): serial reports
+> 2 Unsnapped Node + 2 Downstream Divergence, parallel only the 2 divergences; on 261,764 lines (parallel
+> required) two exactly-snapped nodes are reported as unsnapped. Suggested fix: return global indices (pass each
+> chunk's starting row) and compute duplicate to-nodes over all nodes before chunking.
+
 ## Errors Encountered
 
 | Error | Resolution |

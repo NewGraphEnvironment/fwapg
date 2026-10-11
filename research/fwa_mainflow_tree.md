@@ -1,6 +1,6 @@
 # A dendritic subset of the FWA stream network
 
-**Verified:** 2026-10-09 · **Issues:** NewGraphEnvironment/fwapg#2 (spawned from two hand-built SSN2 stream-temperature networks), #4 (area on reattached segments) · **Produced by:** the SQL of `extras/mainflow_tree` and `extras/blue_line_paths`, run step by step on a full provincial fwapg (4,907,441 segments; the job scripts themselves were not run end to end); measurements in `planning/archive/2026-10-issue-2-mainflow-tree/`
+**Verified:** 2026-10-10 · **Issues:** NewGraphEnvironment/fwapg#2 (spawned from two hand-built SSN2 stream-temperature networks), #4 (area on reattached segments), #13 (end-to-end run, SSNbler on whole basins) · **Produced by:** the SQL of `extras/mainflow_tree` and `extras/blue_line_paths`, run step by step on a full provincial fwapg (4,907,441 segments) in #2 and as the committed job scripts in #13 (identical tree); measurements in `planning/archive/2026-10-issue-2-mainflow-tree/` and `planning/archive/2026-10-issue-13-*/`
 
 ## The FWA is not a tree, and the obvious subsets are not either
 
@@ -30,7 +30,12 @@ A float detail that matters: a junction measure located on the geometry (`drm + 
 
 FWA digitizes side channels like main flow, from the downstream end (measure 0). A tree subset reversed as a whole is in the direction of flow, with no per-segment exceptions. The exceptions a hand-built network needed came from routing two tributaries *up* a side channel to where it leaves the river.
 
-SSNbler (`lines_to_lsn(check_topology = TRUE)`, 1.1.2) on the Skeena and Nechako groups, every line reversed: 0 node errors in 24 of 26 groups, and around the fourth test side channel (in LSKE, too large to check whole). The other two groups report one spot each, a main-flow segment of 1.6 or 2.9 cm whose geometry is a plain chain. Two SSNbler facts matter for anyone repeating this. Its memory grows roughly with the square of the line count (39 GB at 24,000 lines; at 46,340 or more it requires its parallel path, about 2 GB per worker), so a large basin is checked a watershed group at a time and never several at once: three at once caused kernel panics on a 64 GB machine (Jetsam reports: 20-50 GB per run). And it rounds node coordinates to one decimal place fewer than `snap_tolerance` (10 m at its default of 0), so the tolerance has to be set (0.001 gives 1 cm).
+SSNbler (`lines_to_lsn(check_topology = TRUE)`, 1.1.2) on the Skeena and Nechako groups, every line reversed: 0 node errors in 27 of 29 groups, including LSKE, which holds the fourth test side channel. The other two groups report one spot each, a main-flow segment of 1.6 or 2.9 cm whose geometry is a plain chain. Whole basins: the Nechako has 0 node errors and the 8 outlets counted in SQL; the Skeena 1 outlet.
+
+Three SSNbler facts matter for anyone repeating this.
+- **Its two code paths cost differently.** Below 46,340 lines it runs serially and memory grows with the square of the line count (28 GB at 21,700 lines, 52-54 GB at 30,000), so a basin is checked a watershed group at a time and never several at once: three at once caused kernel panics on a 64 GB machine. At 46,340 or more it must run in parallel, in chunks of 500 nodes, and memory grows about linearly (3.5 GB at 52,000 lines, 16 GB for the Nechako's 210,000, 20 GB for the Skeena's 262,000).
+- **The parallel path's unsnapped-node test is not reliable.** It is computed within each chunk: the duplicate test sees only the chunk's rows, and the row numbers it returns are the chunk's, applied to the whole node list without an offset (`pdist_node_coords`, `get_pdist_nodes`, `lines_to_lsn`). On the same MSKE lines the serial path reports 4 errors and the parallel path 2. The whole Skeena flags two exact nodes in ZYMO that the ZYMO group, on either path, does not. Which real nodes they stand for was not traced.
+- **It rounds node coordinates** to one decimal place fewer than `snap_tolerance` (10 m at its default of 0), so the tolerance has to be set (0.001 gives 1 cm).
 
 ## Not settled
 
