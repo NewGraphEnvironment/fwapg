@@ -22,4 +22,4 @@ Code-check took three rounds. Round 1 found that plain `csv header` skips the he
 ## Evidence
 Local and gitignored: `extras/pcic_crosswalk/data/qa_gauge_08EE003_*9.txt`. The reviews are in this directory (`review-round*.md`).
 
-Closed by: PR into `newgraph` (branch `9-publish-pcic-crosswalk-outputs-to-fresh`)
+Closed by: PR #22 into `newgraph`
