@@ -135,11 +135,17 @@ SSNbler (1.1.2) takes one of two paths, and they differ:
   time, and never two at once (three at once crashed a 64 GB machine).
 - **At 46,340 lines or more it must run in parallel**, in chunks of 500 nodes, and memory grows about linearly:
   3.5 GB at 52,000 lines, 7.5 GB at 106,000, 16 GB for the Nechako (210,000 lines, 23 min), 20 GB for the
-  Skeena (262,000, 35 min). But its unsnapped-node test is computed within each chunk, so an "Unsnapped Node"
-  from this path is not reliable: on the same MSKE lines the serial path reports 4 errors and the parallel
-  path 2, and the whole Skeena reports two unsnapped nodes in ZYMO that are exact nodes with no other line end
-  within 2 m (the ZYMO group alone is clean on both paths). Its other node errors and outlet counts agree with
-  the group runs.
+  Skeena (262,000, 35 min).
+
+Two SSNbler defects produce false errors on FWA data (pet221/SSNbler#8; `ssnbler_reprex.R` reproduces both
+with synthetic lines):
+
+- **Precision.** SSNbler measures node distances with `pdist::pdist()`, which at BC Albers coordinates returns
+  0 for points up to about 7 cm apart. A segment a few cm long then reads as an unsnapped node and a
+  divergence at each end, whatever `snap_tolerance` says.
+- **Parallel path.** Its unsnapped flags are row numbers within a 500-node chunk, applied to the whole node
+  list without the chunk's offset, so they land on the wrong nodes; a duplicate split across two chunks is
+  missed.
 
 In the 2026-10 build, every watershed group holding the Skeena (`400`) or the Nechako (`100.567134`), each
 group's share of the basin checked on its own on the serial path:
@@ -147,16 +153,19 @@ group's share of the basin checked on its own on the serial path:
 - **27 of 29 groups: 0 node errors**, including KLUM, which holds three of the four side channels in the
   tests, and LSKE (29,000 lines), which holds the fourth (360216952). Each group has 1-3 outlets: where the
   basin leaves it (by two streams in 13 groups), plus any dead ends and `no_parent` outlets.
-- **USKE and MSKE: 4 errors each, at one spot each**, a main-flow segment a few cm long whose geometry is a
-  plain chain (239055049, 1.6 cm; 141013301, 2.9 cm). SSNbler reports its two ends as an unsnapped node and
-  a divergence; the SQL check, on the same nodes at 1 cm, finds no split. At `snap_tolerance` 0.01 the two
-  ends round to one node instead (SSNbler rounds nodes to one decimal place fewer than the tolerance).
+- **USKE and MSKE: 4 errors each, at one spot each, all false.** Each is a main-flow segment a few cm long in
+  a plain chain (239055049, 1.6 cm; 141013301, 2.9 cm), and the SQL check finds no split there. It is the
+  precision defect: shifted to small coordinates, both cm segments' errors go away. One error remained in one
+  group or the other depending on the shift (two shifts tried), consistent with `pdist` still being off by a
+  few mm at 10⁵ m.
 - Not checkable: the Skeena's share of SPAT and TAKL and the Nechako's of TABR are one segment each, which
   `lines_to_lsn` cannot build (an error inside its own `left_join`).
 - Whole basins, on the parallel path: the Nechako has **0 node errors and 8 outlets**, its mouth on the Fraser,
   6 dead ends (side channels reached by a fallback junction in FRAN, LEUT, LTRE (2), STUR and TAKL) and a
-  `no_parent` side channel (UEUT), the same 8 counted in SQL. The Skeena has **1 outlet** (its mouth) and the
-  two cm segments' divergences, plus the two ZYMO unsnapped nodes above.
+  `no_parent` side channel (UEUT), the same 8 counted in SQL. The Skeena has **1 outlet** (its mouth) and 6
+  false errors: the two cm segments' divergences, and two unsnapped nodes in ZYMO, which are MSKE's segment
+  ends (rows 462 and 463 of their chunk) applied to rows 462 and 463 of the whole list. USKE's two ends fall
+  in different chunks, so neither is flagged.
 
 ## Caveats
 
