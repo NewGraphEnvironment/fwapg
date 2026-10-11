@@ -56,7 +56,33 @@ cat("lines:", nrow(s), " node errors:", if (file.exists(f)) nrow(sf::st_read(f, 
 **Where the work happens.** The PWF and the issue live in fwapg, on branch `16-fix-ssnbler-s-false-topology-errors-on-a` off `newgraph`, with the PR `--base newgraph`. The SSNbler code lives in a new fork, `NewGraphEnvironment/SSNbler`, cloned to `~/Projects/repo/SSNbler`, on branch `fix-pdist-precision-parallel-unsnapped`.
 
 
+## Phase 1 baseline (2026-10-11, fork at upstream 65eaf20)
+
+`NewGraphEnvironment` is a user account, not an org, so `gh repo fork --org` fails (HTTP 422); the
+fork is `gh repo fork pet221/SSNbler` as that user. Clone: `~/Projects/repo/SSNbler`, remotes `origin`
+(fork) and `upstream` (pet221), branch `fix-pdist-precision-parallel-unsnapped`.
+
+- `devtools::test()`: 157 pass, 0 fail, 0 skip (4 s).
+- `ssnbler_reprex.R` against `load_all()` of the clone, unchanged from 1.1.2 on CRAN:
+  - A, near origin: none. A, BC Albers: Unsnapped Node and Downstream Divergence at x=10.000 and 10.030.
+  - B serial: the same pair at x=6490.000/6490.030. B parallel: Unsnapped Node at x=2980/2990 (rows
+    149/150 of chunk 2 applied as global rows 149/150), Downstream Divergence at 6490.000/6490.030.
+
+## With exact distances, `dbl_tonodes` cannot fire through `lines_to_lsn()`
+
+`dbl_tonodes` is a to-end at distance exactly 0 from more than one node. Nodes are deduplicated by
+rounded coordinates before the check, so two kept nodes never share coordinates, and an exact distance
+of 0 means identical coordinates. It fired in 1.1.2 only through pdist's false zeros. The parallel
+fix (2) is still made, and is tested by calling `get_pdist_nodes()` directly with duplicate node
+rows placed in one chunk and across two, against the serial formula.
+
+Parallel workers load the **installed** SSNbler (`.packages = "SSNbler"`); a function sent with
+`.export` keeps its namespace as enclosure, so it resolves helpers against the installed version.
+Parallel tests therefore exercise the installed package: install the branch before `devtools::test()`
+(R CMD check installs it anyway).
+
 ## Errors Encountered
 
 | Error | Resolution |
 |-------|------------|
+| `gh repo fork --org NewGraphEnvironment`: HTTP 422, login for a user account | Fork without `--org` (authenticated as that user) |

@@ -4,8 +4,8 @@ SSNbler 1.1.2 reports false node errors on FWA data (pet221/SSNbler#8). Fix it o
 
 
 ## Phase 1: Fork and baseline
-- [ ] Fork `pet221/SSNbler` to NewGraphEnvironment, clone it to `~/Projects/repo/SSNbler`, and branch `fix-pdist-precision-parallel-unsnapped` off `main`
-- [ ] Baseline: `devtools::test()` and `ssnbler_reprex.R` against the unmodified clone (`devtools::load_all`), recording errors A and B in findings.md
+- [x] Fork `pet221/SSNbler` to NewGraphEnvironment, clone it to `~/Projects/repo/SSNbler`, and branch `fix-pdist-precision-parallel-unsnapped` off `main`
+- [x] Baseline: `devtools::test()` and `ssnbler_reprex.R` against the unmodified clone (`devtools::load_all`), recording errors A and B in findings.md
 
 ## Phase 2: Tests first (fork)
 - [ ] `tests/testthat/test-topology_precision.R`: a chain of 3 lines at BC Albers coordinates (878000, 1261000) whose middle line is 3 cm long; `check_topology = TRUE`, `snap_tolerance = 0.001`; expect no `node_errors.gpkg`. Plus the same chain near the origin as the control.
