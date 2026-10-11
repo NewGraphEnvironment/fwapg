@@ -56,6 +56,21 @@ Adjacent FWA segments' measures are not bit-equal: 701317270's `upstream_route_m
 - Vertex outlets (measure = segment start, > 0) with any blue line's path joining at their measure: **94 outlets, 95 lines**. Only 6 of those lines carry a placed PCIC child. So the `<=` in the step>0 rules (06 `fwa_parent_subid`, 07 `nearest`) mattered beyond the 6: the tributary's segments went to an outlet on the upper segment, whose upstream area excludes the tributary. Both rules now require the outlet's segment to start below the junction.
 - The segment below each of the 6 outlets: 5 are usable, at gaps of -0.0007 to +0.0004 m from the vertex. 5014089's (707098172, 43.8 m, edge 1250, Midge Creek, KOTL) is not in `fwa_streams_watersheds_lut`. Its next usable segment below is 707098394, at about 44 m. Its PCIC children are 5014087 (same blue line, above) and 5014088 (blue line 356563710, which joins at the vertex).
 
+## Intermediate run (`data/run14.log`, 88a60d0, 2026-10-11 16:14-16:43 UTC)
+
+All QA passed, including both Phase 1 tests (`f` -> `t`). The move updated 6 outlets. Against the #13 snapshot:
+- Crosswalk: 6 rows changed (`linear_feature_id`; measure > 1 mm only for 5014089, 15351.363 -> 15307.561). `fwa_parent_subid`, flag and anchor are identical everywhere.
+- Output segments: 3,377,050 -> 3,377,037. The 13 dropped are on five secondary-flow lines (edge 1100/1150/1350/1450) that join two coastal rivers at measure 0 (KITL 360871314 and GRAI 360873432; neither river has a path, so they drain to the sea). Under the strict rule they are below the rivers' lowest outlets, the same as the Toba caveat. Review G3.
+- 4,601 segments changed flow by more than 0.001 m3/s in some month, 3,843 of them junction-start segments. 2,309 changed by more than 1 m3/s; 2,001 fell by more than 1 in June and 51 rose.
+- Flow summed over river mouths (lines with no path, lowest segment, annual mean): 21,366.4 before and after. Root outlets' segments: 21,435.97 before and after.
+- Review metric (junctions within 1 mm of a segment start, joining line > 1 m3/s in June, step on the upper segment): **2,373 of 18,942 before, 678 after** (the review counted 2,720 of 20,745 on the #13 build with its own query). Of the 678, all are exact junctions. 345 have a placed outlet higher on the upper segment whose PCIC flow includes the tributary (an unplaced PCIC child anchored to it: the review's scope note). The rest are area shares: 133 where the upper segment and the tributary's mouth share a fundamental watershed polygon, the others where the lookup gives the upper segment the tributary's area.
+- S1, junction-start segments whose June flow exceeds the segment below's by more than 1 m3/s: 776 before, 668 after.
+- `anchor_subid` for a placed outlet is its nearest placed ancestor (36,896 = `dowsubid`; none = own `subid`), and matching by it gives the same 7 children at the same 6 outlets on #13 (review G1).
+
+## Phase 3b QA tests fire (16:50 UTC)
+
+Against the #13 snapshot, the vertex test, the FWA-child invariant and the population ceiling (<= 1,000) all return `f`. On the intermediate build all three return `t`. They take about 9 s together.
+
 ## Errors Encountered
 
 | Error | Resolution |

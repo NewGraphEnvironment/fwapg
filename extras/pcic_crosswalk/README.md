@@ -40,10 +40,10 @@ of it rebuilding the blue line paths and 6 min writing flow per segment. The job
    About 1% of outlets sit on a vertex two segments of one blue line share; they take the segment starting
    there (FWA measures run from a segment's downstream end up to, not including, its upstream end), which
    at a tributary junction is the segment above it. That is right where the tributary is the outlet's PCIC
-   sibling. Where it is the outlet's own PCIC child (6 outlets in the 2026-10 build), the outlet's flow
-   includes the tributary, so after placement (step 5) it moves to the nearest usable segment below the
-   junction on its blue line: the next segment at the same measure, or up to 100 m down where that one has
-   no fundamental watershed.
+   sibling. Where it carries the outlet's own PCIC child (or a descendant anchored to it through unplaced
+   children; 6 outlets in the 2026-10 build), the outlet's flow includes the tributary, so after placement
+   (step 5) it moves to the nearest usable segment below the junction on its blue line, 1 mm inside the
+   segment's upper end: the next segment, or up to 100 m down where that one has no fundamental watershed.
    Excluded: subsurface flow edges (`1425`), streams off the network (watershed codes under `999`) or
    with no local code, and segments with no fundamental watershed. (`FWA_IndexPoint` keeps one segment
    per stream and can exclude only `6010`, so filtering its output loses the whole stream when its
@@ -151,7 +151,7 @@ flow (the Cheslatta River) trip it too.
      localcode_ltree          | ltree            |
      watershed_group_code     | text             |
      distance_to_stream       | double precision | snap distance (m)
-     candidate_rank           | integer          | 1 = nearest candidate
+     candidate_rank           | integer          | 1 = nearest candidate; NULL if moved > 1 m below a junction
      flag                     | text             | NULL, no_candidate, no_series, broken_chain, demoted
 
 
@@ -181,6 +181,13 @@ flow (the Cheslatta River) trip it too.
   almost nothing.
 - Segments below a river's lowest placed outlet, between it and the sea, carry no flow. An outlet on the
   vertex two segments share takes the upper one, so the Toba River's first 122 m (three segments) have none.
+  Lines that join a river at its mouth, where the river's lowest outlet sits, are below it too: in the 2026-10
+  build, 13 segments of five secondary-flow lines at two coastal mouths (KITL, GRAI).
+- A tributary's flow steps up on the segment below its junction. It still lands on the segment above
+  at about 680 of 19,000 junctions with more than 1 m³/s in June, against 2,373 before
+  NewGraphEnvironment/fwapg#14. About half have an outlet higher on that segment whose PCIC flow includes
+  the tributary (an unplaced PCIC child anchored to it); the rest are area shares where the watershed
+  lookup gives the segment the tributary's area. `sql/qa.sql` holds the count under 1,000.
 - Streams that leave BC before reaching their parent have no path, so their flow does not reach the
   parent in BC: the Okanagan, Kettle and Similkameen join the Columbia in the US, and their flow is not
   on the Columbia in BC (PCIC routes it through the US too).

@@ -19,13 +19,13 @@ Branch `14-pcic-crosswalk-flow-and-placement-at-a` off `newgraph`; PR `--base ne
 - [x] Add a pointer from the tie-rule comment in 02 to the move in 06, and update README step 3 (the "at 6 outlets" passage) and the caveats.
 
 ## Phase 3b: Fold in the plan review (review-1.md), then a final rerun
-- [ ] Match the child by `anchor_subid = x.subid` (a placed descendant through an unplaced child is in x's flow too) in the 06 move and QA test 1. It gives the same 7 children today; verify that.
-- [ ] Land a moved outlet at `least(measure, upstream_route_measure - 0.001)`, at least 1 mm inside its segment, so which junction it sits below never rests on float noise. Set `candidate_rank` to NULL when the move goes more than 1 mm (the position is no longer a candidate), and say so in the README.
-- [ ] QA: every placed outlet's FWA child on another blue line joins the parent's line at least 1 mm above the start of the parent's segment, mouths included. This guards the 06 and 07 step>0 rules against drifting apart.
-- [ ] QA: a population ceiling on junctions where the step lands on the segment above, set from the intermediate run. The residual is not 0: touch junctions with no tributary outlet step by area share.
+- [x] Match the child by `anchor_subid = x.subid` (a placed descendant through an unplaced child is in x's flow too) in the 06 move and QA test 1. It gives the same 7 children today; verify that.
+- [x] Land a moved outlet at `least(measure, upstream_route_measure - 0.001)`, at least 1 mm inside its segment, so which junction it sits below never rests on float noise. Set `candidate_rank` to NULL when the move goes more than 1 mm (the position is no longer a candidate), and say so in the README.
+- [x] QA: every placed outlet's FWA child on another blue line joins the parent's line at least 1 mm above the start of the parent's segment, mouths included. This guards the 06 and 07 step>0 rules against drifting apart.
+- [x] QA: a population ceiling on junctions where the step lands on the segment above, set from the intermediate run. The residual is not 0: touch junctions with no tributary outlet step by area share.
 
 ## Phase 4: Rerun and compare against the current build
-- [ ] Snapshot the current outputs into scratch tables (`fwapg.pcic14_before_crosswalk`, `fwapg.pcic14_before_monthly`).
+- [x] Snapshot the current outputs into scratch tables (`fwapg.pcic14_before_crosswalk`, `fwapg.pcic14_before_monthly`).
 - [ ] Rerun `./pcic_crosswalk.sh` in the background: `data/run14.log` is the intermediate run on 88a60d0, `data/run14b.log` the final run after Phase 3b. Log to `data/run14*.log` (about 30 min; do not run the main-flow tree job at the same time). QA must pass, including both new tests.
 - [ ] Compare against the snapshot:
   - the crosswalk should differ only at the 6 outlets (segment, measure, local code, distance), with `fwa_parent_subid` identical everywhere (assert it);

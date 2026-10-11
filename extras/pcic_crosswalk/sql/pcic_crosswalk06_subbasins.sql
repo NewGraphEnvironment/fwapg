@@ -22,18 +22,22 @@
 -- An outlet on a vertex two segments share is placed on the upper one
 -- (pcic_crosswalk02_candidates.sql). A tributary's junction is such a vertex: the
 -- start of the main-stem segment above it, since FWA measures run [downstream,
--- upstream). Where the tributary is the outlet's own PCIC child, the outlet's flow
+-- upstream). Where the tributary carries a placed PCIC descendant of the outlet (a
+-- child, or one anchored to it through unplaced children), the outlet's flow
 -- includes it, so the outlet belongs below the confluence: it moves to the nearest
--- usable segment below on its blue line (the next one, at the same measure, unless
--- that one has no fundamental watershed; then up to 100 m down, to the upper end of
--- the next). Placement is done by now and compares measures, which this keeps or
--- lowers by a segment's length. Vertex and junction are compared within 1 mm:
--- adjacent segments' measures differ in the last digits. qa.sql tests that none is
--- left (NewGraphEnvironment/fwapg#14).
+-- usable segment below on its blue line (the next one, unless that one has no
+-- fundamental watershed; then up to 100 m down), 1 mm inside the segment's upper
+-- end, so that which junctions it sits below does not rest on float noise. A move
+-- of more than 1 m leaves the outlet off its candidate, so candidate_rank is
+-- cleared. Placement is done by now and compares measures, which this lowers by at
+-- most a segment's length. Vertex and junction are compared within 1 mm: adjacent
+-- segments' measures differ in the last digits. qa.sql tests that none is left
+-- (NewGraphEnvironment/fwapg#14).
 UPDATE whse_basemapping.pcic_fwa_crosswalk x
 SET
   linear_feature_id = m.linear_feature_id,
   downstream_route_measure = m.downstream_route_measure,
+  candidate_rank = CASE WHEN x.downstream_route_measure - m.downstream_route_measure > 1 THEN NULL ELSE x.candidate_rank END,
   wscode_ltree = m.wscode_ltree,
   localcode_ltree = m.localcode_ltree,
   watershed_group_code = m.watershed_group_code,
@@ -42,7 +46,7 @@ FROM (
   SELECT DISTINCT ON (x.subid)
     x.subid,
     b.linear_feature_id,
-    least(x.downstream_route_measure, b.upstream_route_measure) AS downstream_route_measure,
+    least(x.downstream_route_measure, b.upstream_route_measure - 0.001) AS downstream_route_measure,
     b.wscode_ltree,
     b.localcode_ltree,
     b.watershed_group_code,
@@ -51,7 +55,7 @@ FROM (
   INNER JOIN fwapg.pcic_outlets o ON o.subid = x.subid
   INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = x.linear_feature_id
   INNER JOIN whse_basemapping.pcic_fwa_crosswalk c
-    ON c.dowsubid = x.subid AND c.flag IS NULL AND c.blue_line_key != x.blue_line_key
+    ON c.anchor_subid = x.subid AND c.flag IS NULL AND c.blue_line_key != x.blue_line_key
   INNER JOIN fwapg.blk_paths bp ON bp.blue_line_key = c.blue_line_key
   CROSS JOIN LATERAL unnest(bp.path_blks, bp.path_measures) AS u(blk, measure)
   CROSS JOIN LATERAL (
