@@ -120,6 +120,15 @@ Reviewer read 436a4ea and aaa8acc, probing in a copy. Folded in:
 - A first attempt at that check compared endpoints with `ST_DWithin` and no usable index; cancelled after 10 min
   with `pg_cancel_backend` and redone with the 1 cm node keys qa_topology.sql uses (40 s).
 
+## Watchdog tests (2026-10-10, `extras/mainflow_tree/data/ssnbler/runs.log`, `test_*`)
+
+- Normal: LKEL (Skeena share) 2,218 lines, 0 node errors, 1 outlet (as in #2), exit 0, peak 0.6 GB, 6 s.
+- Guard fires: cap 1 GB on UTRE (Nechako share, 5,533 lines) -> killed at 1.4 GB, exit 3, lock released.
+  Without the cap UTRE finished in under 12 s, 0 errors, 2 outlets (as #2), peak 1.4 GB (#2 recorded 3 GB RSS
+  on the other machine).
+- Signal: TERM to the script during NECR (21k lines) -> R stopped and lock removed within 4 s. (A first attempt
+  signalled the `export && ./script` wrapper subshell instead of the script; the script correctly kept watching.)
+
 ## Errors Encountered
 
 | Error | Resolution |
