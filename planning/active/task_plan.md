@@ -50,7 +50,7 @@
 - [ ] Topology QA runtime measured after the BC-outline change; 23 `no_parent` rows identical
 - [ ] SSNbler LSKE/BULK/FRAN + ladder recorded in `extras/mainflow_tree/README.md`
 - [ ] Tests pass
-- [ ] `/code-check` clean (each commit, or once over the branch with `/code-check branch`)
+- [x] `/code-check` clean (each commit, or once over the branch with `/code-check branch`)
 - [ ] PWF checkboxes match landed work
 - [ ] `/planning-archive` on completion
 

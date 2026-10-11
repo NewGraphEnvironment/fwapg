@@ -210,9 +210,36 @@ footprint, which top prints in whole GB above 10 GB.
 > required) two exactly-snapped nodes are reported as unsnapped. Suggested fix: return global indices (pass each
 > chunk's starting row) and compute duplicate to-nodes over all nodes before chunking.
 
+## Code-check over the branch (2026-10-10, `review-round1.md`..`review-round3.md`)
+
+Base: merge-base with `origin/newgraph` (the PR base; GitHub's default branch here is `main`, which tracks
+upstream). Checklist: the five code-check conventions in full.
+
+| Round | Findings | Fixed | Accepted | Inside previous fix? |
+|---|---|---|---|---|
+| (pre) watchdog review | 10 | 8 | 2 info | n/a |
+| 1 | 1 (lock comment said two, record says three) + Toba note | 2 | 0 | n |
+| 2 | 3 + 1 outside diff | 2 | 1 (tie-rule child case: README caveat + fwapg#14) | **y**: exit 0 on unset DATABASE_URL came from the EXIT trap added by the watchdog review |
+| 3 | 5, one mechanism | all, structurally | 0 | y (same class) |
+
+- Round 3's mechanism: the script promised exit codes 0-5 but let whatever failed choose the status (set -e /
+  pipefail -> the tool's status; set -u under an EXIT trap -> previous status on bash 3.2; `wait` -> R's raw
+  status; a failure inside the trap -> 1). Fix: `$final` owns the status, default 5, set only by `die`, the
+  signal traps, the cap/sampling branch and R's 0/1-with-result; every exit goes through an EXIT trap that exits
+  with it. Probed on bash 3.2 that `exit "$final"` in the trap wins over set -e, set -u, a plain exit and a
+  failing cleanup.
+- Ended by enumeration: every `final=`/`die`/`exit`/trap line (grep) gives the set {0,1,2,3,4,5,129,130,143},
+  the documented contract. Measured: unset URL 2, bad args 2, empty 5, R fails 5, clean 0, mismatch 1, cap 3
+  (NECR at 2 GB; UTRE at 1 GB no longer reached the cap, peak 0.6 GB), R SIGKILLed from outside 5 (r_exit 137),
+  lock held 2, TERM 143; no R or lock left after any.
+- Outside the diff, filed: fwapg#14 (segment flow steps up one segment above a junction; 701317184 carries
+  684.85 m3/s vs 13.97 above, verified; and the 6 child-case ties, counted independently).
+- Reviewers this task: 4 (the watchdog review and 3 rounds).
+
 ## Errors Encountered
 
 | Error | Resolution |
 |-------|------------|
 | `diff` printed a git-style diff and `grep -c "^<"` counted 0 | `diff` is a shell wrapper; use `/usr/bin/diff` |
 | Endpoint `ST_DWithin` join ran 10 min unindexed | Cancel on the server (`pg_cancel_backend`); join on rounded 1 cm node keys |
+| Cap test on UTRE at 1 GB passed under the cap (peak 0.6 GB) | Use a fixture that exceeds the cap (NECR at 2 GB) |

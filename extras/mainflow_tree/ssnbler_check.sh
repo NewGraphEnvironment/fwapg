@@ -16,26 +16,36 @@ set -euo pipefail
 # appends one line to data/ssnbler/runs.log. Exit status: 0 clean; 1 node errors
 # or an outlet count other than expected; 2 bad arguments or a run already going;
 # 3 killed at the cap or by low system memory; 4 the memory could not be sampled;
-# 5 no result (the export failed, the subset is empty, or R failed).
+# 5 no result (the export failed, the subset is empty, R failed, or anything else
+# went wrong); 129, 130 or 143 when the script itself got HUP, INT or TERM.
+
+# The exit status is $final and nothing else: the EXIT trap always exits with it,
+# so a failure no line here anticipated (set -e, set -u, a tool's own status)
+# reads as 5, never as a plausible 0 or 1.
+final=5
+trap 'exit "$final"' EXIT
+die() {
+  echo "$2" >&2
+  final=$1
+  exit
+}
 
 cd "$(dirname "$0")"
 
 usage="usage: ./ssnbler_check.sh <cap_gb> <name> <wscode> [group|-] [expected outlets]"
-[ $# -ge 3 ] && [ $# -le 5 ] || { echo "$usage" >&2; exit 2; }
+[ $# -ge 3 ] && [ $# -le 5 ] || die 2 "$usage"
 cap_gb=$1
 name=$2
 wscode=$3
 group=${4:--}
 outlets=${5:-}
 # the values go into SQL and file names
-[[ $cap_gb =~ ^[1-9][0-9]{0,3}$ ]] || { echo "cap_gb must be a whole number of GB" >&2; exit 2; }
-[[ $name =~ ^[A-Za-z0-9_]+$ ]] || { echo "name: letters, digits and _ only" >&2; exit 2; }
-[[ $wscode =~ ^[0-9]+(\.[0-9]+)*$ ]] || { echo "wscode must look like 100.567134" >&2; exit 2; }
-[[ $group == - || $group =~ ^[A-Z]{4}$ ]] || { echo "group must be a watershed group code or -" >&2; exit 2; }
-[[ -z $outlets || $outlets =~ ^[0-9]{1,6}$ ]] || { echo "expected outlets must be a whole number" >&2; exit 2; }
-# checked here, not left to set -u: bash 3.2 exits 0 on an unbound variable once
-# the EXIT trap below is set
-[ -n "${DATABASE_URL:-}" ] || { echo "DATABASE_URL is not set" >&2; exit 2; }
+[[ $cap_gb =~ ^[1-9][0-9]{0,3}$ ]] || die 2 "cap_gb must be a whole number of GB"
+[[ $name =~ ^[A-Za-z0-9_]+$ ]] || die 2 "name: letters, digits and _ only"
+[[ $wscode =~ ^[0-9]+(\.[0-9]+)*$ ]] || die 2 "wscode must look like 100.567134"
+[[ $group == - || $group =~ ^[A-Z]{4}$ ]] || die 2 "group must be a watershed group code or -"
+[[ -z $outlets || $outlets =~ ^[0-9]{1,6}$ ]] || die 2 "expected outlets must be a whole number"
+[ -n "${DATABASE_URL:-}" ] || die 2 "DATABASE_URL is not set"
 
 dir=data/ssnbler
 mkdir -p "$dir"
@@ -50,8 +60,7 @@ lock=$dir/.lock
 if ! mkdir "$lock" 2> /dev/null; then
   holder=$(cat "$lock/pid" 2> /dev/null || true)
   if [ -n "$holder" ] && kill -0 "$holder" 2> /dev/null; then
-    echo "ssnbler_check.sh is already running (pid $holder)" >&2
-    exit 2
+    die 2 "ssnbler_check.sh is already running (pid $holder)"
   fi
   echo "taking over the lock of a run that is gone (pid ${holder:-unknown})" >&2
 fi
@@ -76,10 +85,11 @@ cleanup() {
   stop_run
   rm -rf "$lock"
 }
-trap cleanup EXIT
-trap 'exit 129' HUP
-trap 'exit 130' INT
-trap 'exit 143' TERM
+# "|| true": a failure inside the trap must not replace $final
+trap 'cleanup || true; exit "$final"' EXIT
+trap 'final=129; exit' HUP
+trap 'final=130; exit' INT
+trap 'final=143; exit' TERM
 
 where="s.wscode_ltree <@ '$wscode'::ltree"
 [ "$group" = - ] || where="$where AND s.watershed_group_code = '$group'"
@@ -87,9 +97,10 @@ rm -f "$dir/$name.gpkg"
 ogr2ogr -f GPKG "$dir/$name.gpkg" PG:"$DATABASE_URL" -nln streams -sql \
   "SELECT s.linear_feature_id, s.geom FROM whse_basemapping.fwa_stream_networks_sp s
    INNER JOIN whse_basemapping.fwa_stream_networks_mainflow_tree t ON t.linear_feature_id = s.linear_feature_id
-   WHERE $where" || { echo "export of $name failed" >&2; exit 5; }
-n=$(ogrinfo -ro -q -sql "SELECT count(*) AS n FROM streams" "$dir/$name.gpkg" | awk '/n \(Integer/ { print $NF }')
-[ "${n:-0}" -gt 0 ] || { echo "no tree segments for $name" >&2; exit 5; }
+   WHERE $where" || die 5 "export of $name failed"
+n=$(ogrinfo -ro -q -sql "SELECT count(*) AS n FROM streams" "$dir/$name.gpkg" | awk '/n \(Integer/ { print $NF }') \
+  || die 5 "cannot count the segments exported for $name"
+[ "${n:-0}" -gt 0 ] || die 5 "no tree segments for $name"
 
 start=$(date +%s)
 # $outlets unquoted: an empty value passes no argument
@@ -151,22 +162,26 @@ while kill -0 "$pid" 2> /dev/null; do
   fi
   sleep 3
 done
-rc=0
 if [ -n "$killed" ]; then
-  echo "$killed" >> "$log"
+  case $killed in memory*) final=4 ;; *) final=3 ;; esac
+  echo "$killed" >> "$log" || true
   stop_run
-  case $killed in memory*) rc=4 ;; *) rc=3 ;; esac
 fi
 r_rc=0
 wait "$pid" || r_rc=$?
-[ -n "$killed" ] || rc=$r_rc
 pid=""
-# R exits 1 for node errors or an outlet mismatch, and also when it fails; only
-# the first prints the result line
-[ "$rc" -ne 1 ] || grep -q 'node errors: [0-9]' "$log" || rc=5
+# R exits 0 clean and 1 for node errors or an outlet mismatch, printing the result
+# line either way; any other status, or no result line, is a failure (5)
+if [ -z "$killed" ]; then
+  if [ "$r_rc" -le 1 ] && grep -q 'node errors: [0-9]' "$log"; then
+    final=$r_rc
+  fi
+fi
 
 lines=$(grep -o 'lines: [0-9]*' "$log" || true)
 result=$(grep -o 'node errors: [0-9]*  outlets: [0-9]*' "$log" || true)
-summary="$(date '+%F %T') $name wscode=$wscode group=$group exit=$rc peak_gb=$(awk -v k="$peak" 'BEGIN { printf "%.1f", k / 1048576 }') minutes=$((($(date +%s) - start + 59) / 60)) ${lines:-lines: ?} ${result:-node errors: ?}"
-echo "$summary" | tee -a "$dir/runs.log"
-exit "$rc"
+summary="$(date '+%F %T') $name wscode=$wscode group=$group exit=$final r_exit=$r_rc peak_gb=$(awk -v k="$peak" 'BEGIN { printf "%.1f", k / 1048576 }') minutes=$((($(date +%s) - start + 59) / 60)) ${lines:-lines: ?} ${result:-node errors: ?}"
+# the log first, so a closed stdout cannot lose the line
+echo "$summary" >> "$dir/runs.log" || echo "could not append to $dir/runs.log" >&2
+echo "$summary" || true
+exit
