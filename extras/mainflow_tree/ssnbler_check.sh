@@ -13,8 +13,10 @@ set -euo pipefail
 # this run's SSNbler workers, sampled every 3 s. At 46,340 lines or more SSNbler
 # starts a PSOCK cluster: separate R processes, reparented away from R, found by
 # the worker log path ssnbler_check.R puts on their command lines. Each run
-# appends one line to data/ssnbler/runs.log. Exit status: R's; 3 killed at the
-# cap or by low system memory; 4 the memory could not be sampled.
+# appends one line to data/ssnbler/runs.log. Exit status: 0 clean; 1 node errors
+# or an outlet count other than expected; 2 bad arguments or a run already going;
+# 3 killed at the cap or by low system memory; 4 the memory could not be sampled;
+# 5 no result (the export failed, the subset is empty, or R failed).
 
 cd "$(dirname "$0")"
 
@@ -31,6 +33,9 @@ outlets=${5:-}
 [[ $wscode =~ ^[0-9]+(\.[0-9]+)*$ ]] || { echo "wscode must look like 100.567134" >&2; exit 2; }
 [[ $group == - || $group =~ ^[A-Z]{4}$ ]] || { echo "group must be a watershed group code or -" >&2; exit 2; }
 [[ -z $outlets || $outlets =~ ^[0-9]{1,6}$ ]] || { echo "expected outlets must be a whole number" >&2; exit 2; }
+# checked here, not left to set -u: bash 3.2 exits 0 on an unbound variable once
+# the EXIT trap below is set
+[ -n "${DATABASE_URL:-}" ] || { echo "DATABASE_URL is not set" >&2; exit 2; }
 
 dir=data/ssnbler
 mkdir -p "$dir"
@@ -82,7 +87,9 @@ rm -f "$dir/$name.gpkg"
 ogr2ogr -f GPKG "$dir/$name.gpkg" PG:"$DATABASE_URL" -nln streams -sql \
   "SELECT s.linear_feature_id, s.geom FROM whse_basemapping.fwa_stream_networks_sp s
    INNER JOIN whse_basemapping.fwa_stream_networks_mainflow_tree t ON t.linear_feature_id = s.linear_feature_id
-   WHERE $where"
+   WHERE $where" || { echo "export of $name failed" >&2; exit 5; }
+n=$(ogrinfo -ro -q -sql "SELECT count(*) AS n FROM streams" "$dir/$name.gpkg" | awk '/n \(Integer/ { print $NF }')
+[ "${n:-0}" -gt 0 ] || { echo "no tree segments for $name" >&2; exit 5; }
 
 start=$(date +%s)
 # $outlets unquoted: an empty value passes no argument
@@ -154,6 +161,9 @@ r_rc=0
 wait "$pid" || r_rc=$?
 [ -n "$killed" ] || rc=$r_rc
 pid=""
+# R exits 1 for node errors or an outlet mismatch, and also when it fails; only
+# the first prints the result line
+[ "$rc" -ne 1 ] || grep -q 'node errors: [0-9]' "$log" || rc=5
 
 lines=$(grep -o 'lines: [0-9]*' "$log" || true)
 result=$(grep -o 'node errors: [0-9]*  outlets: [0-9]*' "$log" || true)

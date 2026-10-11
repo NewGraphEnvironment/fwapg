@@ -122,8 +122,10 @@ than a cap (in GB):
     ./ssnbler_check.sh 60 klum 400 KLUM 1      # <cap_gb> <name> <wscode> [group|-] [expected outlets]
 
 It writes `data/ssnbler/klum.gpkg`, `data/ssnbler/lsn_klum` and `data/ssnbler/klum.log`, appends a line
-with the exit status, peak memory, minutes, lines and result to `data/ssnbler/runs.log`, and exits with R's
-status, 3 when the run was killed at the cap or by low system memory, or 4 when memory could not be sampled.
+with the exit status, peak memory, minutes, lines and result to `data/ssnbler/runs.log`. It exits 0 when
+clean, 1 on node errors or an unexpected outlet count, 3 when killed at the cap or by low system memory, 4
+when memory could not be sampled, and 5 when there is no result (the export failed, the subset is empty, or R
+failed).
 
 SSNbler (1.1.2) takes one of two paths, and they differ:
 

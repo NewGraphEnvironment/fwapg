@@ -39,7 +39,9 @@ of it rebuilding the blue line paths and 6 min writing flow per segment. The job
    search, with unusable segments excluded *before* the nearest segment of each blue line is picked.
    About 1% of outlets sit on a vertex two segments of one blue line share; they take the segment starting
    there (FWA measures run from a segment's downstream end up to, not including, its upstream end), which
-   at a tributary junction is the segment above it.
+   at a tributary junction is the segment above it. That is right where the tributary is the outlet's PCIC
+   sibling; at 6 outlets it is the outlet's own PCIC child, so the outlet sits above a confluence whose flow
+   it includes (its accumulated flow is still right; its sub-basin's local area is short by the tributary's).
    Excluded: subsurface flow edges (`1425`), streams off the network (watershed codes under `999`) or
    with no local code, and segments with no fundamental watershed. (`FWA_IndexPoint` keeps one segment
    per stream and can exclude only `6010`, so filtering its output loses the whole stream when its
