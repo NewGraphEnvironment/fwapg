@@ -28,4 +28,4 @@ Wrong turns, kept:
 
 `extras/pcic_crosswalk/data/run14*.log` and `extras/pcic_crosswalk/data/qa_gauges_run14b.log` (gitignored, on the machine that ran the job); `review-1.md` and `review-round*.md` in this directory.
 
-Closed by: the PR into `newgraph` for fwapg#14.
+Closed by: PR #21 (into `newgraph`).

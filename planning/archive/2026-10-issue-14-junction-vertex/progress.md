@@ -12,5 +12,5 @@
 - Phase 3b (5020767): anchor match, 1 mm landing, `candidate_rank`, FWA-child invariant and junction ceiling QA
 - `/code-check branch`, 3 rounds (1fb1071, df81e20, eae70af): mouths and stacked outlets stop the job; a 1 mm tolerance on step>0 (a 2,130 ha tributary had no flow, pre-existing); landing below the next segment's start, not `upstream_route_measure`. Ended by enumeration
 - Final run `data/run14b.log` on eae70af: 15/15 QA; gauges unchanged (494/538); fingerprint in findings
-- Answered wet#58 (on m1) on which build to score: #14's, after merge
+- Answered wet#58 on which build to score: #14's, after merge
 - Next: archive, PR into newgraph
