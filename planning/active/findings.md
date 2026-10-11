@@ -81,6 +81,36 @@ Parallel workers load the **installed** SSNbler (`.packages = "SSNbler"`); a fun
 Parallel tests therefore exercise the installed package: install the branch before `devtools::test()`
 (R CMD check installs it anyway).
 
+## Phase 2-3: the fork changes (2026-10-11)
+
+Fork commits on `fix-pdist-precision-parallel-unsnapped` (from upstream `develop` d3918f1):
+9d759a9 tests, 5a7b208 `dist_xy()` replaces all 5 `pdist()` calls and drops pdist, 20f7021 parallel
+zero pairs + `combine_node_chunks()`, 5a072ef `split_matrix(drop = FALSE)`.
+
+- New tests on unmodified code: 10 failures/errors. The 3-line chain at BC Albers also writes a wrong
+  `relationships.csv` (review G3 confirmed: `rid_confl` joins ends 3 cm apart).
+- After the fix, branch installed: `devtools::test()` 188 pass, 0 fail (157 upstream + 31 new).
+- MF_streams (EPSG:5070) before/after on both paths: `relationships.csv`, `noderelationships.csv`,
+  `nodexy.csv` and node attributes byte-identical; 0 errors, Confluence 52 / Outlet 2 / Pseudonode
+  57 / Source 54.
+- Restore-the-bug, each mutant installed to its own library with `R_LIBS` so the PSOCK workers run it:
+  `dist_xy` -> pdist: 8 failures, including the parallel test (so the workers ran the mutant); no
+  chunk offset: the combiner test; no `drop = FALSE`: the `split_matrix` test.
+- `split_matrix()` 1-row chunk, probed: 3 edges in 2 chunks give `rid_confl` names `"1","2",""`, so
+  `as.integer("")` makes that edge's `fromedge` NA. Fixed: `"1","2","3"`.
+
+## The `st_line_sample()` end-point drift: measured, not changed
+
+`st_line_sample(sample = 1)` lands 1 ulp (1.16e-10 or 2.33e-10 m) off the last vertex on long lines
+(5 USKE lines with 61-143 vertices; from-ends never drift). With exact distances, such an end reads
+0 < d <= tolerance from the downstream line's start. That is harmless while both round into the same
+1 cm bin: the nodes merge and `lines_to_lsn.R:569` drops Unsnapped errors at merged nodes. FWA
+coordinates are whole mm, so a coordinate ending in 5 mm sits on a bin edge, and a 1-ulp drift the
+right way would split the nodes and flag both. No crossing in 20,000 random 4-vertex lines (no
+drift at all) or in 1,500 translations of the five real drifting lines placed on a bin edge. It is
+not reproducible, so it stays out of the PR and is mentioned there; if a run ever flags a pair of
+nodes ~1e-10 m apart, taking ends from `st_coordinates()` is the fix.
+
 ## Errors Encountered
 
 | Error | Resolution |

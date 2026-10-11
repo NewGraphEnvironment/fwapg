@@ -8,22 +8,22 @@ SSNbler 1.1.2 reports false node errors on FWA data (pet221/SSNbler#8). Fix it o
 - [x] Baseline: `devtools::test()` and `ssnbler_reprex.R` against the unmodified clone (`devtools::load_all`), recording errors A and B in findings.md
 
 ## Phase 2: Tests first (fork)
-- [ ] Before-snapshot: `MF_streams` (EPSG:5070, ~3e6 m) through `lines_to_lsn()` on both paths with unmodified code; save `relationships.csv`, `noderelationships.csv`, nodecat and node_errors to diff after the fix (review G7)
-- [ ] `tests/testthat/test-topology_precision.R`: the 3-line chain at the pinned coordinates (878000, 1261000), the middle line 3 cm long, `snap_tolerance = 0.001`, in `withr::local_tempdir()`; expect no node errors and `relationships.csv` exactly 1→2, 2→3. Control: the same chain near the origin. A comment explains why the coordinates are pinned (pdist reads 3 cm as 0 there, but only ~63% of random BC Albers positions do)
-- [ ] Unit tests of `dist_xy()`: offsets exact in binary (2^-10; a 3-4-5 triangle scaled by 2^-7) at 10^0-10^6 checked with `expect_identical`, identical points exactly 0, rectangular/data.frame/1-row inputs, and a block size forcing several blocks plus a remainder (review G5)
-- [ ] Unit test of the parallel combiner without a cluster: `lapply` over `split_matrix(node_xy, 2)` with duplicate node rows within one chunk and across the boundary (351/352 of 701), compared with the serial `which(colSums(D == 0) > 1)` / `which(rowSums(D[, dbl, drop = FALSE] == 0) > 0)` on the full matrix (review B1: unreachable through `lines_to_lsn()` once distances are exact)
-- [ ] `split_matrix()` unit test: 10 rows into 4 chunks give 3/3/3/1, each a matrix keeping its rownames (review G4)
-- [ ] Parallel test: 700 lines with the 3 cm line at 650, `use_parallel = TRUE, no_cores = 2`, node categories, errors and relationships identical to serial; `skip_on_cran()`
+- [x] Before-snapshot: `MF_streams` (EPSG:5070, ~3e6 m) through `lines_to_lsn()` on both paths with unmodified code; save `relationships.csv`, `noderelationships.csv`, nodecat and node_errors to diff after the fix (review G7)
+- [x] `tests/testthat/test-topology_precision.R`: the 3-line chain at the pinned coordinates (878000, 1261000), the middle line 3 cm long, `snap_tolerance = 0.001`, in `withr::local_tempdir()`; expect no node errors and `relationships.csv` exactly 1→2, 2→3. Control: the same chain near the origin. A comment explains why the coordinates are pinned (pdist reads 3 cm as 0 there, but only ~63% of random BC Albers positions do)
+- [x] Unit tests of `dist_xy()`: offsets exact in binary (2^-10; a 3-4-5 triangle scaled by 2^-7) at 10^0-10^6 checked with `expect_identical`, identical points exactly 0, rectangular/data.frame/1-row inputs, and a block size forcing several blocks plus a remainder (review G5)
+- [x] Unit test of the parallel combiner without a cluster: `lapply` over `split_matrix(node_xy, 2)` with duplicate node rows within one chunk and across the boundary (351/352 of 701), compared with the serial `which(colSums(D == 0) > 1)` / `which(rowSums(D[, dbl, drop = FALSE] == 0) > 0)` on the full matrix (review B1: unreachable through `lines_to_lsn()` once distances are exact)
+- [x] `split_matrix()` unit test: 10 rows into 4 chunks give 3/3/3/1, each a matrix keeping its rownames (review G4)
+- [x] Parallel test: 700 lines with the 3 cm line at 650, `use_parallel = TRUE, no_cores = 2`, node categories, errors and relationships identical to serial; `skip_on_cran()`
 
 ## Phase 3: Fix (fork, branched from upstream `develop`, 1.1.2.9000)
-- [ ] Internal `dist_xy(a, b)`: exact Euclidean distances from coordinate differences, filled in row blocks into a preallocated matrix; replace all 5 pdist() calls; drop `@importFrom pdist pdist` (R/SSNbler-package.R), pdist from Imports and from foreach `.packages`; `document()`
-- [ ] Parallel path: `pdist_node_coords()` returns chunk-local zero-distance (node, edge) pairs; `get_pdist_nodes()` offsets them by real chunk sizes, derives `dbl_tonodes` and `unsnapped_tonodes` globally (`sort(unique())`), list handling rather than `.combine = 'c'`
-- [ ] `split_matrix()`: `drop = FALSE`
-- [ ] Separate commit: from/to/node coordinates from the vertices (`st_coordinates()`) instead of `st_line_sample()`, whose to-ends drift up to 2.3e-10 m (5 USKE, 3 MSKE lines), hidden today only by the rounding-bin merge plus the `removed_nodes` suppression (review G1); kept out of the PR if it touches more than the end-point extraction
-- [ ] NEWS.md bullets under "(development version)", citing pet221/SSNbler#8
-- [ ] Install the branch (`R CMD INSTALL .`): parallel workers load the installed SSNbler, not `load_all()` (review B2)
-- [ ] `devtools::test()` green; MF_streams after-snapshot identical to the before-snapshot on both paths
-- [ ] Restore-the-bug, one defect at a time on an installed reverted tree: precision only, offsets only, `drop` only; each makes at least one new test fail
+- [x] Internal `dist_xy(a, b)`: exact Euclidean distances from coordinate differences, filled in row blocks into a preallocated matrix; replace all 5 pdist() calls; drop `@importFrom pdist pdist` (R/SSNbler-package.R), pdist from Imports and from foreach `.packages`; `document()`
+- [x] Parallel path: `pdist_node_coords()` returns chunk-local zero-distance (node, edge) pairs; `get_pdist_nodes()` offsets them by real chunk sizes, derives `dbl_tonodes` and `unsnapped_tonodes` globally (`sort(unique())`), list handling rather than `.combine = 'c'`
+- [x] `split_matrix()`: `drop = FALSE`
+- [x] ~~Separate commit~~ not made, measured instead (findings.md): from/to/node coordinates from the vertices (`st_coordinates()`) instead of `st_line_sample()`, whose to-ends drift up to 2.3e-10 m (5 USKE, 3 MSKE lines), hidden today only by the rounding-bin merge plus the `removed_nodes` suppression (review G1); kept out of the PR if it touches more than the end-point extraction
+- [x] NEWS.md bullets under "(development version)", citing pet221/SSNbler#8
+- [x] Install the branch (`R CMD INSTALL .`): parallel workers load the installed SSNbler, not `load_all()` (review B2)
+- [x] `devtools::test()` green; MF_streams after-snapshot identical to the before-snapshot on both paths
+- [x] Restore-the-bug, one defect at a time on an installed reverted tree: precision only, offsets only, `drop` only; each makes at least one new test fail
 
 ## Phase 4: R CMD check (fork)
 - [ ] `devtools::check()`: 0 errors and 0 warnings, with any NOTE explained
