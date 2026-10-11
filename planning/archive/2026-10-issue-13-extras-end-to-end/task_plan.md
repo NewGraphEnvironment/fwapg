@@ -52,7 +52,7 @@
 - [x] Tests pass (job QA: paths 3/3, PCIC 10/10, tree 10/10; watchdog exit-status matrix)
 - [x] `/code-check` clean (each commit, or once over the branch with `/code-check branch`)
 - [x] PWF checkboxes match landed work
-- [ ] `/planning-archive` on completion
+- [x] `/planning-archive` on completion
 
 Host: the run machine is described in the private host issue, never in this public repo.
 `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/fwapg` (local Docker default).
