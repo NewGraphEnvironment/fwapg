@@ -92,6 +92,24 @@ Enumeration that ends the class (comparisons of measures with no tolerance, acro
 - **Enumeration that ends the loop:** every place a position is derived from `upstream_route_measure`. 06:53 (landing) and 06:90 (band) are fixed. 06:70 is the 100 m reach window, which millimetres cannot move. 07:52 carries the column into `pcic_segments` and never compares it. 00-05, `qa*.sql` and `blue_line_paths.sql` do not read it. Together with round 2's list (every comparison across sources has 1 mm), nothing positions an outlet or junction from the field that disagrees.
 - **Out of scope, no instance:** the round-2 class also reaches placement in 04/05 (`blk_on_or_upstream`, `>=` with no tolerance). An outlet 1e-14 m above a junction blocks a child on that tributary from validating against it. The build has 4 such outlets, and none has a PCIC child on the joining tributary. Placement is not changed by #14; noted for the review in #8.
 
+## Final run (`data/run14b.log`, eae70af, 2026-10-11 17:23-17:51 UTC)
+
+All 15 QA tests passed: 10 existing and 5 new (vertex outlets, tributary 356567538, FWA-child invariant, tributary 356359224, junction ceiling). The move updated 6 outlets.
+
+**Fingerprint** (for wet#58 and fwapg#9): `fwa_stream_networks_discharge_monthly` 40,524,444 rows, 3,377,037 segments, `sum(round(q_m3s::numeric, 6))` = 178035348.248310. `pcic_fwa_crosswalk` 48,716 rows. (#13: 40,524,600 rows, 3,377,050 segments, sum 178168114.938520.)
+
+Against the #13 build:
+- Crosswalk: 6 rows changed (segment, local code, measure; 5014089 also distance and a NULL `candidate_rank`). `fwa_parent_subid`, flag and anchor are identical everywhere. Landings: 2007294 899883.296 -> .294, 4000204 90814.780 -> .778, 4000212 2098.048 -> .047, 5014089 15351.363 -> 15307.559, 9001132 3084.100 -> .099, 12007835 943.358 -> .357.
+- Segments: 4,695 changed by more than 0.001 m3/s in some month, 3,892 of them junction-start segments. 2,300 changed by more than 1 m3/s (2,005 fell in June, 38 rose).
+  - 1,052 segments that had no flow in any month now carry some: the tributaries an outlet skipped by float noise (round 2), 356567538 among them.
+  - 135 segments now carry none, against some before. On every one, nothing above it on its line carries flow, so its only flow was a tributary's step landing one segment too high. Edge types: 1000 (65, mostly small STHM streams), 1410 connectors (20), 1100 secondary flow (12), 1200 (9), 1475 lake arms (8), and others. The largest was 703314562 (THOM, a 144 m, 1 ha construction line) at 734 m3/s.
+  - 13 segments left the output (five secondary-flow lines at the KITL and GRAI mouths, as in the intermediate run).
+- Junctions where the step lands on the segment above (review metric): 2,373 of 18,942 before and 678 of 18,941 after; under the QA ceiling of 1,000.
+- Junction-start segments above the segment below's flow by more than 1 m3/s (S1): 776 before, 668 after.
+- Flow summed at river mouths: 21,366.4 m3/s before and after. Root outlets' segments: 21,435.97 before and after.
+- Gauges (`qa_gauges.sh`, `data/qa_gauges_run14b.log`): unchanged at 538 compared, 494 within 10% (114, 207, 134 and 39 by size class), 11 where another PCIC branch matches, 33 disagree. FWA flow changed at 2 of 604 gauges: 08ND007 Columbia above Nagle Creek 551.133 -> 544.148 m3/s (PCIC 7.19; one of the known Columbia side-channel cases) and 08NG042 Kootenay at Newgate 288.002 -> 288.186.
+- Snapshot tables dropped after the comparison; wet#58 confirmed it does not need them.
+
 ## Errors Encountered
 
 | Error | Resolution |

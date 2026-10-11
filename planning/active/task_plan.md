@@ -26,19 +26,19 @@ Branch `14-pcic-crosswalk-flow-and-placement-at-a` off `newgraph`; PR `--base ne
 
 ## Phase 4: Rerun and compare against the current build
 - [x] Snapshot the current outputs into scratch tables (`fwapg.pcic14_before_crosswalk`, `fwapg.pcic14_before_monthly`).
-- [ ] Rerun `./pcic_crosswalk.sh` in the background: `data/run14.log` is the intermediate run on 88a60d0, `data/run14b.log` the final run after Phase 3b. Log to `data/run14*.log` (about 30 min; do not run the main-flow tree job at the same time). QA must pass, including both new tests.
-- [ ] Compare against the snapshot:
+- [x] Rerun `./pcic_crosswalk.sh` in the background: `data/run14.log` is the intermediate run on 88a60d0, `data/run14b.log` the final run after Phase 3b. Log to `data/run14*.log` (about 30 min; do not run the main-flow tree job at the same time). QA must pass, including both new tests.
+- [x] Compare against the snapshot:
   - the crosswalk should differ only at the 6 outlets (segment, measure, local code, distance), with `fwa_parent_subid` identical everywhere (assert it);
   - list the segments whose flow changed. Expect junction-start segments, the 6 outlets' sub-basins and their parents' (local areas change), the tributary lines that move to the sub-basin below, the lowest segments of lines joined at measure 0, and side_fallback junction segments;
   - count junction-start segments whose flow ends up above the segment below's (review S1);
   - derive the count of junctions where a tributary's step moved down, replacing the issue's unverified 1,464 of 5,892;
   - totals at root outlets' segments (`fwa_parent_subid IS NULL`) should be unchanged.
-- [ ] `./qa_gauges.sh` against 494 of 538 within 10%, and update the README numbers that move.
-- [ ] Drop the snapshot tables. Record the measurements in `findings.md`, with the log prefix `data/run14*` as evidence.
+- [x] `./qa_gauges.sh` against 494 of 538 within 10%, and update the README numbers that move.
+- [x] Drop the snapshot tables. Record the measurements in `findings.md`, with the log prefix `data/run14*` as evidence.
 
 ## Validation
 
-- [ ] QA passes (`sql/qa.sql`, all `t`), and both new tests went `f` -> `t` across the fix
-- [ ] `/code-check` clean (each commit, or once over the branch with `/code-check branch`)
+- [x] QA passes (`sql/qa.sql`, all `t`), and both new tests went `f` -> `t` across the fix
+- [x] `/code-check` clean (each commit, or once over the branch with `/code-check branch`)
 - [ ] PWF checkboxes match landed work
 - [ ] `/planning-archive` on completion

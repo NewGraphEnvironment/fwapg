@@ -187,7 +187,10 @@ flow (the Cheslatta River) trip it too.
   at about 680 of 19,000 junctions with more than 1 m³/s in June, against 2,373 before
   NewGraphEnvironment/fwapg#14. About half have an outlet higher on that segment whose PCIC flow includes
   the tributary (an unplaced PCIC child anchored to it); the rest are area shares where the watershed
-  lookup gives the segment the tributary's area. `sql/qa.sql` holds the count under 1,000.
+  lookup gives the segment the tributary's area. `sql/qa.sql` holds the count under 1,000. Where nothing
+  above a junction carries flow of its own (a stub, a connector, a side channel), the segment above it
+  carries none: 135 segments in the 2026-10 build, which until then carried the tributary's flow (one,
+  a 144 m construction line in THOM, carried 734 m³/s).
 - Streams that leave BC before reaching their parent have no path, so their flow does not reach the
   parent in BC: the Okanagan, Kettle and Similkameen join the Columbia in the US, and their flow is not
   on the Columbia in BC (PCIC routes it through the US too).
