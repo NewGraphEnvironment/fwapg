@@ -1,0 +1,2 @@
+linear_feature_id,action,note
+868144443,exclude,"Beaver River: watershed code with two main lines (359572098, 359024601); their 6010 connectors leave one node, a split. Keeps 359572098's."
