@@ -38,20 +38,20 @@
 - [x] `research/fwa_mainflow_tree.md`: revise the SSNbler memory finding with the measured curve (update the `Verified:` line)
 
 ## Phase 7: Upstream branches (drafted, not posted)
-- [ ] `upstream-blue-line-paths` off `upstream/main`: `git checkout newgraph -- extras/blue_line_paths`, plus its entry in `extras/README.md`
-- [ ] `upstream-pcic-crosswalk` on top of it: `extras/pcic_crosswalk` with the issue references stripped
-- [ ] `upstream-mainflow-tree` on top of the blue-line-paths branch: `extras/mainflow_tree` stripped the same way
-- [ ] On each branch, grep for leftovers (`NewGraphEnvironment`, `fwapg#`, `fresh-bc`, `planning/`, `CLAUDE.md`, `research/`) → expect none
-- [ ] Push the three branches to `origin` (our fork). Write the PR bodies to `planning/active/upstream_pr_*.md`. **Nothing is opened on smnorris/fwapg** until it is approved.
+- [x] `upstream-blue-line-paths` off `upstream/main`: `git checkout newgraph -- extras/blue_line_paths`, plus its entry in `extras/README.md`
+- [x] `upstream-pcic-crosswalk` on top of it: `extras/pcic_crosswalk` with the issue references stripped
+- [x] `upstream-mainflow-tree` on top of the blue-line-paths branch: `extras/mainflow_tree` stripped the same way
+- [x] On each branch, grep for leftovers (`NewGraphEnvironment`, `fwapg#`, `fresh-bc`, `planning/`, `CLAUDE.md`, `research/`) → expect none
+- [x] Push the three branches to `origin` (our fork). Write the PR bodies to `planning/active/upstream_pr_*.md`. **Nothing is opened on smnorris/fwapg** until it is approved.
 
 ## Validation
 
-- [ ] All three scripts ran in their committed form; outputs identical to #11 (sorted md5 match)
-- [ ] Topology QA runtime measured after the BC-outline change; 23 `no_parent` rows identical
-- [ ] SSNbler LSKE/BULK/FRAN + ladder recorded in `extras/mainflow_tree/README.md`
-- [ ] Tests pass
+- [x] All three scripts ran in their committed form; outputs identical to #11 (sorted md5 match) — tree identical; PCIC identical but for 74 tie rows (deliberate rule, user decision) and monthly -0.001%
+- [x] Topology QA runtime measured after the BC-outline change; 23 `no_parent` rows identical
+- [x] SSNbler LSKE/BULK/FRAN + ladder recorded in `extras/mainflow_tree/README.md`
+- [x] Tests pass (job QA: paths 3/3, PCIC 10/10, tree 10/10; watchdog exit-status matrix)
 - [x] `/code-check` clean (each commit, or once over the branch with `/code-check branch`)
-- [ ] PWF checkboxes match landed work
+- [x] PWF checkboxes match landed work
 - [ ] `/planning-archive` on completion
 
 Host: the run machine is described in the private host issue, never in this public repo.
