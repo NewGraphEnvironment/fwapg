@@ -21,11 +21,11 @@ What exploration found:
 - Branch off `newgraph` (repo CLAUDE.md), and open the PR with `--base newgraph`.
 
 ## Phase 1: Load files (test first)
-- [ ] Failing check first: running the load file into a scratch DB fails (the object is not uploaded or public yet)
-- [ ] `load/fwa_stream_networks_discharge_monthly.sql`: in one transaction, `CREATE TABLE IF NOT EXISTS` with the job's columns and PK `(linear_feature_id, month)`, `TRUNCATE`, then `\copy … FROM PROGRAM 'curl -sSf https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/….csv.gz | gunzip' csv header`. `ANALYZE` afterwards.
-- [ ] `load/pcic_fwa_crosswalk.sql`: the same shape, with PK `subid` and the job's four indexes (`CREATE INDEX IF NOT EXISTS`, using the names Postgres gave the job's unnamed indexes so the in-place reload does not duplicate them)
-- [ ] `load.sh`: a "NewGraph fork only" section after the extras block that runs both files
-- [ ] Guard proof: with a bad URL, a reload of a populated scratch table fails and the row count is unchanged
+- [x] Failing check first: running the load file into a scratch DB fails (the object is not uploaded or public yet)
+- [x] `load/fwa_stream_networks_discharge_monthly.sql`: in one transaction, `CREATE TABLE IF NOT EXISTS` with the job's columns and PK `(linear_feature_id, month)`, `TRUNCATE`, then `\copy … FROM PROGRAM 'curl -sSf https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/….csv.gz | gunzip' csv header`. `ANALYZE` afterwards.
+- [x] `load/pcic_fwa_crosswalk.sql`: the same shape, with PK `subid` and the job's four indexes (`CREATE INDEX IF NOT EXISTS`, using the names Postgres gave the job's unnamed indexes so the in-place reload does not duplicate them)
+- [x] `load.sh`: a "NewGraph fork only" section after the extras block that runs both files
+- [x] Guard proof: with a bad URL, a reload of a populated scratch table fails and the row count is unchanged
 
 ## Phase 2: Publish
 - [ ] `aws s3 cp` both files to `s3://fresh-bc/fwapg/extras/`, then check with `s3api head-object` that the sizes equal the local files

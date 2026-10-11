@@ -167,6 +167,17 @@ done
 # materialize above data to whse_basemapping.fwa_streams, holding the value-added data (for fast upstr/dnstr queries)
 $PSQL -f load/fwa_streams.sql
 
+# ---------------------
+# NewGraph fork only: PCIC monthly flow and crosswalk (extras/pcic_crosswalk), cached to NewGraph's fresh-bc bucket
+# ---------------------
+tables=(
+  pcic_fwa_crosswalk
+  fwa_stream_networks_discharge_monthly
+)
+for table in "${tables[@]}"; do
+  echo $table
+  $PSQL -f load/$table.sql
+done
 
 # clean up
 $PSQL -c "VACUUM ANALYZE"
