@@ -20,12 +20,12 @@
 - [x] Add a README section with usage. An exit status other than 0 (a kill, or an error from R) fails loudly.
 
 ## Phase 4: Run the pipelines (never two at once; both rebuild the shared paths)
-- [ ] `extras/pcic_crosswalk/pcic_crosswalk.sh`, log under `data/`. Expect: blue line paths QA 3/3, crosswalk QA 10/10, `pcic_fwa_crosswalk` 48,716 rows, `fwa_stream_networks_discharge_monthly` 40,524,612 rows, sum(round(q_m3s,6)) = 178169881.209890
-- [ ] Compare against `ref_11`: run `zcat | sort | md5` on each export and diff `qa_drainage.csv`. Any difference is investigated, not explained away.
+- [x] `extras/pcic_crosswalk/pcic_crosswalk.sh`, log under `data/`. Expect: blue line paths QA 3/3, crosswalk QA 10/10, `pcic_fwa_crosswalk` 48,716 rows, `fwa_stream_networks_discharge_monthly` 40,524,612 rows, sum(round(q_m3s,6)) = 178169881.209890
+- [x] Compare against `ref_11`: run `zcat | sort | md5` on each export and diff `qa_drainage.csv`. Any difference is investigated, not explained away.
 - [x] `extras/mainflow_tree/mainflow_tree.sh` (it calls `blue_line_paths.sh` again). Expect 4,510,368 segments and QA 10/10 (0 splits, 8 cut-offs, 473 dead ends, 23 `no_parent`)
 - [x] Diff the tree export and `qa_topology.csv` against `ref_11`: the rows must be identical, which confirms the Phase 2 change
-- [ ] Record each stage's runtime from the logs (paths, crosswalk stages, tree, topology QA)
-- [ ] Fix anything that breaks in the scripts as committed. A fix is committed and the job rerun from the top.
+- [x] Record each stage's runtime from the logs (paths, crosswalk stages, tree, topology QA)
+- [x] Fix anything that breaks in the scripts as committed. A fix is committed and the job rerun from the top.
 
 ## Phase 5: SSNbler groups, one at a time
 - [x] LSKE, BULK and FRAN whole (Skeena `400` / Nechako `100.567134` share), with peak RSS and runtime per group
@@ -34,7 +34,7 @@
 
 ## Phase 6: Record
 - [ ] `extras/mainflow_tree/README.md`: LSKE/BULK/FRAN results, the ladder's memory curve, the new topology QA runtime. The machine is described by its capacity only (128 GB, local Docker database), with no host names.
-- [ ] `extras/blue_line_paths/README.md` and `extras/pcic_crosswalk/README.md`: measured runtimes, plus a note that the full script ran
+- [x] `extras/blue_line_paths/README.md` and `extras/pcic_crosswalk/README.md`: measured runtimes, plus a note that the full script ran
 - [ ] `research/fwa_mainflow_tree.md`: revise the SSNbler memory finding with the measured curve (update the `Verified:` line)
 
 ## Phase 7: Upstream branches (drafted, not posted)

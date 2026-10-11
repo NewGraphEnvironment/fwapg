@@ -23,7 +23,8 @@ network and the FWA agree, with only the flow generated between outlets distribu
 
     ./pcic_crosswalk.sh
 
-The job:
+With the downloads cached, the job took 28-33 min (2026-10-10, local Docker database on a 128 GB machine), about 16 min
+of it rebuilding the blue line paths and 6 min writing flow per segment. The job:
 
 1. **Network.** Pages PCIC's `rivers` and `lakes` collections from `bbox-server` (BC Albers) into
    `data/`, and loads them. Each river segment's outlet is the end that touches its downstream feature
@@ -36,6 +37,9 @@ The job:
    Downloads are cached and resumable; outlets with no series are listed in `data/series/missing.txt`.
 3. **Snapping.** Up to 5 FWA candidates per outlet within 150 m, one per blue line: `FWA_IndexPoint`'s
    search, with unusable segments excluded *before* the nearest segment of each blue line is picked.
+   About 1% of outlets sit on a vertex two segments of one blue line share; they take the segment starting
+   there (FWA measures run from a segment's downstream end up to, not including, its upstream end), which
+   at a tributary junction is the segment above it.
    Excluded: subsurface flow edges (`1425`), streams off the network (watershed codes under `999`) or
    with no local code, and segments with no fundamental watershed. (`FWA_IndexPoint` keeps one segment
    per stream and can exclude only `6010`, so filtering its output loses the whole stream when its

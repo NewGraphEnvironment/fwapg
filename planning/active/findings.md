@@ -150,6 +150,23 @@ footprint, which top prints in whole GB above 10 GB.
 - Memory follows #2's growth (27-28 GB at ~22k lines on both machines; ~52 GB at 30k).
 - Runtime is minutes, not the hours feared: the serial path is memory-bound, not time-bound.
 
+## PCIC with the upstream-segment rule (2026-10-10, `extras/pcic_crosswalk/data/run13c.log`)
+
+- 17:18:18-17:51:31 (33 min, alongside SSNbler runs and ad-hoc queries), exit 0, QA 13/13.
+- Against #11: **74 crosswalk rows differ, all ties** (same measure within 1 mm; 14 change the local code).
+  So #11's index order had mostly picked the upstream segment already. Diff: `data/run13c_crosswalk.diff`.
+- Monthly: 40,524,600 rows (#11: 40,524,612), sum 178168114.938520 (-0.0010%); 2,385 segments' flow changed,
+  max |dq| 2.83 m3/s. The one segment with no flow now is 206063646, Toba River 75-122 m: the Toba's terminal
+  outlet (9002889, to the sea) sits on its upper vertex and now takes the segment above. Segments below a
+  river's last PCIC outlet carry no flow in either build (#11 had 0-75 m empty; now 0-122 m).
+- QA report vs the first run: identical but for not_nearest_candidate 608 -> 609 and TOBA with_flow 25596 -> 25595.
+  Drainage flags unchanged (218 small, 126 big of 37,040 main-stem). `qa_gauges.sh` (13 s, cached): identical
+  to the README (538 compared, 494 within 10%, 207/210, 134/139, 11 other branch, 33 disagree of which 27
+  < 100 km2; area within 10% at 559 of 603).
+- Not re-derived: the README's "2,184 of 36,380 sub-basins, 1,815 of 22,184 m3/s" came from a one-off query in
+  #5 against staging tables that the job's cleanup drops.
+- Paths, three runs: 16.6, 16.2, ~16 min.
+
 ## Errors Encountered
 
 | Error | Resolution |
