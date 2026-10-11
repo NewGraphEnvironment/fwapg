@@ -3,6 +3,9 @@ set -euxo pipefail
 
 PSQL="psql $DATABASE_URL -v ON_ERROR_STOP=1"
 
+# NewGraph fork only: the PCIC loads at the end use COPY ... HEADER MATCH (PostgreSQL 15+), so stop before loading anything
+[ "$($PSQL -tAXc 'show server_version_num')" -ge 150000 ] || { echo "load.sh needs PostgreSQL 15 or later" >&2; exit 1; }
+
 
 # ---------------------
 # load these directly from object storage parquet files
