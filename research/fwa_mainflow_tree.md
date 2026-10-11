@@ -1,6 +1,6 @@
 # A dendritic subset of the FWA stream network
 
-**Verified:** 2026-10-10 · **Issues:** NewGraphEnvironment/fwapg#2 (spawned from two hand-built SSN2 stream-temperature networks), #4 (area on reattached segments), #13 (end-to-end run, SSNbler on whole basins) · **Produced by:** the SQL of `extras/mainflow_tree` and `extras/blue_line_paths`, run step by step on a full provincial fwapg (4,907,441 segments) in #2 and as the committed job scripts in #13 (identical tree); measurements in `planning/archive/2026-10-issue-2-mainflow-tree/` and `planning/archive/2026-10-issue-13-*/`
+**Verified:** 2026-10-10 · **Issues:** NewGraphEnvironment/fwapg#2 (spawned from two hand-built SSN2 stream-temperature networks), #4 (area on reattached segments), #13 (end-to-end run, SSNbler on whole basins) · **Produced by:** the SQL of `extras/mainflow_tree` and `extras/blue_line_paths`, run step by step on a full provincial fwapg (4,907,441 segments) in #2 and as the committed job scripts in #13 (identical tree); measurements in `planning/archive/2026-10-issue-2-mainflow-tree/` and `planning/archive/2026-10-issue-13-extras-end-to-end/`
 
 ## The FWA is not a tree, and the obvious subsets are not either
 
