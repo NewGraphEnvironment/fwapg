@@ -19,10 +19,72 @@
 -- outflow; where they do not, flow follows the FWA. qa.sql measures how often
 -- they agree.
 
+-- An outlet on a vertex two segments share is placed on the upper one
+-- (pcic_crosswalk02_candidates.sql). A tributary's junction is such a vertex: the
+-- start of the main-stem segment above it, since FWA measures run [downstream,
+-- upstream). Where the tributary is the outlet's own PCIC child, the outlet's flow
+-- includes it, so the outlet belongs below the confluence: it moves to the nearest
+-- usable segment below on its blue line (the next one, at the same measure, unless
+-- that one has no fundamental watershed; then up to 100 m down, to the upper end of
+-- the next). Placement is done by now and compares measures, which this keeps or
+-- lowers by a segment's length. Vertex and junction are compared within 1 mm:
+-- adjacent segments' measures differ in the last digits. qa.sql tests that none is
+-- left (NewGraphEnvironment/fwapg#14).
+UPDATE whse_basemapping.pcic_fwa_crosswalk x
+SET
+  linear_feature_id = m.linear_feature_id,
+  downstream_route_measure = m.downstream_route_measure,
+  wscode_ltree = m.wscode_ltree,
+  localcode_ltree = m.localcode_ltree,
+  watershed_group_code = m.watershed_group_code,
+  distance_to_stream = m.distance_to_stream
+FROM (
+  SELECT DISTINCT ON (x.subid)
+    x.subid,
+    b.linear_feature_id,
+    least(x.downstream_route_measure, b.upstream_route_measure) AS downstream_route_measure,
+    b.wscode_ltree,
+    b.localcode_ltree,
+    b.watershed_group_code,
+    ST_Distance(b.geom, o.probe_geom) AS distance_to_stream
+  FROM whse_basemapping.pcic_fwa_crosswalk x
+  INNER JOIN fwapg.pcic_outlets o ON o.subid = x.subid
+  INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = x.linear_feature_id
+  INNER JOIN whse_basemapping.pcic_fwa_crosswalk c
+    ON c.dowsubid = x.subid AND c.flag IS NULL AND c.blue_line_key != x.blue_line_key
+  INNER JOIN fwapg.blk_paths bp ON bp.blue_line_key = c.blue_line_key
+  CROSS JOIN LATERAL unnest(bp.path_blks, bp.path_measures) AS u(blk, measure)
+  CROSS JOIN LATERAL (
+    SELECT b.*
+    FROM whse_basemapping.fwa_stream_networks_sp b
+    WHERE b.blue_line_key = x.blue_line_key
+    AND b.downstream_route_measure < s.downstream_route_measure - 0.001
+    AND b.upstream_route_measure > s.downstream_route_measure - 100
+    AND b.edge_type NOT IN (1425, 6010)
+    AND b.localcode_ltree IS NOT NULL
+    AND EXISTS (
+      SELECT 1 FROM whse_basemapping.fwa_streams_watersheds_lut l
+      WHERE l.linear_feature_id = b.linear_feature_id
+    )
+    ORDER BY b.downstream_route_measure DESC
+    LIMIT 1
+  ) b
+  WHERE x.flag IS NULL
+  AND s.downstream_route_measure > 0
+  AND abs(x.downstream_route_measure - s.downstream_route_measure) < 0.001
+  AND u.blk = x.blue_line_key
+  AND abs(u.measure - x.downstream_route_measure) < 0.001
+  ORDER BY x.subid
+) m
+WHERE x.subid = m.subid;
+
 -- fwa_parent_subid: the nearest placed outlet downstream on the FWA, found by
 -- walking the outlet's own blue line down, then its path (fwapg.blk_paths)
 -- to the sea: the first blue line with a placed outlet at or below the outlet's
--- position, and on it the highest such outlet (by segment, then measure). At the
+-- position, and on it the highest such outlet (by segment, then measure). On the
+-- lines of its path, an outlet is below the point where the water joins only if
+-- its segment starts below it: water joining at a segment's start does not pass
+-- that segment (see the move above). At the
 -- same point, the outlet nearer PCIC's root is below. This is the order pcic_crosswalk07_segments.sql
 -- assigns segments in.
 CREATE INDEX IF NOT EXISTS pcic_fwa_crosswalk_blk_idx
@@ -45,7 +107,7 @@ FROM (
     SELECT c.subid, c.depth, 0::bigint AS step, c.blue_line_key AS blk, c.seg_measure, c.downstream_route_measure AS measure
     FROM placed c
     UNION ALL
-    -- step i: the i-th blue line on its path, at or below where its water joins
+    -- step i: the i-th blue line on its path, below where its water joins
     SELECT c.subid, c.depth, u.step, u.blk, NULL, u.measure
     FROM placed c
     INNER JOIN fwapg.blk_paths bp ON bp.blue_line_key = c.blue_line_key
@@ -61,7 +123,7 @@ FROM (
     AND (
       (st.step = 0 AND
         (o.seg_measure, o.downstream_route_measure, o.depth, o.subid) < (st.seg_measure, st.measure, st.depth, st.subid))
-      OR (st.step > 0 AND o.downstream_route_measure <= st.measure)
+      OR (st.step > 0 AND o.downstream_route_measure <= st.measure AND o.seg_measure < st.measure - 0.001)
     )
   ORDER BY st.subid, st.step, o.seg_measure DESC, o.downstream_route_measure DESC, o.depth DESC, o.subid DESC
 ) p

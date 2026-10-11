@@ -51,6 +51,11 @@ Both return `f` on the #13 build, before any fix:
 
 Adjacent FWA segments' measures are not bit-equal: 701317270's `upstream_route_measure` is 83036.95988380806 against 701317184's `downstream_route_measure` of 83036.9599489122 (6.5e-5 apart). So the tests compare within 1 mm, and the Phase 3 move picks "the segment below" by order on the blue line, not by `upstream_route_measure = measure`.
 
+## Phase 2-3 design measurements (2026-10-11)
+
+- Vertex outlets (measure = segment start, > 0) with any blue line's path joining at their measure: **94 outlets, 95 lines**. Only 6 of those lines carry a placed PCIC child. So the `<=` in the step>0 rules (06 `fwa_parent_subid`, 07 `nearest`) mattered beyond the 6: the tributary's segments went to an outlet on the upper segment, whose upstream area excludes the tributary. Both rules now require the outlet's segment to start below the junction.
+- The segment below each of the 6 outlets: 5 are usable, at gaps of -0.0007 to +0.0004 m from the vertex. 5014089's (707098172, 43.8 m, edge 1250, Midge Creek, KOTL) is not in `fwa_streams_watersheds_lut`. Its next usable segment below is 707098394, at about 44 m. Its PCIC children are 5014087 (same blue line, above) and 5014088 (blue line 356563710, which joins at the vertex).
+
 ## Errors Encountered
 
 | Error | Resolution |

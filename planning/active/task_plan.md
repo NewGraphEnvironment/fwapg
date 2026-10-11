@@ -10,12 +10,14 @@ Branch `14-pcic-crosswalk-flow-and-placement-at-a` off `newgraph`; PR `--base ne
 - [x] Run both against the current build. Both should return `f`. Record the values in `findings.md`.
 
 ## Phase 2: Segment flow steps up at the junction (part 1)
-- [ ] `sql/pcic_crosswalk07_segments.sql`: replace the `blk_on_or_upstream` call for outlets on another blue line with a strict test: an `EXISTS` over `fwapg.blk_paths` where the outlet's path reaches `s.blue_line_key` at `measure > s.downstream_route_measure`. The comment states why the test is strict here and why the shared function is unchanged.
-- [ ] Update the header comment in 07 and README step 6 to match.
+- [x] `sql/pcic_crosswalk07_segments.sql`: replace the `blk_on_or_upstream` call for outlets on another blue line with a strict test: an `EXISTS` over `fwapg.blk_paths` where the outlet's path reaches `s.blue_line_key` at `measure > s.downstream_route_measure`. The comment states why the test is strict here and why the shared function is unchanged.
+- [x] Update the header comment in 07 and README step 6 to match.
+- [x] (Added in implementation.) The same strictness for which outlet a tributary's water reaches: on the lines of its path, the outlet's segment must start below the junction (`o.seg_measure < measure - 0.001`), in 07's `nearest` (segment ownership) and 06's `fwa_parent_subid` rule, which must agree. Measured: 94 vertex outlets have some blue line joining exactly at their measure (95 lines), of which only 6 are PCIC children. For the other 88, the `<=` rule handed the tributary's segments to an outlet on the upper segment, whose upstream area excludes the tributary.
 
 ## Phase 3: Outlets with a PCIC child at their vertex move below the confluence (part 2)
-- [ ] `sql/pcic_crosswalk06_subbasins.sql`, before `fwa_parent_subid`: `UPDATE` the crosswalk for vertex outlets with a placed PCIC child joining at their measure. Set `linear_feature_id`, `wscode_ltree` and `localcode_ltree` to the segment on the same blue line whose `upstream_route_measure` equals that measure, and keep the measure. Move only when that segment is usable (in `fwa_streams_watersheds_lut`, edge type not 1425/6010). The outlet stays put otherwise; that case is counted, and the Phase 1 test fails on it.
-- [ ] Add a pointer from the tie-rule comment in 02 to the move in 06, and update README step 3 (the "at 6 outlets" passage) and the caveats.
+- [x] `sql/pcic_crosswalk06_subbasins.sql`, before `fwa_parent_subid`: `UPDATE` the crosswalk for vertex outlets with a placed PCIC child joining at their measure. Set `linear_feature_id`, `wscode_ltree` and `localcode_ltree` to the segment on the same blue line whose `upstream_route_measure` equals that measure, and keep the measure. Move only when that segment is usable (in `fwa_streams_watersheds_lut`, edge type not 1425/6010). The outlet stays put otherwise; that case is counted, and the Phase 1 test fails on it.
+  - As built: the nearest usable segment below, within 100 m, at `least(measure, upstream_route_measure)`, and with `watershed_group_code` and `distance_to_stream` (from `fwapg.pcic_outlets.probe_geom`) updated too. 5014089 (Midge Creek, KOTL) needs this: the 43.8 m segment below it, 707098172, is not in `fwa_streams_watersheds_lut`, so it moves about 44 m down to 707098394.
+- [x] Add a pointer from the tie-rule comment in 02 to the move in 06, and update README step 3 (the "at 6 outlets" passage) and the caveats.
 
 ## Phase 4: Rerun and compare against the current build
 - [ ] Snapshot the current outputs into scratch tables (`fwapg.pcic14_before_crosswalk`, `fwapg.pcic14_before_monthly`).
