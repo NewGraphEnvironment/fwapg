@@ -49,6 +49,6 @@ What exploration found:
 - [x] Tests pass (fingerprints match in the scratch DB and after the reload; gauge output unchanged)
 - [x] `/code-check` clean (each commit, or once over the branch with `/code-check branch`)
 - [x] PWF checkboxes match landed work
-- [ ] `/planning-archive` on completion
+- [x] `/planning-archive` on completion
 
 Out of scope, noted: `load.sh` does not load the main-flow tree either, and no issue covers that.
