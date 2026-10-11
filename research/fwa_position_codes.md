@@ -32,6 +32,10 @@ Data facts the construction relies on (measured): no blue line has two watershed
 
 It returns the nearest segment per blue line and can exclude only edge type 6010. Filtering its output afterwards drops the whole stream when that nearest segment is unusable. On 38,729 PCIC outlets (150 m, 5 streams): 651 streams lost that had a usable segment in reach; causes were segments with no `fwa_streams_watersheds_lut` row (7,157 candidates; 6,822 have no local code), `999.*` codes (634) and edge 1425 (8). Running the same search with the filters before the per-stream pick avoids it (`pcic_crosswalk02_candidates.sql`). See also fresh `research/fwa_point_snap.md`.
 
+## A point on a shared vertex is equally near two segments
+
+*Measured 2026-10-10, fwapg#13.* About 1% of PCIC outlets (449 of 48,716) sit exactly on the vertex two segments of one blue line share, so "the nearest segment" is a tie, and an `ORDER BY ST_Distance` with no second key lets the plan choose. Two builds on two machines agreed on all but 2 only because their spatial indexes were built alike; a lowest-id tie-break moved 449. FWA measures run `[downstream_route_measure, upstream_route_measure)`, so the rule that follows the data is the segment *starting* at the vertex (`downstream_route_measure DESC`), the one above a tributary junction. It is wrong where the tributary entering there is the outlet's own PCIC child (6 outlets), and the same convention puts a tributary's flow on the main-stem segment above its junction in the segment step (fwapg#14).
+
 ## Not fixed: area lookup at tributary mouths
 
 `fwa_streams_watersheds_lut` can give a tributary-mouth segment the fundamental watershed of the stream it joins, so upstream area there is the parent's. In the PCIC build, 2,184 of 36,380 sub-basins got no local area of their own (8% of local runoff appears only at their outlet).

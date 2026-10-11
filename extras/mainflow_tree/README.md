@@ -38,11 +38,13 @@ as a whole is digitized in the direction of flow, with no per-segment exceptions
 
     ./mainflow_tree.sh
 
-Rebuilds the blue line paths (about 35 min; not while `pcic_crosswalk.sh` is running, see
-`extras/blue_line_paths`), builds the tree (about 1 min), finds splits, cut-offs, dead ends and outlets with no parent inside BC from the
-network geometry (about 35 min, nearly all of it testing whether each mouth with no parent is at BC's edge)
-(and dead ends; `sql/qa_topology.sql`, written to `data/qa_topology.csv` and kept as `fwapg.mainflow_tree_qa`), runs the
-tests in `sql/qa.sql` (stopping before export if any fails) and writes `fwa_stream_networks_mainflow_tree.csv.gz`.
+Rebuilds the blue line paths (not while `pcic_crosswalk.sh` is running, see `extras/blue_line_paths`), builds the
+tree, finds splits, cut-offs, dead ends and outlets with no parent inside BC from the network geometry
+(`sql/qa_topology.sql`, written to `data/qa_topology.csv` and kept as `fwapg.mainflow_tree_qa`), runs the tests in
+`sql/qa.sql` (stopping before export if any fails) and writes `fwa_stream_networks_mainflow_tree.csv.gz`. The whole
+job took 20 min (2026-10-10, local Docker database on a 128 GB machine): paths 16 min, tree 3 min, topology QA
+1.5 min. The QA took about 35 min while it unioned BC's boundary pieces around each mouth; it now builds BC's
+outline once.
 
 A *split* is a node that is the upstream end of more than one tree segment. A *cut-off* is a tree segment
 whose downstream end is no tree segment's upstream end, but is some network segment's: its water continues
@@ -106,8 +108,7 @@ In the 2026-10 build (4,907,441 network segments):
 
 `ssnbler_check.R` builds a landscape network from a tree subset with `SSNbler::lines_to_lsn(check_topology =
 TRUE)`, reversing every line. It fails on any node error, and on an outlet count other than the third
-argument when one is given. SSNbler needs its parallel path (about 2 GB per worker) at 46,340 lines or more, so
-check large basins a watershed group at a time:
+argument when one is given:
 
     ogr2ogr -f GPKG data/klum.gpkg PG:"$DATABASE_URL" -nln streams -sql \
       "SELECT s.linear_feature_id, s.geom FROM whse_basemapping.fwa_stream_networks_sp s
@@ -115,25 +116,47 @@ check large basins a watershed group at a time:
        WHERE s.wscode_ltree <@ '400' AND s.watershed_group_code = 'KLUM'"
     Rscript ssnbler_check.R data/klum.gpkg data/lsn_klum 1
 
-In the 2026-10 build, every watershed group holding the Skeena (`400`) or the Nechako (`100.567134`), each
-group's share of the basin checked on its own (one at a time: peak memory grew from 1.5 GB at 5,500 lines to
-39 GB at 24,000):
+`ssnbler_check.sh` does both, one run at a time, and kills the run when R and its workers together hold more
+than a cap (in GB):
 
-- **24 of 26 groups: 0 node errors**, including KLUM, which holds three of the four side channels in the
-  tests. Each group has 1-3 outlets: where the basin leaves it (by two streams in 13 groups), plus any dead ends
-  and `no_parent` outlets.
-- The fourth, 360216952, is in LSKE (29,000 lines, too large): the tree within 5 km of it (783 lines) has 0
-  node errors inside the window; the 5 reported, converging nodes at outlets, are each where the tree segment
-  below lies outside the window.
+    ./ssnbler_check.sh 60 klum 400 KLUM 1      # <cap_gb> <name> <wscode> [group|-] [expected outlets]
+
+It writes `data/ssnbler/klum.gpkg`, `data/ssnbler/lsn_klum` and `data/ssnbler/klum.log`, appends a line
+with the exit status, R's own status, peak memory, minutes, lines and result to `data/ssnbler/runs.log`. It
+exits 0 when clean, 1 on node errors or an unexpected outlet count, 2 on bad arguments or when another run
+holds the lock, 3 when killed at the cap or by low system memory, 4 when memory could not be sampled, 5 when
+there is no result for any other reason (the export failed, the subset is empty, R failed or was killed from
+outside), and 129, 130 or 143 when the script itself is sent HUP, INT or TERM.
+
+SSNbler (1.1.2) takes one of two paths, and they differ:
+
+- **Below 46,340 lines it runs serially**, and memory grows with the square of the line count: 28 GB at
+  21,700 lines, 52-54 GB at 29,000-30,000 (footprint, 2026-10-10). Check a large basin a watershed group at a
+  time, and never two at once (three at once crashed a 64 GB machine).
+- **At 46,340 lines or more it must run in parallel**, in chunks of 500 nodes, and memory grows about linearly:
+  3.5 GB at 52,000 lines, 7.5 GB at 106,000, 16 GB for the Nechako (210,000 lines, 23 min), 20 GB for the
+  Skeena (262,000, 35 min). But its unsnapped-node test is computed within each chunk, so an "Unsnapped Node"
+  from this path is not reliable: on the same MSKE lines the serial path reports 4 errors and the parallel
+  path 2, and the whole Skeena reports two unsnapped nodes in ZYMO that are exact nodes with no other line end
+  within 2 m (the ZYMO group alone is clean on both paths). Its other node errors and outlet counts agree with
+  the group runs.
+
+In the 2026-10 build, every watershed group holding the Skeena (`400`) or the Nechako (`100.567134`), each
+group's share of the basin checked on its own on the serial path:
+
+- **27 of 29 groups: 0 node errors**, including KLUM, which holds three of the four side channels in the
+  tests, and LSKE (29,000 lines), which holds the fourth (360216952). Each group has 1-3 outlets: where the
+  basin leaves it (by two streams in 13 groups), plus any dead ends and `no_parent` outlets.
 - **USKE and MSKE: 4 errors each, at one spot each**, a main-flow segment a few cm long whose geometry is a
   plain chain (239055049, 1.6 cm; 141013301, 2.9 cm). SSNbler reports its two ends as an unsnapped node and
   a divergence; the SQL check, on the same nodes at 1 cm, finds no split. At `snap_tolerance` 0.01 the two
   ends round to one node instead (SSNbler rounds nodes to one decimal place fewer than the tolerance).
-- Not run: LSKE, BULK and FRAN (29,000-30,000 lines, about 60 GB at that growth); the Skeena's share of SPAT and TAKL and
-  the Nechako's of TABR are one segment each, which `lines_to_lsn` cannot build (an error inside its own `left_join`).
-- Whole basins, counted in SQL with SSNbler's definition of an outlet: the Skeena has **1 outlet** (its
-  mouth); the Nechako 8, its mouth on the Fraser, 6 dead ends (side channels reached by a fallback junction in FRAN,
-  LEUT, LTRE (2), STUR and TAKL) and a `no_parent` side channel (UEUT).
+- Not checkable: the Skeena's share of SPAT and TAKL and the Nechako's of TABR are one segment each, which
+  `lines_to_lsn` cannot build (an error inside its own `left_join`).
+- Whole basins, on the parallel path: the Nechako has **0 node errors and 8 outlets**, its mouth on the Fraser,
+  6 dead ends (side channels reached by a fallback junction in FRAN, LEUT, LTRE (2), STUR and TAKL) and a
+  `no_parent` side channel (UEUT), the same 8 counted in SQL. The Skeena has **1 outlet** (its mouth) and the
+  two cm segments' divergences, plus the two ZYMO unsnapped nodes above.
 
 ## Caveats
 

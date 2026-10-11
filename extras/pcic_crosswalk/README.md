@@ -23,7 +23,8 @@ network and the FWA agree, with only the flow generated between outlets distribu
 
     ./pcic_crosswalk.sh
 
-The job:
+With the downloads cached, the job took 28-33 min (2026-10-10, local Docker database on a 128 GB machine), about 16 min
+of it rebuilding the blue line paths and 6 min writing flow per segment. The job:
 
 1. **Network.** Pages PCIC's `rivers` and `lakes` collections from `bbox-server` (BC Albers) into
    `data/`, and loads them. Each river segment's outlet is the end that touches its downstream feature
@@ -36,6 +37,11 @@ The job:
    Downloads are cached and resumable; outlets with no series are listed in `data/series/missing.txt`.
 3. **Snapping.** Up to 5 FWA candidates per outlet within 150 m, one per blue line: `FWA_IndexPoint`'s
    search, with unusable segments excluded *before* the nearest segment of each blue line is picked.
+   About 1% of outlets sit on a vertex two segments of one blue line share; they take the segment starting
+   there (FWA measures run from a segment's downstream end up to, not including, its upstream end), which
+   at a tributary junction is the segment above it. That is right where the tributary is the outlet's PCIC
+   sibling; at 6 outlets it is the outlet's own PCIC child, so the outlet sits above a confluence whose flow
+   it includes (its accumulated flow is still right; its sub-basin's local area is short by the tributary's).
    Excluded: subsurface flow edges (`1425`), streams off the network (watershed codes under `999`) or
    with no local code, and segments with no fundamental watershed. (`FWA_IndexPoint` keeps one segment
    per stream and can exclude only `6010`, so filtering its output loses the whole stream when its
@@ -167,6 +173,8 @@ flow (the Cheslatta River) trip it too.
   15 km above where PCIC joins it, so the Columbia between reads about 54% high; Ansedagan Creek joins
   the Nass directly on the FWA while its PCIC outlet sits on a Nass side channel, so the creek carries
   almost nothing.
+- Segments below a river's lowest placed outlet, between it and the sea, carry no flow. An outlet on the
+  vertex two segments share takes the upper one, so the Toba River's first 122 m (three segments) have none.
 - Streams that leave BC before reaching their parent have no path, so their flow does not reach the
   parent in BC: the Okanagan, Kettle and Similkameen join the Columbia in the US, and their flow is not
   on the Columbia in BC (PCIC routes it through the US too).

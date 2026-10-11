@@ -10,9 +10,10 @@
 # errors, and exits 1 if there is a node error, or if [expected outlets] is given
 # and the network has a different number of outlets.
 #
-# SSNbler needs its parallel path at 46,340 lines or more, and each worker holds
-# about 2 GB on a 160,000-line subset; a watershed group at a time stays under
-# the limit and runs serially.
+# SSNbler needs its parallel path at 46,340 lines or more. Below that it runs
+# serially, with memory growing as the square of the lines (52 GB at 30,000);
+# the parallel path's unsnapped-node test is computed per chunk and is not
+# reliable (README.md).
 
 args <- commandArgs(trailingOnly = TRUE)
 if (!length(args) %in% c(2, 3)) {
@@ -28,6 +29,13 @@ sf::st_geometry(streams) <- sf::st_reverse(sf::st_geometry(streams))
 # lines_to_lsn writes node_errors.gpkg only when it finds errors and never removes
 # an old one, so a rerun into the same directory would read stale errors
 unlink(file.path(args[2], "node_errors.gpkg"))
+
+# SSNbler's parallel path starts a PSOCK cluster with makeCluster()'s defaults.
+# Logging its workers to <lsn directory>.workers.log keeps their errors and puts
+# that absolute path on their command lines, which is how ssnbler_check.sh tells
+# this run's workers from any other R cluster on the machine.
+lsn_abs <- if (startsWith(args[2], "/")) args[2] else file.path(getwd(), args[2])
+parallel:::setDefaultClusterOptions(outfile = paste0(lsn_abs, ".workers.log"))
 
 # snap_tolerance is the distance within which line ends join a node, and it sets
 # the precision nodes are rounded to: one decimal place fewer than it has
