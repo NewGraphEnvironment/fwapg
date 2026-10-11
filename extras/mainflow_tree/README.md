@@ -158,9 +158,9 @@ both with synthetic lines, and is clean on the fork):
   missed.
 
 The fork (`NewGraphEnvironment/SSNbler`, branch `fix-pdist-precision-parallel-unsnapped`) computes distances
-in double precision and counts duplicates across chunks (NewGraphEnvironment/fwapg#16). It is offered
-upstream as pet221/SSNbler#9. Once distances are
-exact the second defect cannot fire, so no run here exercises its fix; the fork tests it directly.
+in double precision and counts duplicates across chunks (NewGraphEnvironment/fwapg#16), and is offered
+upstream as pet221/SSNbler#9. Once distances are exact the second defect cannot fire, so no run here
+exercises its fix; the fork tests it directly.
 
 In the 2026-10 build, every watershed group holding the Skeena (`400`) or the Nechako (`100.567134`), each
 group's share of the basin checked on its own on the serial path with SSNbler 1.1.2:
