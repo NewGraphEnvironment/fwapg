@@ -1,6 +1,6 @@
 # Ordering positions on the FWA network
 
-Source: measured 2026-10-07/08 on a full provincial fwapg (`fresh-db`, 4.5M segments in `fwa_stream_networks_sp`, 1.78M blue lines) while building `extras/pcic_crosswalk` (NewGraphEnvironment/fwapg#5; six code-check rounds, findings in `planning/archive/2026-10-issue-5-pcic-crosswalk/review-round*.md`).
+Source: measured 2026-10-07/08 on a full provincial fwapg (`fresh-db`, 4.5M segments in `fwa_stream_networks_sp`, 1.78M blue lines) while building `extras/pcic_crosswalk` (NewGraphEnvironment/fwapg#5; six code-check rounds, findings in `planning/archive/2026-10-issue-5-pcic-crosswalk/review-round*.md`). Junction sections revised 2026-10-11 (fwapg#14; `planning/archive/2026-10-issue-14-junction-vertex/`).
 
 ## Local codes are not a coordinate system
 
@@ -34,7 +34,20 @@ It returns the nearest segment per blue line and can exclude only edge type 6010
 
 ## A point on a shared vertex is equally near two segments
 
-*Measured 2026-10-10, fwapg#13.* About 1% of PCIC outlets (449 of 48,716) sit exactly on the vertex two segments of one blue line share, so "the nearest segment" is a tie, and an `ORDER BY ST_Distance` with no second key lets the plan choose. Two builds on two machines agreed on all but 2 only because their spatial indexes were built alike; a lowest-id tie-break moved 449. FWA measures run `[downstream_route_measure, upstream_route_measure)`, so the rule that follows the data is the segment *starting* at the vertex (`downstream_route_measure DESC`), the one above a tributary junction. It is wrong where the tributary entering there is the outlet's own PCIC child (6 outlets), and the same convention puts a tributary's flow on the main-stem segment above its junction in the segment step (fwapg#14).
+*Measured 2026-10-10, fwapg#13.* About 1% of PCIC outlets (449 of 48,716) sit exactly on the vertex two segments of one blue line share, so "the nearest segment" is a tie, and an `ORDER BY ST_Distance` with no second key lets the plan choose. Two builds on two machines agreed on all but 2 only because their spatial indexes were built alike; a lowest-id tie-break moved 449. FWA measures run `[downstream_route_measure, upstream_route_measure)`, so the rule that follows the data is the segment *starting* at the vertex (`downstream_route_measure DESC`), the one above a tributary junction.
+
+## Which side of a junction: water joining at a segment's start does not pass it
+
+*Measured 2026-10-11, fwapg#14.* The same convention decides where a tributary's water goes. Its junction measure is the start of the main-stem segment above it, so the water passes the segment *below* and not that one. A test of "joins at or above the segment's start" (`>=`, as `fwapg.blk_on_or_upstream` does for points) put the step one segment too high at 2,373 of 18,942 junctions whose tributary carries over 1 m3/s in June; a strict test leaves 678, which come from other causes (an outlet higher on that segment whose PCIC flow includes the tributary, and the area lookup below). The same strictness applies to which outlet a tributary drains to (the outlet's segment must start below the junction), and an outlet on the vertex whose PCIC descendant joins there belongs on the segment below (6 outlets). Where nothing above a junction carries flow of its own (a stub, a connector, a side channel), the segment above it carries none: 135 segments, one a 1 ha construction line that had carried 734 m3/s.
+
+## Measures that name the same point disagree, by field
+
+*Measured 2026-10-11, fwapg#14 code-check rounds 2-3.* Two measures computed differently for one point do not compare exactly, and an exact `<=` or `>=` between them decides the side of a junction by noise:
+- A segment's `upstream_route_measure` misses the next segment's `downstream_route_measure` by 1 mm to 1 cm at about 137k boundaries (by up to 9.3 mm). `downstream_route_measure + length_metre` agrees with it (over 1 mm at only 52, at most 3 mm). Take a segment's top from the next segment's start, not from `upstream_route_measure`.
+- Measures interpolated along a segment (`downstream_route_measure + ST_LineLocatePoint(...) * length_metre`: snapped points, touch junctions in `extras/blue_line_paths`) differ from the segment start they name by float noise: 1,529,850 of 1,570,499 first-step junctions in `fwapg.blk_paths` sit exactly on a segment start, 1,569,124 within 1 mm. Code junctions are always exact; touch junctions are exact at only 41,098 of 71,331.
+- The noise is enough to matter: outlets 1e-14 to 1e-10 m above a junction on the segment below it were skipped by its tributary, leaving one of 2,130 ha (blue line 356567538) with no flow in any month, and 1,052 segments with none.
+
+Compare measures from different sources within 1 mm. Segment starts on one blue line come from one table and compare exactly. No FWA segment with a fundamental watershed is shorter than 1 cm, so a 1 mm band never spans a segment.
 
 ## Not fixed: area lookup at tributary mouths
 

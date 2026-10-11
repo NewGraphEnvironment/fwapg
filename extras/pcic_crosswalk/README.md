@@ -40,8 +40,10 @@ of it rebuilding the blue line paths and 6 min writing flow per segment. The job
    About 1% of outlets sit on a vertex two segments of one blue line share; they take the segment starting
    there (FWA measures run from a segment's downstream end up to, not including, its upstream end), which
    at a tributary junction is the segment above it. That is right where the tributary is the outlet's PCIC
-   sibling; at 6 outlets it is the outlet's own PCIC child, so the outlet sits above a confluence whose flow
-   it includes (its accumulated flow is still right; its sub-basin's local area is short by the tributary's).
+   sibling. Where it carries the outlet's own PCIC child (or a descendant anchored to it through unplaced
+   children; 6 outlets in the 2026-10 build), the outlet's flow includes the tributary, so after placement
+   (step 5) it moves to the nearest usable segment below the junction on its blue line, 1 mm inside the
+   segment's upper end: the next segment, or up to 100 m down where that one has no fundamental watershed.
    Excluded: subsurface flow edges (`1425`), streams off the network (watershed codes under `999`) or
    with no local code, and segments with no fundamental watershed. (`FWA_IndexPoint` keeps one segment
    per stream and can exclude only `6010`, so filtering its output loses the whole stream when its
@@ -84,7 +86,11 @@ of it rebuilding the blue line paths and 6 min writing flow per segment. The job
 
    where `q_acc` is accumulated flow, `q_local` the runoff given to the sub-basin, `A` FWA upstream area
    and `A_local` the sub-basin's own FWA area. At the segment an outlet is placed on, `q` is the outlet's
-   accumulated flow. Local runoff can be negative in a month (routing losses), so `q` is clamped at zero.
+   accumulated flow. Water from another blue line passes a segment only if it joins above the segment's
+   start: a tributary's junction is the start of the main-stem segment above it, so its flow steps up on
+   the segment below the junction. In the same way, a tributary's segments belong to the nearest placed
+   outlet whose segment starts below its junction. Local runoff can be negative in a month (routing
+   losses), so `q` is clamped at zero.
 7. **QA and export.** Runs the tests in `sql/qa.sql` and stops, keeping the staging tables, if any fails;
    then prints `sql/qa_report.sql`, writes both output tables to `.csv.gz`, and drops the `fwapg.pcic_*`
    staging tables. The QA tables `fwapg.pcic_qa_drainage` (step 7's drainage check) and
@@ -145,7 +151,7 @@ flow (the Cheslatta River) trip it too.
      localcode_ltree          | ltree            |
      watershed_group_code     | text             |
      distance_to_stream       | double precision | snap distance (m)
-     candidate_rank           | integer          | 1 = nearest candidate
+     candidate_rank           | integer          | 1 = nearest candidate; NULL if moved > 1 m below a junction
      flag                     | text             | NULL, no_candidate, no_series, broken_chain, demoted
 
 
@@ -175,6 +181,16 @@ flow (the Cheslatta River) trip it too.
   almost nothing.
 - Segments below a river's lowest placed outlet, between it and the sea, carry no flow. An outlet on the
   vertex two segments share takes the upper one, so the Toba River's first 122 m (three segments) have none.
+  Lines that join a river at its mouth, where the river's lowest outlet sits, are below it too: in the 2026-10
+  build, 13 segments of five secondary-flow lines at two coastal mouths (KITL, GRAI).
+- A tributary's flow steps up on the segment below its junction. It still lands on the segment above
+  at about 680 of 19,000 junctions with more than 1 m³/s in June, against 2,373 before
+  NewGraphEnvironment/fwapg#14. About half have an outlet higher on that segment whose PCIC flow includes
+  the tributary (an unplaced PCIC child anchored to it); the rest are area shares where the watershed
+  lookup gives the segment the tributary's area. `sql/qa.sql` holds the count under 1,000. Where nothing
+  above a junction carries flow of its own (a stub, a connector, a side channel), the segment above it
+  carries none: 135 segments in the 2026-10 build, which until then carried the tributary's flow (one,
+  a 144 m construction line in THOM, carried 734 m³/s).
 - Streams that leave BC before reaching their parent have no path, so their flow does not reach the
   parent in BC: the Okanagan, Kettle and Similkameen join the Columbia in the US, and their flow is not
   on the Columbia in BC (PCIC routes it through the US too).

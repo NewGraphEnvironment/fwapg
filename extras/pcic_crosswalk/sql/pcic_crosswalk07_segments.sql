@@ -10,6 +10,18 @@
 --
 --   q = sum(q_acc of outlets above) + q_local * (A - sum(A of those outlets)) / A_local
 --
+-- Water from another blue line passes a segment when it joins the segment's line
+-- above the segment's start. A tributary's junction is the start of the main-stem
+-- segment above it (FWA measures run [downstream, upstream)), so its water passes
+-- the segment below the junction and not that one. Junction and segment start are
+-- compared within 1 mm: a measure interpolated along a segment can differ from the
+-- segment start it names by float noise, and
+-- an outlet on the segment below a junction can sit a hair above the junction's
+-- measure (1e-14 m left a 2,130 ha tributary with no flow before
+-- NewGraphEnvironment/fwapg#14).
+-- (fwapg.blk_on_or_upstream compares points, where on-the-junction counts as
+-- upstream, and stays so for placement; NewGraphEnvironment/fwapg#14.)
+--
 -- At the segment an outlet is placed on, every outlet directly above is above the
 -- segment and the share is 1, so q is the outlet's accumulated flow there. The
 -- share is set to 1 on that segment outright, because A_local can be <= 0 where
@@ -50,7 +62,7 @@ steps AS (
   SELECT s.linear_feature_id, 0::bigint AS step, s.blue_line_key AS blk, s.downstream_route_measure AS measure
   FROM segments s
   UNION ALL
-  -- step i: the i-th blue line on its path, at or below where its water joins
+  -- step i: the i-th blue line on its path, below where its water joins
   SELECT s.linear_feature_id, u.step, u.blk, u.measure
   FROM segments s
   INNER JOIN fwapg.blk_paths bp ON bp.blue_line_key = s.blue_line_key
@@ -65,7 +77,7 @@ nearest AS (
     ON o.blue_line_key = st.blk
     AND (
       (st.step = 0 AND o.seg_measure <= st.measure)
-      OR (st.step > 0 AND o.downstream_route_measure <= st.measure)
+      OR (st.step > 0 AND o.downstream_route_measure <= st.measure + 0.001 AND o.seg_measure < st.measure - 0.001)
     )
   ORDER BY st.linear_feature_id, st.step, o.seg_measure DESC, o.downstream_route_measure DESC, o.depth DESC, o.subid DESC
 )
@@ -87,13 +99,19 @@ SELECT
 FROM pcic_segments s
 INNER JOIN fwapg.pcic_subbasins sb ON s.subid = sb.subid
 -- outlets directly above the sub-basin whose water passes the segment: on its
--- blue line, on this segment or above it; otherwise joining it at or above it
+-- blue line, on this segment or above it; otherwise joining its line above its start
 LEFT JOIN outlets c
   ON c.fwa_parent_subid = s.subid
   AND (
     (c.blue_line_key = s.blue_line_key AND c.seg_measure >= s.downstream_route_measure)
     OR (c.blue_line_key != s.blue_line_key
-      AND fwapg.blk_on_or_upstream(s.blue_line_key, s.downstream_route_measure, c.blue_line_key, c.downstream_route_measure))
+      AND EXISTS (
+        SELECT 1
+        FROM fwapg.blk_paths p, unnest(p.path_blks, p.path_measures) AS u(blk, measure)
+        WHERE p.blue_line_key = c.blue_line_key
+        AND u.blk = s.blue_line_key
+        AND u.measure >= s.downstream_route_measure + 0.001
+      ))
   )
 LEFT JOIN fwapg.pcic_subbasins cb ON c.subid = cb.subid
 GROUP BY s.linear_feature_id, s.subid, s.upstream_area_ha, sb.linear_feature_id, sb.local_area_ha;

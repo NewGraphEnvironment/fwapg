@@ -64,7 +64,9 @@ CROSS JOIN LATERAL (
     ) s
     -- a probe on a vertex two segments share is equally near both: take the one
     -- starting there (FWA measures run [downstream, upstream)), which at a
-    -- tributary junction is the segment above it; untied, the plan chose
+    -- tributary junction is the segment above it (an outlet whose PCIC child
+    -- joins there moves below it after placement, in pcic_crosswalk06_subbasins.sql);
+    -- untied, the plan chose
     ORDER BY s.blue_line_key, ST_Distance(s.geom, o.probe_geom), s.downstream_route_measure DESC, s.linear_feature_id
   ) nearest_per_stream
   WHERE distance_to_stream <= :tolerance

@@ -97,6 +97,111 @@ SELECT 'Kitsumkalum outlet 8007998 is placed and within 5% of PCIC' AS test,
   coalesce(bool_and(abs(q_acc - q_pcic) <= 0.05 * q_pcic), false) AS result
 FROM annual;
 
+-- a tributary's water enters at the junction, the start of the main-stem segment
+-- above it (FWA measures run [downstream, upstream)), so an outlet on that vertex
+-- whose PCIC descendant joins there (a child, or one anchored to it through
+-- unplaced children) is above the confluence its flow includes.
+-- pcic_crosswalk06_subbasins.sql moves it to the segment below (NewGraphEnvironment/fwapg#14;
+-- 6 outlets in the 2026-10 build). Line mouths are included: there is no segment
+-- below to move to, and the step > 0 rules of 06 and 07 would parent the
+-- descendant below the outlet, so such a case has to be looked at. So is an outlet
+-- left on its vertex because another placed outlet is stacked on it. Vertex and
+-- junction are compared within 1 mm: a measure interpolated along a segment can
+-- differ from the segment start it names by float noise
+SELECT 'no placed outlet sits above a confluence its PCIC child joins at' AS test, NOT EXISTS (
+  SELECT 1
+  FROM whse_basemapping.pcic_fwa_crosswalk x
+  INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = x.linear_feature_id
+  INNER JOIN whse_basemapping.pcic_fwa_crosswalk c
+    ON c.anchor_subid = x.subid AND c.flag IS NULL AND c.blue_line_key != x.blue_line_key
+  INNER JOIN fwapg.blk_paths bp ON bp.blue_line_key = c.blue_line_key
+  CROSS JOIN LATERAL unnest(bp.path_blks, bp.path_measures) AS u(blk, measure)
+  WHERE x.flag IS NULL
+  AND abs(x.downstream_route_measure - s.downstream_route_measure) < 0.001
+  AND u.blk = x.blue_line_key
+  AND abs(u.measure - x.downstream_route_measure) < 0.001
+) AS result;
+
+-- an outlet on the segment below a junction, but a hair above the junction's
+-- measure, still receives the tributary: blue line 356567538 (2,130 ha) joins
+-- 356369704 1e-14 m below outlet 5012573 and carried no flow in any month before
+-- NewGraphEnvironment/fwapg#14
+SELECT 'tributary 356567538 carries flow' AS test,
+  coalesce(min(m.q) > 0, false) AS result
+FROM (
+  SELECT max(d.q_m3s) AS q
+  FROM whse_basemapping.fwa_stream_networks_sp s
+  INNER JOIN whse_basemapping.fwa_stream_networks_discharge_monthly d ON d.linear_feature_id = s.linear_feature_id
+  WHERE s.blue_line_key = 356567538
+) m;
+
+-- every placed outlet whose FWA parent is on another blue line joins the parent's
+-- line at least 1 mm above the start of the parent's segment, line mouths
+-- included: otherwise the parent's own segment would not carry the child's flow
+-- (pcic_crosswalk07_segments.sql passes a segment only above its start). This holds
+-- by construction while the step > 0 rules of 06 and 07 agree, and guards them
+-- against drifting apart. The 6 outlets of the 2026-10 build that sat on their
+-- child's junction failed it
+WITH pairs AS (
+  SELECT EXISTS (
+    SELECT 1
+    FROM fwapg.blk_paths bp, unnest(bp.path_blks, bp.path_measures) AS u(blk, measure)
+    WHERE bp.blue_line_key = c.blue_line_key
+    AND u.blk = p.blue_line_key
+    AND u.measure >= s.downstream_route_measure + 0.001
+  ) AS ok
+  FROM whse_basemapping.pcic_fwa_crosswalk c
+  INNER JOIN whse_basemapping.pcic_fwa_crosswalk p ON p.subid = c.fwa_parent_subid
+  INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = p.linear_feature_id
+  WHERE c.flag IS NULL
+  AND c.blue_line_key != p.blue_line_key
+)
+SELECT 'every FWA child on another blue line joins above the start of its parent''s segment' AS test,
+  count(*) > 0 AND bool_and(ok) AS result
+FROM pairs;
+
+-- flow steps up at the junction itself, not on the segment above it: blue line
+-- 356362488 is joined by 356359224 at the start of segment 701317184, so 701317184
+-- carries the main stem's flow above (14 m3/s in June) and 701317270 below it the
+-- sum (695 m3/s). Before NewGraphEnvironment/fwapg#14, 701317184 carried 685
+SELECT 'tributary 356359224 steps up flow below its junction, not above it' AS test,
+  coalesce(bool_and(a.q_m3s < 0.5 * b.q_m3s), false) AS result
+FROM whse_basemapping.fwa_stream_networks_discharge_monthly a
+INNER JOIN whse_basemapping.fwa_stream_networks_discharge_monthly b ON b.month = a.month
+WHERE a.linear_feature_id = 701317184
+AND b.linear_feature_id = 701317270
+AND a.month = 6;
+
+-- the same across the network: at junctions within 1 mm of a segment start whose
+-- joining line carries more than 1 m3/s in June, the step in June flow rarely
+-- lands on the segment above the junction (its flow minus the next segment up's is
+-- more than half the joining line's). Measured 2,373 of 18,942 before
+-- NewGraphEnvironment/fwapg#14 and 678 after: about half of those have an outlet
+-- higher on that segment whose PCIC flow includes the tributary (an unplaced PCIC
+-- child anchored to it), and the rest are area shares where the watershed lookup
+-- gives the segment the tributary's area. The ceiling guards against the 2,373 class
+WITH junctions AS (
+  SELECT
+    (SELECT t.linear_feature_id FROM whse_basemapping.fwa_stream_networks_sp t
+     WHERE t.blue_line_key = bp.blue_line_key ORDER BY t.downstream_route_measure LIMIT 1) AS trib_lfid,
+    u.linear_feature_id AS upper_lfid,
+    (SELECT a.linear_feature_id FROM whse_basemapping.fwa_stream_networks_sp a
+     WHERE a.blue_line_key = u.blue_line_key AND a.downstream_route_measure > u.downstream_route_measure + 0.001
+     ORDER BY a.downstream_route_measure LIMIT 1) AS above_lfid
+  FROM fwapg.blk_paths bp
+  INNER JOIN whse_basemapping.fwa_stream_networks_sp u
+    ON u.blue_line_key = bp.path_blks[1]
+    AND abs(u.downstream_route_measure - bp.path_measures[1]) < 0.001
+  WHERE cardinality(bp.path_blks) > 0
+)
+SELECT 'flow steps up on the segment above the junction at <= 1,000 junctions over 1 m3/s' AS test,
+  count(*) > 10000 AND count(*) FILTER (WHERE qu.q_m3s - qa.q_m3s > 0.5 * qt.q_m3s) <= 1000 AS result
+FROM junctions j
+INNER JOIN whse_basemapping.fwa_stream_networks_discharge_monthly qt ON qt.linear_feature_id = j.trib_lfid AND qt.month = 6
+INNER JOIN whse_basemapping.fwa_stream_networks_discharge_monthly qu ON qu.linear_feature_id = j.upper_lfid AND qu.month = 6
+INNER JOIN whse_basemapping.fwa_stream_networks_discharge_monthly qa ON qa.linear_feature_id = j.above_lfid AND qa.month = 6
+WHERE qt.q_m3s > 1;
+
 -- drainage size at every placed outlet (qa_drainage.sql, NewGraphEnvironment/fwapg#7):
 -- outlets on a main stem whose PCIC drainage (river length and flow) is far from
 -- the FWA area they sit on. Measured 218 'small' and 126 'big' of 37,040; the
