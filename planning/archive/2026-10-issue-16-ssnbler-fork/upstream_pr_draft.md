@@ -47,3 +47,9 @@ These checks used BC Freshwater Atlas networks (EPSG:3005) with `snap_tolerance 
 - **Rounding bins.** Node rounding uses `ndec = get_decimals(snap_tolerance) - 1`, so `snap_tolerance = 0`, the default, rounds to 10 m.
 - **Serial `rid_confl`.** It uses `apply(..., 2, which(...))` without `simplify = FALSE`, so in principle it can return a matrix rather than a list.
 - **One-line networks.** `lines_to_lsn()` fails at the `left_join` that builds `noderelationships`.
+
+Thanks for SSNbler. We're starting to use it to build stream networks from the BC Freshwater Atlas, and these errors came up in our first checks, so we fixed them on a fork. We're happy to revise or split this up, or to close it if you'd rather fix it another way.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+https://claude.ai/code/session_01HMmnTXaaMFrKM22kUbvBZG

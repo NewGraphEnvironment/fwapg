@@ -48,7 +48,7 @@ SSNbler 1.1.2 reports false node errors on FWA data (pet221/SSNbler#8). Fix it o
 
 ## Phase 7: Upstream PR (gated)
 - [x] Draft the PR body (`upstream_pr_draft.md`) against `pet221/SSNbler` `develop` (asking the maintainer which base they want; CI runs on PRs to `main`) referencing #8, saying the `dbl_tonodes` mechanism cannot fire with exact distances, plus the rounding-bin note (`snap_tolerance = 0` gives 10 m bins), and show it to you. **Nothing is posted without your approval.**
-- [ ] Once approved, open the PR and record its link in the fwapg README and research file
+- [x] Once approved, open the PR and record its link in the fwapg README and research file (pet221/SSNbler#9, opened by the user)
 
 ## Validation
 

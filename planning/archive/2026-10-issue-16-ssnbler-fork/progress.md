@@ -22,3 +22,7 @@
 - Phase 5: all acceptance runs clean (findings.md table); Skeena parallel 0 errors / 1 outlet, 54 min
 - Phase 6: README, research, `ssnbler_check.{R,sh}` (build line, relationships check), reprex header
 - Next: `/code-check branch` on fwapg, Phase 7 draft for approval, archive, PR
+- fwapg PR #18 opened into `newgraph`
+- Phase 7: draft approved with a closing line and footer; the user opened pet221/SSNbler#9 (auto mode
+  blocks `gh pr create` outside the org). Filed #19 to check every watershed group on the fork
+- Next: merge #18 when the user says so; close #16 by hand
