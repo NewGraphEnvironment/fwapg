@@ -11,9 +11,10 @@
 # and the network has a different number of outlets.
 #
 # SSNbler needs its parallel path at 46,340 lines or more. Below that it runs
-# serially, with memory growing as the square of the lines (52 GB at 30,000);
-# the parallel path's unsnapped-node test is computed per chunk and is not
-# reliable (README.md).
+# serially, with memory growing as the square of the lines (52 GB at 30,000).
+# SSNbler 1.1.2 reports false errors at segments a few cm long, and on the
+# parallel path puts the unsnapped flags on the wrong nodes (pet221/SSNbler#8,
+# ssnbler_reprex.R, README.md).
 
 args <- commandArgs(trailingOnly = TRUE)
 if (!length(args) %in% c(2, 3)) {
@@ -44,11 +45,10 @@ parallel:::setDefaultClusterOptions(outfile = paste0(lsn_abs, ".workers.log"))
 # rather than by distance), 0.01 to 0.1 m and the default 0 to 10 m.
 # topo_tolerance changed nothing here (1 m and 1 cm gave the same errors).
 #
-# Two spots still report errors, each a main-flow segment a few cm long whose
-# geometry is a plain chain: 239055049 (1.6 cm, USKE) and 141013301 (2.9 cm,
-# MSKE). At snap_tolerance 0.01 its two ends round to one node (a "Downstream
-# Divergence"); at 0.001 they stay apart but are flagged as an "Unsnapped Node"
-# and a divergence, with topo_tolerance 1 m and 1 cm alike.
+# The distances themselves come from pdist::pdist(), which at BC Albers
+# coordinates returns 0 for points up to about 7 cm apart, so the 1 mm tolerance
+# acts as several cm: the errors at 239055049 (1.6 cm, USKE) and 141013301
+# (2.9 cm, MSKE) are that, not the geometry (pet221/SSNbler#8).
 lsn <- SSNbler::lines_to_lsn(
   streams,
   lsn_path = args[2],
