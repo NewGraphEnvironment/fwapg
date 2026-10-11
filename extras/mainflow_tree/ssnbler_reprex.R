@@ -3,10 +3,11 @@
 #
 #   Rscript ssnbler_reprex.R
 #
-# A: pdist::pdist() returns 0 for points a few cm apart at BC Albers coordinates,
-# so a 3 cm line reads as an unsnapped node and a divergence. B: on the parallel
-# path the unsnapped flags are chunk-local row numbers, applied to the whole node
-# list, so they land on the wrong nodes.
+# A: pdist::pdist() computes in single precision, so at BC Albers coordinates it
+# returns 0 for points a few cm apart, and a 3 cm line reads as an unsnapped node
+# and a divergence. B: on the parallel path the unsnapped flags are chunk-local row
+# numbers, applied to the whole node list, so they land on the wrong nodes. The
+# NewGraphEnvironment/SSNbler fork (README.md) fixes both: every check is clean.
 library(sf)
 
 # A straight chain of n lines, 10 m each, digitized downstream (east), with line k
@@ -29,8 +30,11 @@ check <- function(lines, parallel, label) {
 # A. Precision: 3 lines, the middle one 3 cm long
 check(chain(3, 2, 0, 0),             FALSE, "A: 3 lines near the origin")
 check(chain(3, 2, 878000, 1261000),  FALSE, "A: 3 lines at BC Albers coords")
-cat("   pdist of two points 3 cm apart at BC Albers coords:",
-    as.matrix(pdist::pdist(matrix(c(878000, 1261000), 1), matrix(c(878000.03, 1261000), 1))), "\n")
+# pdist is no longer an SSNbler dependency once fixed, so it may not be installed
+if (requireNamespace("pdist", quietly = TRUE)) {
+  cat("   pdist of two points 3 cm apart at BC Albers coords:",
+      as.matrix(pdist::pdist(matrix(c(878000, 1261000), 1), matrix(c(878000.03, 1261000), 1))), "\n")
+}
 
 # B. Chunks: 700 lines (701 nodes, split into two chunks), the 3 cm line at 650 (chunk 2)
 big <- chain(700, 650, 878000, 1261000)

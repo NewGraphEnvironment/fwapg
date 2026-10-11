@@ -30,29 +30,29 @@ SSNbler 1.1.2 reports false node errors on FWA data (pet221/SSNbler#8). Fix it o
 - [x] Push the fork branch and record the pinned commit SHA
 
 ## Phase 5: Acceptance test (fwapg)
-- [ ] `ssnbler_check.R` prints `packageVersion("SSNbler")` and the RemoteSha, so each runs.log line names its build (review AC3); during iteration install from the local clone, pin the SHA once at the end
-- [ ] Before-run baseline is runs.log 2026-10-10: USKE 4 errors 28.0 GB, MSKE 4 errors 37.0 GB, Skeena 6 errors 19.9 GB, Bulkley 0 errors 3.5 GB
-- [ ] `ssnbler_check.sh`: USKE and MSKE serial, expecting 0 node errors each, peak memory no higher than baseline; the fresh exports still hold 239055049 (1.6 cm) and 141013301 (2.9 cm)
-- [ ] `ssnbler_check.sh` on the whole Skeena (parallel), expecting 0 node errors and 1 outlet
-- [ ] relationships checks on all three: no `fromedge` repeated, rows = edges - outlets (review G3/AC1)
-- [ ] Regression: Bulkley (parallel, 52k lines) re-run, `relationships.csv` and `noderelationships.csv` identical to the existing `lsn_basin_bulkley` (review AC4)
-- [ ] The issue's shift test with no shift and an `unlink()` of node_errors, on the existing USKE/MSKE exports, expecting 0 and 0
-- [ ] `ssnbler_reprex.R`: clean on both paths (its own `pdist::pdist()` line guarded by `requireNamespace`)
-- [ ] If anything is still flagged, fix it in the fork and repeat Phases 4 and 5
+- [x] `ssnbler_check.R` prints `packageVersion("SSNbler")` and the RemoteSha, so each runs.log line names its build (review AC3); during iteration install from the local clone, pin the SHA once at the end
+- [x] Before-run baseline is runs.log 2026-10-10: USKE 4 errors 28.0 GB, MSKE 4 errors 37.0 GB, Skeena 6 errors 19.9 GB, Bulkley 0 errors 3.5 GB
+- [x] `ssnbler_check.sh`: USKE and MSKE serial, expecting 0 node errors each, peak memory no higher than baseline; the fresh exports still hold 239055049 (1.6 cm) and 141013301 (2.9 cm)
+- [x] `ssnbler_check.sh` on the whole Skeena (parallel), expecting 0 node errors and 1 outlet
+- [x] relationships checks on all three: no `fromedge` repeated, rows = edges - outlets (review G3/AC1)
+- [x] Regression: Bulkley (parallel, 52k lines) re-run, `relationships.csv` and `noderelationships.csv` identical to the existing `lsn_basin_bulkley` (review AC4)
+- [x] The issue's shift test with no shift and an `unlink()` of node_errors, on the existing USKE/MSKE exports, expecting 0 and 0
+- [x] `ssnbler_reprex.R`: clean on both paths (its own `pdist::pdist()` line guarded by `requireNamespace`)
+- [x] If anything is still flagged, fix it in the fork and repeat Phases 4 and 5 (nothing flagged)
 
 ## Phase 6: fwapg docs
-- [ ] `extras/mainflow_tree/README.md`: the re-run results, with SSNbler installed from the fork at the pinned commit
-- [ ] `research/fwa_mainflow_tree.md`: revise the SSNbler facts (precision, parallel), the results and the **Verified** line
-- [ ] `ssnbler_check.R` / `ssnbler_reprex.R` header comments: name the fixed version, and change the pdist comment to say what the fork does
-- [ ] Edit the fwapg#16 issue body: exact distances instead of the origin shift, and why (the measurement)
+- [x] `extras/mainflow_tree/README.md`: the re-run results, with SSNbler installed from the fork at the pinned commit
+- [x] `research/fwa_mainflow_tree.md`: revise the SSNbler facts (precision, parallel), the results and the **Verified** line
+- [x] `ssnbler_check.R` / `ssnbler_reprex.R` header comments: name the fixed version, and change the pdist comment to say what the fork does
+- [x] Edit the fwapg#16 issue body: exact distances instead of the origin shift, and why (the measurement)
 
 ## Phase 7: Upstream PR (gated)
-- [ ] Draft the PR body against `pet221/SSNbler` `develop` (asking the maintainer which base they want; CI runs on PRs to `main`) referencing #8, saying the `dbl_tonodes` mechanism cannot fire with exact distances, plus the rounding-bin note (`snap_tolerance = 0` gives 10 m bins), and show it to you. **Nothing is posted without your approval.**
+- [x] Draft the PR body (`upstream_pr_draft.md`) against `pet221/SSNbler` `develop` (asking the maintainer which base they want; CI runs on PRs to `main`) referencing #8, saying the `dbl_tonodes` mechanism cannot fire with exact distances, plus the rounding-bin note (`snap_tolerance = 0` gives 10 m bins), and show it to you. **Nothing is posted without your approval.**
 - [ ] Once approved, open the PR and record its link in the fwapg README and research file
 
 ## Validation
 
-- [ ] Tests pass (fork: `devtools::test()` + `check()`; fwapg: acceptance runs)
+- [x] Tests pass (fork: `devtools::test()` + `check()`; fwapg: acceptance runs)
 - [x] `/code-check` clean (each commit, or once over the branch with `/code-check branch`)
 - [ ] PWF checkboxes match landed work
 - [ ] `/planning-archive` on completion

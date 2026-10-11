@@ -16,3 +16,9 @@
 - Phases 2-3: tests first (failing on 1.1.2), then three fix commits in the fork; 188 pass; MF_streams
   identical before/after; three mutants each caught
 - Next: Phase 4 R CMD check
+- `/code-check` on the fork: 3 rounds, code clean throughout; wording corrected twice, ended by
+  enumeration (findings.md). Fork pushed at 37ca338; issue #16 body edited (exact distances, single
+  precision, the third defect)
+- Phase 5: all acceptance runs clean (findings.md table); Skeena parallel 0 errors / 1 outlet, 54 min
+- Phase 6: README, research, `ssnbler_check.{R,sh}` (build line, relationships check), reprex header
+- Next: `/code-check branch` on fwapg, Phase 7 draft for approval, archive, PR

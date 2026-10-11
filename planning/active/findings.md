@@ -144,6 +144,29 @@ Pushed: NewGraphEnvironment/SSNbler `fix-pdist-precision-parallel-unsnapped` at 
 (commits 8818f36 tests, eb66682 precision, ca0def8 offsets, 37ca338 drop). The branch was rewritten
 twice before the push (wording only; code and tests byte-identical, checked with `git diff --quiet`).
 
+## Phase 5: acceptance (2026-10-11)
+
+Database: a local fwapg holding the main-flow tree (`DATABASE_URL` set to a pg service name).
+
+| run | build | lines | node errors | outlets | relationships ok | peak GB | min | 1.1.2 (2026-10-10) |
+|---|---|---|---|---|---|---|---|---|
+| USKE serial | local 8505fb5 tree | 21,655 | 0 | 1 | yes | 18.0 | 2 | 4 errors, 28.0 GB |
+| MSKE serial | local | 24,732 | 0 | 1 | yes | 24.0 | 2 | 4 errors, 37.0 GB |
+| Bulkley parallel | local | 52,293 | 0 | 1 | yes; csvs byte-identical to 1.1.2 | 3.8 | 3 | 0, 3.5 GB |
+| Skeena parallel | local 8505fb5 (R code = 37ca338) | 261,764 | 0 | 1 | 261,763, none into two | 10.9 | 54 | 6 errors, 19.9 GB, 35 min |
+| USKE serial | `pak` 37ca338 | 21,655 | 0 | 1 | yes | 17.0 | 2 | |
+| MSKE serial | `pak` 37ca338 | 24,732 | 0 | 1 | yes | 28.0 | 2 | |
+
+- Exports still hold 239055049 (0.0161 m) and 141013301 (0.0293 m).
+- No-shift test (issue's script, `off <- c(0, 0)`, stale node_errors removed) on both exports: 0 and 0.
+- `ssnbler_reprex.R`: clean on all four checks; it still prints pdist's 0 for 3 cm.
+- **Slower on the parallel path:** 54 min for the Skeena against 35 on 1.1.2. `dist_xy()` is R
+  (`outer()` per block) where pdist was C. Memory roughly halved there; on the serial groups peak fell
+  10-13 GB. MSKE's peak was 24 GB on one run and 28 on the next, so a few GB is sampling variation.
+- The Skeena ran on the build one wording-only rewrite before 37ca338: `git diff 8505fb5 37ca338` is
+  NEWS.md and the `dist_xy.R` header comment only.
+- `pak` installing 37ca338 also updated 1 and added 3 dependency packages in the user library.
+
 ## Errors Encountered
 
 | Error | Resolution |
