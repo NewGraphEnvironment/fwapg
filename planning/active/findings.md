@@ -34,7 +34,7 @@ Measured on the current build (local fresh-db, 2026-10-11):
 - 37,667 outlets are placed, and 174 of them sit on a vertex (excluding line mouths).
 - Exactly **6** of those have a placed PCIC child joining at that measure (7 children), which matches the issue.
 - **No** PCIC sibling joins at a vertex outlet.
-- Of 1,570,164 first-step junctions in `fwapg.blk_paths`, 1,568,353 (99.9%) fall exactly on a segment start. Part 1's boundary therefore applies at essentially every junction.
+- Of the first-step junctions in `fwapg.blk_paths`, 1,568,353 fall within 1 µm of a segment start. (Corrected by the plan review, which counted against 1,570,499 junctions: 1,529,850 exactly on a start and 1,569,124 within 1 mm. Code junctions are always exact; touch junctions are exact at only 41,098 of 71,331, because interpolation along a segment adds float noise.) Part 1's boundary therefore applies at essentially every junction.
 
 ## Approach
 
