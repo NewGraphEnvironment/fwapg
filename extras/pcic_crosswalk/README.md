@@ -171,6 +171,8 @@ flow (the Cheslatta River) trip it too.
   15 km above where PCIC joins it, so the Columbia between reads about 54% high; Ansedagan Creek joins
   the Nass directly on the FWA while its PCIC outlet sits on a Nass side channel, so the creek carries
   almost nothing.
+- Segments below a river's lowest placed outlet, between it and the sea, carry no flow. An outlet on the
+  vertex two segments share takes the upper one, so the Toba River's first 122 m (three segments) have none.
 - Streams that leave BC before reaching their parent have no path, so their flow does not reach the
   parent in BC: the Okanagan, Kettle and Similkameen join the Columbia in the US, and their flow is not
   on the Columbia in BC (PCIC routes it through the US too).

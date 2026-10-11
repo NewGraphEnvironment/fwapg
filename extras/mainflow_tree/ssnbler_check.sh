@@ -39,7 +39,7 @@ log=$dir/$name.log
 # (passed to awk through the environment, so awk's own command line cannot match it)
 export WORKER_TAG="OUT=$(pwd -P)/$dir/lsn_$name.workers.log"
 
-# one run at a time: two large networks in memory at once crashed the machine in
+# one run at a time: three large networks in memory at once crashed the machine in
 # fwapg#2. A lock left by a run that no longer exists (a crash) is taken over.
 lock=$dir/.lock
 if ! mkdir "$lock" 2> /dev/null; then
