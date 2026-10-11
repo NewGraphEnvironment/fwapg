@@ -28,21 +28,21 @@ What exploration found:
 - [x] Guard proof: with a bad URL, a reload of a populated scratch table fails and the row count is unchanged
 
 ## Phase 2: Publish
-- [ ] `aws s3 cp` both files to `s3://fresh-bc/fwapg/extras/`, then check with `s3api head-object` that the sizes equal the local files
+- [x] `aws s3 cp` both files to `s3://fresh-bc/fwapg/extras/`, then check with `s3api head-object` that the sizes equal the local files
 - [ ] Infra issue + PR: add `"fwapg/extras"` to `fresh-bc`'s `public_read_prefixes`; run `tofu plan` and confirm the only change is that bucket's policy; hand the user the bare `tofu apply` command. The infra issue links here; nothing in this fork names that repo or a host
 - [ ] After apply: an unauthenticated `curl -I` of both public URLs returns 200, and `fwapg/dumps/…` still returns 403
-- [ ] `extras/README.md`: point the PCIC and main-flow tree upload commands at `fwapg/extras/`, and say the PCIC outputs are loaded by `load.sh`
+- [x] `extras/README.md`: point the PCIC and main-flow tree upload commands at `fwapg/extras/`, and say the PCIC outputs are loaded by `load.sh`
 
 ## Phase 3: Verify
-- [ ] Baseline: `qa_gauge.sh 08EE003` on fresh-db before the reload, saved to the job's `data/`
+- [x] Baseline: `qa_gauge.sh 08EE003` on fresh-db before the reload, saved to the job's `data/`
 - [ ] Scratch DB in the fresh-db container (`ltree`, schema `whse_basemapping`): run both load files and match the fingerprint (counts, distinct segments, sum to 6 dp, 48,716). Drop the scratch DB afterwards
 - [ ] In-place reload into `fwapg` on fresh-db: run both load files, match the fingerprint again, and check that `qa_gauge.sh 08EE003` output is identical to the baseline
-- [ ] `bash -n load.sh` and a check that the new section runs both files
-- [ ] File a fresh issue: `docker/load.sh` calls `db/create.sh`, which fwapg removed (upstream #193)
+- [x] `bash -n load.sh` and a check that the new section runs both files
+- [x] File a fresh issue: `docker/load.sh` calls `db/create.sh`, which fwapg removed (upstream #193)
 
 ## Phase 4: Issue and docs
 - [ ] Edit the #9 body: the prefix is `fwapg/extras/` and why (dumps), plus the verification method and its result
-- [ ] Note in `extras/pcic_crosswalk/README.md` where the outputs are published and that `load.sh` loads them
+- [x] Note in `extras/pcic_crosswalk/README.md` where the outputs are published and that `load.sh` loads them
 
 ## Validation
 
