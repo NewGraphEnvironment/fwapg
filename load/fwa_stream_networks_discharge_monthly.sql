@@ -15,7 +15,7 @@ BEGIN;
 
   TRUNCATE whse_basemapping.fwa_stream_networks_discharge_monthly;
 
-  \copy whse_basemapping.fwa_stream_networks_discharge_monthly FROM PROGRAM 'curl -sSf https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/fwa_stream_networks_discharge_monthly.csv.gz | gunzip' delimiter ',' csv header
+  \copy whse_basemapping.fwa_stream_networks_discharge_monthly FROM PROGRAM 'curl -sSf https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/fwa_stream_networks_discharge_monthly.csv.gz | gunzip' with (format csv, header match)
 
 COMMIT;
 

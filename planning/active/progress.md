@@ -15,3 +15,8 @@
   - `extras/README.md` upload commands now target `fwapg/extras/` (the main-flow tree was not uploaded yet, so nothing moves)
 - Phase 3 (partial): baseline `qa_gauge.sh 08EE003` saved to `extras/pcic_crosswalk/data/qa_gauge_08EE003_before9.txt` (gitignored); `bash -n load.sh` clean; filed NewGraphEnvironment/fresh#253 (loader calls removed `db/create.sh`; `FWA_StreamProfile` no longer in `schema.sql`)
 - Phase 4 (partial): `extras/pcic_crosswalk/README.md` says where the outputs are published and that `load.sh` loads them
+- Policy applied by the user; anonymous `curl -I` at 18:32Z: 200 on both `fwapg/extras/` objects, 403 on `fwapg/dumps/fwapg-20260421-203347.dump`
+- Code-check round 1 (`review-round1.md`): one finding, real. Plain `csv header` skips the header unchecked, so a reorder among compatible columns loads silently. Fixed with `with (format csv, header match)` (PG 15+; fresh-db 17.5, docker/db 16)
+  - Guard proof (scratch table with `anchor_subid`/`fwa_parent_subid` swapped): with `HEADER MATCH`, `column name mismatch in header line field 3`, exit 3, 0 rows; with plain `HEADER`, exit 0, 48,716 rows, 6,558 of them with the two values swapped
+- Phase 3, scratch DB `fwapg_issue9` (create path, empty DB with `ltree` and the schema), 18:33-18:39Z: COPY 48,716 and 40,524,444; fingerprint 40,524,444 | 3,377,037 | 178035348.248310; 7 crosswalk indexes. Scratch DB dropped
+- Phase 3, in-place reload into `fwapg` on fresh-db (with `HEADER MATCH`), 18:41-18:47Z: fingerprint identical; index list identical (8; `IF NOT EXISTS` skipped all six secondaries); `qa_gauge.sh 08EE003` byte-identical to the baseline (`data/qa_gauge_08EE003_{before,after}9.txt`, gitignored)

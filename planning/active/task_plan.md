@@ -15,7 +15,7 @@ What exploration found:
 - `db/schema.sql` is a pg_dump that is never hand-edited, and `db/migrations/` does not exist on `newgraph`.
   `load.sh` already loads the extras with `\copy FROM PROGRAM 'curl … | gunzip'`. The DDL goes in the load
   files (`CREATE TABLE IF NOT EXISTS`), so the fork's change stays in one block. The DDL repeats the job's
-  (`pcic_crosswalk.sh:150`, `sql/pcic_crosswalk04_select.sql:27`). If they drift, the CSV `HEADER` COPY fails loudly.
+  (`pcic_crosswalk.sh:150`, `sql/pcic_crosswalk04_select.sql:27`). The COPY uses `HEADER MATCH` (PG 15+), so a renamed, added or reordered column fails the load rather than shifting values (code-check round 1: plain `HEADER` skips the line unchecked).
 - **Decided:** verify in a scratch database plus an in-place reload rather than a full rebuild. fresh's
   `docker/load.sh` calls `db/create.sh`, which upstream removed in #193, so a full rebuild fails at stage 1.
 - Branch off `newgraph` (repo CLAUDE.md), and open the PR with `--base newgraph`.
@@ -29,14 +29,14 @@ What exploration found:
 
 ## Phase 2: Publish
 - [x] `aws s3 cp` both files to `s3://fresh-bc/fwapg/extras/`, then check with `s3api head-object` that the sizes equal the local files
-- [ ] Infra issue + PR: add `"fwapg/extras"` to `fresh-bc`'s `public_read_prefixes`; run `tofu plan` and confirm the only change is that bucket's policy; hand the user the bare `tofu apply` command. The infra issue links here; nothing in this fork names that repo or a host
-- [ ] After apply: an unauthenticated `curl -I` of both public URLs returns 200, and `fwapg/dumps/…` still returns 403
+- [x] Infra issue + PR: add `"fwapg/extras"` to `fresh-bc`'s `public_read_prefixes`; run `tofu plan` and confirm the only change is that bucket's policy; hand the user the bare `tofu apply` command. The infra issue links here; nothing in this fork names that repo or a host
+- [x] After apply: an unauthenticated `curl -I` of both public URLs returns 200, and `fwapg/dumps/…` still returns 403
 - [x] `extras/README.md`: point the PCIC and main-flow tree upload commands at `fwapg/extras/`, and say the PCIC outputs are loaded by `load.sh`
 
 ## Phase 3: Verify
 - [x] Baseline: `qa_gauge.sh 08EE003` on fresh-db before the reload, saved to the job's `data/`
-- [ ] Scratch DB in the fresh-db container (`ltree`, schema `whse_basemapping`): run both load files and match the fingerprint (counts, distinct segments, sum to 6 dp, 48,716). Drop the scratch DB afterwards
-- [ ] In-place reload into `fwapg` on fresh-db: run both load files, match the fingerprint again, and check that `qa_gauge.sh 08EE003` output is identical to the baseline
+- [x] Scratch DB in the fresh-db container (`ltree`, schema `whse_basemapping`): run both load files and match the fingerprint (counts, distinct segments, sum to 6 dp, 48,716). Drop the scratch DB afterwards
+- [x] In-place reload into `fwapg` on fresh-db: run both load files, match the fingerprint again, and check that `qa_gauge.sh 08EE003` output is identical to the baseline
 - [x] `bash -n load.sh` and a check that the new section runs both files
 - [x] File a fresh issue: `docker/load.sh` calls `db/create.sh`, which fwapg removed (upstream #193)
 

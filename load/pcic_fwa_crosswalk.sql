@@ -26,7 +26,7 @@ BEGIN;
 
   TRUNCATE whse_basemapping.pcic_fwa_crosswalk;
 
-  \copy whse_basemapping.pcic_fwa_crosswalk FROM PROGRAM 'curl -sSf https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/pcic_fwa_crosswalk.csv.gz | gunzip' delimiter ',' csv header
+  \copy whse_basemapping.pcic_fwa_crosswalk FROM PROGRAM 'curl -sSf https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/pcic_fwa_crosswalk.csv.gz | gunzip' with (format csv, header match)
 
   CREATE INDEX IF NOT EXISTS pcic_fwa_crosswalk_anchor_subid_idx ON whse_basemapping.pcic_fwa_crosswalk (anchor_subid);
   CREATE INDEX IF NOT EXISTS pcic_fwa_crosswalk_fwa_parent_idx ON whse_basemapping.pcic_fwa_crosswalk (fwa_parent_subid);
