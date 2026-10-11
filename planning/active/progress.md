@@ -24,3 +24,5 @@
   - Guard proof: passes on fresh-db (17.5); exit 1 with the bar raised to 180000; exit 1 when the database is unreachable (an empty result fails the test)
   - Enumeration (features the new code uses vs minimum version): CREATE TABLE IF NOT EXISTS 9.1, CREATE INDEX IF NOT EXISTS 9.5, COPY option list 9.0, HEADER MATCH 15, psql `\copy FROM PROGRAM` client 10, `show server_version_num` 8.2; `ltree` from schema.sql. Only HEADER MATCH is above the README floor, and it is guarded
   - Accepted, not fixed: the two files are not checked to come from one build (a partial in-place reload fails loudly with `load.sh` non-zero); `IF NOT EXISTS` on indexes matches names only
+- Code-check round 3 (`review-round3.md`): Clean. Mechanism named for rounds 1-2: COPY behaviour was read off the 17.5 test server rather than off what COPY guarantees across the supported versions. The reviewer independently re-checked the enumeration above and stubbed the guard (empty, non-numeric and overflow results all stop with exit 1, on bash 3.2 and 5.3). The loop ended by enumeration
+- #9 body edited: prefix `fwapg/extras/` and why, load files, and the verification method and results
