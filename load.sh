@@ -3,6 +3,9 @@ set -euxo pipefail
 
 PSQL="psql $DATABASE_URL -v ON_ERROR_STOP=1"
 
+# NewGraph fork only: the PCIC loads at the end use COPY ... HEADER MATCH (PostgreSQL 15+), so stop before loading anything
+[ "$($PSQL -tAXc 'show server_version_num')" -ge 150000 ] || { echo "load.sh needs PostgreSQL 15 or later" >&2; exit 1; }
+
 
 # ---------------------
 # load these directly from object storage parquet files
@@ -167,6 +170,17 @@ done
 # materialize above data to whse_basemapping.fwa_streams, holding the value-added data (for fast upstr/dnstr queries)
 $PSQL -f load/fwa_streams.sql
 
+# ---------------------
+# NewGraph fork only: PCIC monthly flow and crosswalk (extras/pcic_crosswalk), cached to NewGraph's fresh-bc bucket
+# ---------------------
+tables=(
+  pcic_fwa_crosswalk
+  fwa_stream_networks_discharge_monthly
+)
+for table in "${tables[@]}"; do
+  echo $table
+  $PSQL -f load/$table.sql
+done
 
 # clean up
 $PSQL -c "VACUUM ANALYZE"

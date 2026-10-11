@@ -126,6 +126,10 @@ flow (the Cheslatta River) trip it too.
 
 ## Output tables
 
+Both are published to `https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/<table>.csv.gz`, and `load.sh`
+loads them from there (`load/<table>.sql`), so a database gets them without running this job. After a rerun,
+upload both files again (`../README.md`).
+
     Table "whse_basemapping.fwa_stream_networks_discharge_monthly"
            Column        |       Type       | Nullable
     ----------------------+------------------+----------

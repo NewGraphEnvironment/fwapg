@@ -19,11 +19,12 @@ When complete, upload to nrs.objectstore:
 
 Note that no metadata is currently provided to link versions of these add-ons to a given version of the FWA data (this is a to-do).
 
-The PCIC crosswalk outputs (`pcic_crosswalk/`, NewGraph fork only) go to NewGraph's `fresh-bc` bucket rather than `bchamp`:
+The PCIC crosswalk outputs (`pcic_crosswalk/`, NewGraph fork only) go to NewGraph's `fresh-bc` bucket rather than `bchamp`,
+under `fwapg/extras/`, the one `fwapg/` prefix that is public-read (the rest of `fwapg/` is private). `load.sh` loads them from there:
 
-	aws s3 cp pcic_crosswalk/fwa_stream_networks_discharge_monthly.csv.gz s3://fresh-bc/fwapg/fwa_stream_networks_discharge_monthly.csv.gz
-	aws s3 cp pcic_crosswalk/pcic_fwa_crosswalk.csv.gz s3://fresh-bc/fwapg/pcic_fwa_crosswalk.csv.gz
+	aws s3 cp pcic_crosswalk/fwa_stream_networks_discharge_monthly.csv.gz s3://fresh-bc/fwapg/extras/fwa_stream_networks_discharge_monthly.csv.gz
+	aws s3 cp pcic_crosswalk/pcic_fwa_crosswalk.csv.gz s3://fresh-bc/fwapg/extras/pcic_fwa_crosswalk.csv.gz
 
-The main-flow tree (`mainflow_tree/`, NewGraph fork only) goes there too:
+The main-flow tree (`mainflow_tree/`, NewGraph fork only) goes there too (`load.sh` does not load it yet):
 
-	aws s3 cp mainflow_tree/fwa_stream_networks_mainflow_tree.csv.gz s3://fresh-bc/fwapg/fwa_stream_networks_mainflow_tree.csv.gz
+	aws s3 cp mainflow_tree/fwa_stream_networks_mainflow_tree.csv.gz s3://fresh-bc/fwapg/extras/fwa_stream_networks_mainflow_tree.csv.gz

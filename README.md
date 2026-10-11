@@ -18,7 +18,7 @@ See [documentation](https://smnorris.github.io/fwapg/) for setup and usage detai
 ## Quickstart
 
 1. Ensure all requirements/dependencies are met/installed. 
-    - access to a PostgreSQL (>13) database with the PostGIS extension
+    - access to a PostgreSQL (>13) database with the PostGIS extension (15 or later on the NewGraph fork's `newgraph` branch, whose `load.sh` uses `COPY ... HEADER MATCH`)
     - GDAL >=3.6
     - Python 3
     - [`bcdata`](https://github.com/smnorris/bcdata)
