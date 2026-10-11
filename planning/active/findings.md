@@ -108,8 +108,21 @@ Reviewer read 436a4ea and aaa8acc, probing in a copy. Folded in:
   the segment above it, which is what a PCIC sub-basin outlet there drains. The `LIMIT :num_features` cut across
   different blue lines keeps `linear_feature_id` (no positional order between lines).
 
+## Main-flow tree, full run (2026-10-10, `extras/mainflow_tree/data/run13.log`)
+
+- `mainflow_tree.sh` as committed, 16:47:18-17:07:35 (20.3 min), exit 0, QA 13/13 (paths 3, tree 10).
+  Paths 15.8 min, tree 2.9 min, **topology QA 1.5 min** (was ~35 min), exports 6 s.
+- Tree export identical to #11 (4,510,368 rows, sorted md5). `qa_topology.csv` identical to the build machine's
+  504-row `fwapg.mainflow_tree_qa` (8 cut_off, 473 dead_end, 23 no_parent).
+- Tangency guard for the BC-outline change: of 26,713 orphan mouths, none lies within 1 mm of 50 m from BC's edge;
+  the closest is 1.26 m from the threshold, so the old and new tests cannot disagree on any mouth (the buffer's
+  polygon approximation sags at most ~0.24 m at 50 m).
+- A first attempt at that check compared endpoints with `ST_DWithin` and no usable index; cancelled after 10 min
+  with `pg_cancel_backend` and redone with the 1 cm node keys qa_topology.sql uses (40 s).
+
 ## Errors Encountered
 
 | Error | Resolution |
 |-------|------------|
 | `diff` printed a git-style diff and `grep -c "^<"` counted 0 | `diff` is a shell wrapper; use `/usr/bin/diff` |
+| Endpoint `ST_DWithin` join ran 10 min unindexed | Cancel on the server (`pg_cancel_backend`); join on rounded 1 cm node keys |

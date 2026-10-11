@@ -38,11 +38,13 @@ as a whole is digitized in the direction of flow, with no per-segment exceptions
 
     ./mainflow_tree.sh
 
-Rebuilds the blue line paths (about 35 min; not while `pcic_crosswalk.sh` is running, see
-`extras/blue_line_paths`), builds the tree (about 1 min), finds splits, cut-offs, dead ends and outlets with no parent inside BC from the
-network geometry (about 35 min, nearly all of it testing whether each mouth with no parent is at BC's edge)
-(and dead ends; `sql/qa_topology.sql`, written to `data/qa_topology.csv` and kept as `fwapg.mainflow_tree_qa`), runs the
-tests in `sql/qa.sql` (stopping before export if any fails) and writes `fwa_stream_networks_mainflow_tree.csv.gz`.
+Rebuilds the blue line paths (not while `pcic_crosswalk.sh` is running, see `extras/blue_line_paths`), builds the
+tree, finds splits, cut-offs, dead ends and outlets with no parent inside BC from the network geometry
+(`sql/qa_topology.sql`, written to `data/qa_topology.csv` and kept as `fwapg.mainflow_tree_qa`), runs the tests in
+`sql/qa.sql` (stopping before export if any fails) and writes `fwa_stream_networks_mainflow_tree.csv.gz`. The whole
+job took 20 min (2026-10-10, local Docker database on a 128 GB machine): paths 16 min, tree 3 min, topology QA
+1.5 min. The QA took about 35 min while it unioned BC's boundary pieces around each mouth; it now builds BC's
+outline once.
 
 A *split* is a node that is the upstream end of more than one tree segment. A *cut-off* is a tree segment
 whose downstream end is no tree segment's upstream end, but is some network segment's: its water continues

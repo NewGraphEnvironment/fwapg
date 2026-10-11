@@ -11,7 +11,7 @@
 ## Phase 2: Topology QA, BC outline built once (`extras/mainflow_tree/sql/qa_topology.sql`)
 - [x] Build a temp `bc_outline`: `ST_Subdivide(ST_Union(fwa_bcboundary.geom))`, GiST-indexed, analyzed
 - [x] The `no_parent` test covers each mouth's 50 m buffer with the union of only the subdivided pieces it intersects. The semantics are unchanged; it is only faster.
-- [ ] Update the comment and the README's runtime note. The check is that the rows match exactly, not just the count; it is verified in Phase 4.
+- [x] Update the comment and the README's runtime note. The check is that the rows match exactly, not just the count; it is verified in Phase 4.
 
 ## Phase 3: SSNbler driver with a memory watchdog (`extras/mainflow_tree/ssnbler_check.sh`, committed)
 - [x] `ssnbler_check.sh <cap_gb> <name> <wscode> [group] [expected outlets]`: exports the tree subset to `data/ssnbler/<name>.gpkg` (the README's ogr2ogr recipe), then runs `ssnbler_check.R` and kills it above the cap
@@ -22,8 +22,8 @@
 ## Phase 4: Run the pipelines (never two at once; both rebuild the shared paths)
 - [ ] `extras/pcic_crosswalk/pcic_crosswalk.sh`, log under `data/`. Expect: blue line paths QA 3/3, crosswalk QA 10/10, `pcic_fwa_crosswalk` 48,716 rows, `fwa_stream_networks_discharge_monthly` 40,524,612 rows, sum(round(q_m3s,6)) = 178169881.209890
 - [ ] Compare against `ref_11`: run `zcat | sort | md5` on each export and diff `qa_drainage.csv`. Any difference is investigated, not explained away.
-- [ ] `extras/mainflow_tree/mainflow_tree.sh` (it calls `blue_line_paths.sh` again). Expect 4,510,368 segments and QA 10/10 (0 splits, 8 cut-offs, 473 dead ends, 23 `no_parent`)
-- [ ] Diff the tree export and `qa_topology.csv` against `ref_11`: the rows must be identical, which confirms the Phase 2 change
+- [x] `extras/mainflow_tree/mainflow_tree.sh` (it calls `blue_line_paths.sh` again). Expect 4,510,368 segments and QA 10/10 (0 splits, 8 cut-offs, 473 dead ends, 23 `no_parent`)
+- [x] Diff the tree export and `qa_topology.csv` against `ref_11`: the rows must be identical, which confirms the Phase 2 change
 - [ ] Record each stage's runtime from the logs (paths, crosswalk stages, tree, topology QA)
 - [ ] Fix anything that breaks in the scripts as committed. A fix is committed and the job rerun from the top.
 
