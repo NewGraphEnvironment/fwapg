@@ -8,30 +8,36 @@ SSNbler 1.1.2 reports false node errors on FWA data (pet221/SSNbler#8). Fix it o
 - [x] Baseline: `devtools::test()` and `ssnbler_reprex.R` against the unmodified clone (`devtools::load_all`), recording errors A and B in findings.md
 
 ## Phase 2: Tests first (fork)
-- [ ] `tests/testthat/test-topology_precision.R`: a chain of 3 lines at BC Albers coordinates (878000, 1261000) whose middle line is 3 cm long; `check_topology = TRUE`, `snap_tolerance = 0.001`; expect no `node_errors.gpkg`. Plus the same chain near the origin as the control.
-- [ ] Unit test of the distance helper against `sqrt(rowSums((a-b)^2))` at magnitudes 10⁰–10⁶, including pairs 1 mm apart and identical points (exactly 0)
-- [ ] Parallel test: 700 lines, the 3 cm line at 650 (two node chunks), `use_parallel = TRUE, no_cores = 2`; node categories and errors identical to serial. `skip_on_cran()` because it starts a cluster.
-- [ ] A test with a duplicate to-node pair split across two chunks: the parallel path flags it the same way serial does
-- [ ] Confirm the new tests fail on the unmodified code. This is the restore-the-bug check.
+- [ ] Before-snapshot: `MF_streams` (EPSG:5070, ~3e6 m) through `lines_to_lsn()` on both paths with unmodified code; save `relationships.csv`, `noderelationships.csv`, nodecat and node_errors to diff after the fix (review G7)
+- [ ] `tests/testthat/test-topology_precision.R`: the 3-line chain at the pinned coordinates (878000, 1261000), the middle line 3 cm long, `snap_tolerance = 0.001`, in `withr::local_tempdir()`; expect no node errors and `relationships.csv` exactly 1→2, 2→3. Control: the same chain near the origin. A comment explains why the coordinates are pinned (pdist reads 3 cm as 0 there, but only ~63% of random BC Albers positions do)
+- [ ] Unit tests of `dist_xy()`: offsets exact in binary (2^-10; a 3-4-5 triangle scaled by 2^-7) at 10^0-10^6 checked with `expect_identical`, identical points exactly 0, rectangular/data.frame/1-row inputs, and a block size forcing several blocks plus a remainder (review G5)
+- [ ] Unit test of the parallel combiner without a cluster: `lapply` over `split_matrix(node_xy, 2)` with duplicate node rows within one chunk and across the boundary (351/352 of 701), compared with the serial `which(colSums(D == 0) > 1)` / `which(rowSums(D[, dbl, drop = FALSE] == 0) > 0)` on the full matrix (review B1: unreachable through `lines_to_lsn()` once distances are exact)
+- [ ] `split_matrix()` unit test: 10 rows into 4 chunks give 3/3/3/1, each a matrix keeping its rownames (review G4)
+- [ ] Parallel test: 700 lines with the 3 cm line at 650, `use_parallel = TRUE, no_cores = 2`, node categories, errors and relationships identical to serial; `skip_on_cran()`
 
-## Phase 3: Fix (fork)
-- [ ] Internal helper `dist_xy(a, b)`: an exact Euclidean distance matrix from coordinate differences, filled in row blocks into a preallocated matrix (peak memory no higher than pdist + `as.matrix`)
-- [ ] Replace all 5 pdist() calls with it. Drop `importFrom(pdist, pdist)` and pdist from DESCRIPTION Imports and from foreach's `.packages`.
-- [ ] Parallel path: each chunk returns n_flow, snap_check and the zero-distance (node, to-edge) pairs with global node rows (offset by the chunk start). `get_pdist_nodes()` derives `dbl_tonodes` (to-ends with more than one zero-distance node) and `unsnapped_tonodes` over the whole node set.
+## Phase 3: Fix (fork, branched from upstream `develop`, 1.1.2.9000)
+- [ ] Internal `dist_xy(a, b)`: exact Euclidean distances from coordinate differences, filled in row blocks into a preallocated matrix; replace all 5 pdist() calls; drop `@importFrom pdist pdist` (R/SSNbler-package.R), pdist from Imports and from foreach `.packages`; `document()`
+- [ ] Parallel path: `pdist_node_coords()` returns chunk-local zero-distance (node, edge) pairs; `get_pdist_nodes()` offsets them by real chunk sizes, derives `dbl_tonodes` and `unsnapped_tonodes` globally (`sort(unique())`), list handling rather than `.combine = 'c'`
 - [ ] `split_matrix()`: `drop = FALSE`
-- [ ] NEWS.md entry under a dev version (1.1.2.9000), citing pet221/SSNbler#8
-- [ ] Measure the serial path on a ~20k-line group (USKE) before and after the change, to confirm the helper does not raise peak memory or run time
+- [ ] Separate commit: from/to/node coordinates from the vertices (`st_coordinates()`) instead of `st_line_sample()`, whose to-ends drift up to 2.3e-10 m (5 USKE, 3 MSKE lines), hidden today only by the rounding-bin merge plus the `removed_nodes` suppression (review G1); kept out of the PR if it touches more than the end-point extraction
+- [ ] NEWS.md bullets under "(development version)", citing pet221/SSNbler#8
+- [ ] Install the branch (`R CMD INSTALL .`): parallel workers load the installed SSNbler, not `load_all()` (review B2)
+- [ ] `devtools::test()` green; MF_streams after-snapshot identical to the before-snapshot on both paths
+- [ ] Restore-the-bug, one defect at a time on an installed reverted tree: precision only, offsets only, `drop` only; each makes at least one new test fail
 
 ## Phase 4: R CMD check (fork)
 - [ ] `devtools::check()`: 0 errors and 0 warnings, with any NOTE explained
 - [ ] Push the fork branch and record the pinned commit SHA
 
 ## Phase 5: Acceptance test (fwapg)
-- [ ] Install the fork at the pinned SHA (`pak::pak("NewGraphEnvironment/SSNbler@<sha>")`)
-- [ ] `ssnbler_check.sh`: USKE and MSKE serial, expecting 0 node errors each
+- [ ] `ssnbler_check.R` prints `packageVersion("SSNbler")` and the RemoteSha, so each runs.log line names its build (review AC3); during iteration install from the local clone, pin the SHA once at the end
+- [ ] Before-run baseline is runs.log 2026-10-10: USKE 4 errors 28.0 GB, MSKE 4 errors 37.0 GB, Skeena 6 errors 19.9 GB, Bulkley 0 errors 3.5 GB
+- [ ] `ssnbler_check.sh`: USKE and MSKE serial, expecting 0 node errors each, peak memory no higher than baseline; the fresh exports still hold 239055049 (1.6 cm) and 141013301 (2.9 cm)
 - [ ] `ssnbler_check.sh` on the whole Skeena (parallel), expecting 0 node errors and 1 outlet
-- [ ] The issue's shift test with **no** shift on the USKE/MSKE exports, expecting 0 and 0
-- [ ] `ssnbler_reprex.R`: clean on both paths
+- [ ] relationships checks on all three: no `fromedge` repeated, rows = edges - outlets (review G3/AC1)
+- [ ] Regression: Bulkley (parallel, 52k lines) re-run, `relationships.csv` and `noderelationships.csv` identical to the existing `lsn_basin_bulkley` (review AC4)
+- [ ] The issue's shift test with no shift and an `unlink()` of node_errors, on the existing USKE/MSKE exports, expecting 0 and 0
+- [ ] `ssnbler_reprex.R`: clean on both paths (its own `pdist::pdist()` line guarded by `requireNamespace`)
 - [ ] If anything is still flagged, fix it in the fork and repeat Phases 4 and 5
 
 ## Phase 6: fwapg docs
@@ -41,15 +47,8 @@ SSNbler 1.1.2 reports false node errors on FWA data (pet221/SSNbler#8). Fix it o
 - [ ] Edit the fwapg#16 issue body: exact distances instead of the origin shift, and why (the measurement)
 
 ## Phase 7: Upstream PR (gated)
-- [ ] Draft the PR body against `pet221/SSNbler` referencing #8, and show it to you. **Nothing is posted without your approval.**
+- [ ] Draft the PR body against `pet221/SSNbler` `develop` (asking the maintainer which base they want; CI runs on PRs to `main`) referencing #8, saying the `dbl_tonodes` mechanism cannot fire with exact distances, plus the rounding-bin note (`snap_tolerance = 0` gives 10 m bins), and show it to you. **Nothing is posted without your approval.**
 - [ ] Once approved, open the PR and record its link in the fwapg README and research file
-
-## Validation
-- [ ] Tests pass (fork: `devtools::test()` + `check()`; fwapg: acceptance runs)
-- [ ] `/code-check` clean (each commit, or once over the branch with `/code-check branch`)
-- [ ] PWF checkboxes match landed work
-- [ ] `/planning-archive` on completion
-
 
 ## Validation
 
