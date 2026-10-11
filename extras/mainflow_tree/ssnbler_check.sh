@@ -13,8 +13,9 @@ set -euo pipefail
 # this run's SSNbler workers, sampled every 3 s. At 46,340 lines or more SSNbler
 # starts a PSOCK cluster: separate R processes, reparented away from R, found by
 # the worker log path ssnbler_check.R puts on their command lines. Each run
-# appends one line to data/ssnbler/runs.log. Exit status: 0 clean; 1 node errors
-# or an outlet count other than expected; 2 bad arguments or a run already going;
+# appends one line to data/ssnbler/runs.log. Exit status: 0 clean; 1 node errors,
+# edge relationships that split or miss edges, or an outlet count other than
+# expected; 2 bad arguments or a run already going;
 # 3 killed at the cap or by low system memory; 4 the memory could not be sampled;
 # 5 no result (the export failed, the subset is empty, R failed, or anything else
 # went wrong); 129, 130 or 143 when the script itself got HUP, INT or TERM.
@@ -180,7 +181,9 @@ fi
 
 lines=$(grep -o 'lines: [0-9]*' "$log" || true)
 result=$(grep -o 'node errors: [0-9]*  outlets: [0-9]*' "$log" || true)
-summary="$(date '+%F %T') $name wscode=$wscode group=$group exit=$final r_exit=$r_rc peak_gb=$(awk -v k="$peak" 'BEGIN { printf "%.1f", k / 1048576 }') minutes=$((($(date +%s) - start + 59) / 60)) ${lines:-lines: ?} ${result:-node errors: ?}"
+build=$(grep -o '^ssnbler: .*[^ ]' "$log" | head -1 | tr -d '\n' || true)
+rels=$(grep -o 'relationships: [0-9]*  expected: [0-9]*  edges into two: [0-9]*' "$log" || true)
+summary="$(date '+%F %T') $name wscode=$wscode group=$group exit=$final r_exit=$r_rc peak_gb=$(awk -v k="$peak" 'BEGIN { printf "%.1f", k / 1048576 }') minutes=$((($(date +%s) - start + 59) / 60)) ${lines:-lines: ?} ${result:-node errors: ?} ${rels:-relationships: ?} ${build:-ssnbler: ?}"
 # the log first, so a closed stdout cannot lose the line
 echo "$summary" >> "$dir/runs.log" || echo "could not append to $dir/runs.log" >&2
 echo "$summary" || true

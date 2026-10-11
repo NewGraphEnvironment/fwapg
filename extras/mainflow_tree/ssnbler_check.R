@@ -6,20 +6,30 @@
 # as FWA delivers them, digitized from the downstream end; see README.md for the
 # export. Every line is reversed (SSNbler wants lines digitized in the direction
 # of flow), with no exceptions, and the landscape network is built in <lsn
-# directory> with check_topology = TRUE. Prints the node classes and any node
-# errors, and exits 1 if there is a node error, or if [expected outlets] is given
-# and the network has a different number of outlets.
+# directory> with check_topology = TRUE. Prints the SSNbler build, the node classes
+# and any node errors, and exits 1 if there is a node error, if an edge flows into
+# two or the edge relationships do not number one per edge less the outlets, or if
+# [expected outlets] is given and the network has a different number of outlets.
 #
 # SSNbler needs its parallel path at 46,340 lines or more. Below that it runs
 # serially, with memory growing as the square of the lines (52 GB at 30,000).
 # SSNbler 1.1.2 reports false errors at segments a few cm long, and on the
 # parallel path puts the unsnapped flags on the wrong nodes (pet221/SSNbler#8,
-# ssnbler_reprex.R, README.md).
+# ssnbler_reprex.R, README.md); install the fixed fork the README names.
 
 args <- commandArgs(trailingOnly = TRUE)
 if (!length(args) %in% c(2, 3)) {
   stop("usage: Rscript ssnbler_check.R <streams file> <lsn directory> [expected outlets]")
 }
+
+# the build that ran: the version, and where it came from (owner/repo@commit for
+# an install from GitHub, the repository (CRAN) for a repository install, the remote
+# type pak recorded for anything else, or local)
+d <- packageDescription("SSNbler")
+src <- if (identical(d$RemoteType, "github")) {
+  paste0(d$RemoteUsername, "/", d$RemoteRepo, "@", substr(d$RemoteSha, 1, 7))
+} else if (!is.null(d$Repository)) d$Repository else if (!is.null(d$RemoteType)) d$RemoteType else "local"
+cat("ssnbler:", d$Version, src, "\n")
 
 streams <- sf::st_read(args[1], quiet = TRUE)
 streams <- sf::st_zm(streams)
@@ -45,10 +55,10 @@ parallel:::setDefaultClusterOptions(outfile = paste0(lsn_abs, ".workers.log"))
 # rather than by distance), 0.01 to 0.1 m and the default 0 to 10 m.
 # topo_tolerance changed nothing here (1 m and 1 cm gave the same errors).
 #
-# The distances themselves come from pdist::pdist(), which at BC Albers
-# coordinates returns 0 for points up to about 7 cm apart, so the 1 mm tolerance
-# acts as several cm: the errors at 239055049 (1.6 cm, USKE) and 141013301
-# (2.9 cm, MSKE) are that, not the geometry (pet221/SSNbler#8).
+# In 1.1.2 the distances came from pdist::pdist(), which works in single
+# precision, so at BC Albers coordinates the 1 mm tolerance acted as several cm:
+# the errors at 239055049 (1.6 cm, USKE) and 141013301 (2.9 cm, MSKE) were that,
+# not the geometry. The fork computes them in double precision (pet221/SSNbler#8).
 lsn <- SSNbler::lines_to_lsn(
   streams,
   lsn_path = args[2],
@@ -73,6 +83,11 @@ if (file.exists(errors_file)) {
   print(table(error = errors$error, nodecat = errors$nodecat))
 }
 n_outlets <- sum(nodes$nodecat == "Outlet")
+# The tree does not split, so no edge flows into two, and every edge but an outlet
+# flows into one: a relationships table that disagrees joined ends it should not have
+rel <- read.csv(file.path(args[2], "relationships.csv"))
+n_split <- sum(duplicated(rel$fromedge))
+cat("relationships:", nrow(rel), " expected:", nrow(streams) - n_outlets, " edges into two:", n_split, "\n")
 cat("node errors:", n_errors, " outlets:", n_outlets, "\n")
-if (n_errors > 0) quit(status = 1)
+if (n_errors > 0 || n_split > 0 || nrow(rel) != nrow(streams) - n_outlets) quit(status = 1)
 if (length(args) == 3 && n_outlets != as.integer(args[3])) quit(status = 1)

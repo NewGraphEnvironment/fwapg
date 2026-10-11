@@ -106,9 +106,15 @@ In the 2026-10 build (4,907,441 network segments):
 
 ## SSNbler check
 
+SSNbler 1.1.2 on CRAN reports false node errors on FWA data (below). Install the fix from the
+NewGraphEnvironment fork, pinned:
+
+    Rscript -e 'pak::pak("NewGraphEnvironment/SSNbler@37ca338")'
+
 `ssnbler_check.R` builds a landscape network from a tree subset with `SSNbler::lines_to_lsn(check_topology =
-TRUE)`, reversing every line. It fails on any node error, and on an outlet count other than the third
-argument when one is given:
+TRUE)`, reversing every line. It prints the SSNbler build it ran, and fails on any node error, on edge
+relationships that split (an edge flowing into two) or do not number one per edge less the outlets, and on
+an outlet count other than the third argument when one is given:
 
     ogr2ogr -f GPKG data/klum.gpkg PG:"$DATABASE_URL" -nln streams -sql \
       "SELECT s.linear_feature_id, s.geom FROM whse_basemapping.fwa_stream_networks_sp s
@@ -122,42 +128,51 @@ than a cap (in GB):
     ./ssnbler_check.sh 60 klum 400 KLUM 1      # <cap_gb> <name> <wscode> [group|-] [expected outlets]
 
 It writes `data/ssnbler/klum.gpkg`, `data/ssnbler/lsn_klum` and `data/ssnbler/klum.log`, appends a line
-with the exit status, R's own status, peak memory, minutes, lines and result to `data/ssnbler/runs.log`. It
-exits 0 when clean, 1 on node errors or an unexpected outlet count, 2 on bad arguments or when another run
+with the exit status, R's own status, peak memory, minutes, lines, result and SSNbler build to
+`data/ssnbler/runs.log`. It exits 0 when clean, 1 on node errors, bad edge relationships or an unexpected
+outlet count, 2 on bad arguments or when another run
 holds the lock, 3 when killed at the cap or by low system memory, 4 when memory could not be sampled, 5 when
 there is no result for any other reason (the export failed, the subset is empty, R failed or was killed from
 outside), and 129, 130 or 143 when the script itself is sent HUP, INT or TERM.
 
-SSNbler (1.1.2) takes one of two paths, and they differ:
+SSNbler takes one of two paths, and they differ:
 
-- **Below 46,340 lines it runs serially**, and memory grows with the square of the line count: 28 GB at
-  21,700 lines, 52-54 GB at 29,000-30,000 (footprint, 2026-10-10). Check a large basin a watershed group at a
-  time, and never two at once (three at once crashed a 64 GB machine).
-- **At 46,340 lines or more it must run in parallel**, in chunks of 500 nodes, and memory grows about linearly:
-  3.5 GB at 52,000 lines, 7.5 GB at 106,000, 16 GB for the Nechako (210,000 lines, 23 min), 20 GB for the
-  Skeena (262,000, 35 min).
+- **Below 46,340 lines it runs serially**, and memory grows with the square of the line count: on 1.1.2,
+  28 GB at 21,700 lines, 52-54 GB at 29,000-30,000 (footprint, 2026-10-10); on the fork, 17-18 GB at 21,700
+  and 24-28 GB at 24,700 (2026-10-11). Check a large basin a watershed group at a time, and never two at once
+  (three at once crashed a 64 GB machine).
+- **At 46,340 lines or more it must run in parallel**, in chunks of up to 500 nodes, and memory grows about
+  linearly: on 1.1.2, 3.5 GB at 52,000 lines, 7.5 GB at 106,000, 16 GB for the Nechako (210,000 lines,
+  23 min), 20 GB for the Skeena (262,000, 35 min); on the fork, 3.8 GB at 52,000 and 10.9 GB for the Skeena,
+  which took 54 min (its distances are computed in R, pdist's in C).
 
-Two SSNbler defects produce false errors on FWA data (pet221/SSNbler#8; `ssnbler_reprex.R` reproduces both
-with synthetic lines):
+Two SSNbler 1.1.2 defects produce false errors on FWA data (pet221/SSNbler#8; `ssnbler_reprex.R` reproduces
+both with synthetic lines, and is clean on the fork):
 
-- **Precision.** SSNbler measures node distances with `pdist::pdist()`, which at BC Albers coordinates returns
-  0 for points up to about 7 cm apart. A segment a few cm long then reads as an unsnapped node and a
-  divergence at each end, whatever `snap_tolerance` says.
-- **Parallel path.** Its unsnapped flags are row numbers within a 500-node chunk, applied to the whole node
-  list without the chunk's offset, so they land on the wrong nodes; a duplicate split across two chunks is
+- **Precision.** SSNbler measured node distances with `pdist::pdist()`, which rounds coordinates to single
+  precision, so at BC Albers coordinates points several cm apart can read as 0 apart. A segment a few cm
+  long then reads as an unsnapped node and a divergence at each end, whatever `snap_tolerance` says, and its
+  edge relationships are wrong.
+- **Parallel path.** Its unsnapped flags are row numbers within a chunk, applied to the whole node list
+  without the chunk's offset, so they land on the wrong nodes; a duplicate split across two chunks is
   missed.
 
+The fork (`NewGraphEnvironment/SSNbler`, branch `fix-pdist-precision-parallel-unsnapped`) computes distances
+in double precision and counts duplicates across chunks (NewGraphEnvironment/fwapg#16), and is offered
+upstream as pet221/SSNbler#9. Once distances are exact the second defect cannot fire, so no run here
+exercises its fix; the fork tests it directly.
+
 In the 2026-10 build, every watershed group holding the Skeena (`400`) or the Nechako (`100.567134`), each
-group's share of the basin checked on its own on the serial path:
+group's share of the basin checked on its own on the serial path with SSNbler 1.1.2:
 
 - **27 of 29 groups: 0 node errors**, including KLUM, which holds three of the four side channels in the
   tests, and LSKE (29,000 lines), which holds the fourth (360216952). Each group has 1-3 outlets: where the
   basin leaves it (by two streams in 13 groups), plus any dead ends and `no_parent` outlets.
 - **USKE and MSKE: 4 errors each, at one spot each, all false.** Each is a main-flow segment a few cm long in
   a plain chain (239055049, 1.6 cm; 141013301, 2.9 cm), and the SQL check finds no split there. It is the
-  precision defect: shifted to small coordinates, both cm segments' errors go away. One error remained in one
-  group or the other depending on the shift (two shifts tried), consistent with `pdist` still being off by a
-  few mm at 10⁵ m.
+  precision defect. Shifted to small coordinates, the errors mostly go away but not entirely: an integer offset
+  took USKE from 4 to 0 and MSKE to 1, a bounding-box corner MSKE to 0 and USKE to 1, consistent with `pdist`
+  still being off by about 9 mm at 10⁵ m.
 - Not checkable: the Skeena's share of SPAT and TAKL and the Nechako's of TABR are one segment each, which
   `lines_to_lsn` cannot build (an error inside its own `left_join`).
 - Whole basins, on the parallel path: the Nechako has **0 node errors and 8 outlets**, its mouth on the Fraser,
@@ -166,6 +181,17 @@ group's share of the basin checked on its own on the serial path:
   false errors: the two cm segments' divergences, and two unsnapped nodes in ZYMO, which are MSKE's segment
   ends (rows 462 and 463 of their chunk) applied to rows 462 and 463 of the whole list. USKE's two ends fall
   in different chunks, so neither is flagged.
+
+Re-run on the fork at 37ca338 (2026-10-10 and 11), the same exports:
+
+- **USKE and MSKE: 0 node errors**, 1 outlet each, with 239055049 (1.6 cm) and 141013301 (2.9 cm) present.
+- **The whole Skeena, parallel: 0 node errors and 1 outlet**, and 261,763 relationships for 261,764 lines,
+  none flowing into two.
+- The Bulkley (52,293 lines, parallel, clean on 1.1.2): `relationships.csv`, `noderelationships.csv` and
+  `nodexy.csv` byte-identical to 1.1.2's.
+- The Skeena and the Bulkley ran on a local build of the branch one wording-only rewrite before 37ca338
+  (`runs.log` reads `local`); the R code is identical. USKE and MSKE ran on both, the second time installed
+  from GitHub at 37ca338.
 
 ## Caveats
 
