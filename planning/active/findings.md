@@ -129,6 +129,27 @@ Reviewer read 436a4ea and aaa8acc, probing in a copy. Folded in:
 - Signal: TERM to the script during NECR (21k lines) -> R stopped and lock removed within 4 s. (A first attempt
   signalled the `export && ./script` wrapper subshell instead of the script; the script correctly kept watching.)
 
+## SSNbler groups (2026-10-10, `extras/mainflow_tree/data/ssnbler/runs.log`)
+
+`./ssnbler_check.sh 90 <name> <wscode> <group>`, one at a time, cap 90 GB footprint (kernel reported 92% of
+memory available with the DB running; 29 GB unused, the VM's 112 GB footprint mostly reclaimable). Peak is top's
+footprint, which top prints in whole GB above 10 GB.
+
+| group (basin share) | lines | node errors | outlets | peak | minutes |
+|---|---|---|---|---|---|
+| USKE (Skeena) | 21,655 | 4 | 1 | 28 GB | 1 |
+| MSKE (Skeena) | 24,732 | 4 | 1 | 37 GB | 2 |
+| LSKE (Skeena) | 29,266 | 0 | 1 | 52 GB | 2 |
+| BULK (Skeena) | 30,046 | 0 | 1 | 52 GB | 2 |
+| FRAN (Nechako) | 30,134 | 0 | 2 | 54 GB | 2 |
+
+- USKE and MSKE: the 4 errors (2 Downstream Divergence + 2 Unsnapped Node, all Confluence) are at the two ends of
+  239055049 (1.6 cm) and 141013301 (2.9 cm) exactly, as in #2.
+- LSKE, BULK, FRAN (never run before): 0 node errors. FRAN's second outlet is the Nechako dead end in FRAN the
+  README lists. So all 29 groups holding the Skeena or Nechako (bar the three one-segment shares) are now checked.
+- Memory follows #2's growth (27-28 GB at ~22k lines on both machines; ~52 GB at 30k).
+- Runtime is minutes, not the hours feared: the serial path is memory-bound, not time-bound.
+
 ## Errors Encountered
 
 | Error | Resolution |

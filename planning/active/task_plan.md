@@ -28,8 +28,8 @@
 - [ ] Fix anything that breaks in the scripts as committed. A fix is committed and the job rerun from the top.
 
 ## Phase 5: SSNbler groups, one at a time
-- [ ] LSKE, BULK and FRAN whole (Skeena `400` / Nechako `100.567134` share), with peak RSS and runtime per group
-- [ ] Rerun the USKE and MSKE spots to confirm the #2 results reproduce on the run machine
+- [x] LSKE, BULK and FRAN whole (Skeena `400` / Nechako `100.567134` share), with peak RSS and runtime per group
+- [x] Rerun the USKE and MSKE spots to confirm the #2 results reproduce on the run machine
 - [ ] Ladder, which stops at the first rung over the cap: about 50k lines, about 100k lines, then the Nechako whole (about 210k lines). Rung subsets are picked by wscode and counted in SQL first. The goal is to measure the memory, and whether the parallel path works above 46,340 lines.
 
 ## Phase 6: Record
