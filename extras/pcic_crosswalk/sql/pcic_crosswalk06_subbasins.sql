@@ -31,8 +31,11 @@
 -- of more than 1 m leaves the outlet off its candidate, so candidate_rank is
 -- cleared. Placement is done by now and compares measures, which this lowers by at
 -- most a segment's length. Vertex and junction are compared within 1 mm: adjacent
--- segments' measures differ in the last digits. qa.sql tests that none is left
--- (NewGraphEnvironment/fwapg#14).
+-- segments' measures differ in the last digits. Not moved, so that qa.sql's test
+-- that none is left stops the job for review (NewGraphEnvironment/fwapg#14): an
+-- outlet at its line's mouth (no segment below), and one with another placed
+-- outlet within 1 mm on its line (moving one of a stacked pair below the other
+-- would reverse their order on the FWA).
 UPDATE whse_basemapping.pcic_fwa_crosswalk x
 SET
   linear_feature_id = m.linear_feature_id,
@@ -78,6 +81,13 @@ FROM (
   AND abs(x.downstream_route_measure - s.downstream_route_measure) < 0.001
   AND u.blk = x.blue_line_key
   AND abs(u.measure - x.downstream_route_measure) < 0.001
+  AND NOT EXISTS (
+    SELECT 1 FROM whse_basemapping.pcic_fwa_crosswalk y
+    WHERE y.flag IS NULL
+    AND y.subid != x.subid
+    AND y.blue_line_key = x.blue_line_key
+    AND abs(y.downstream_route_measure - x.downstream_route_measure) < 0.001
+  )
   ORDER BY x.subid
 ) m
 WHERE x.subid = m.subid;

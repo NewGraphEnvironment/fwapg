@@ -71,7 +71,14 @@ All QA passed, including both Phase 1 tests (`f` -> `t`). The move updated 6 out
 
 Against the #13 snapshot, the vertex test, the FWA-child invariant and the population ceiling (<= 1,000) all return `f`. On the intermediate build all three return `t`. They take about 9 s together.
 
+## Code-check round 1 (planning/active/review-round1.md)
+
+The reviewer found no defect in the current build and two guard blind spots with no instance today, both of which would publish short flow silently:
+- An outlet at its line's mouth whose PCIC descendant joins there. The strict step>0 rule parents the descendant below it, and the move cannot help (no segment below). Fix: QA test 1 no longer exempts measure 0, so such a case stops the job. Measured: 7000406 (GRAI) and 8002298 (KITL) sit at mouths where lines join, and no placed outlet is on those lines.
+- A stacked pair (two placed outlets within 1 mm on one line). Moving one below the other would reverse them on the FWA. Fix: the move skips such an outlet, which stays on its vertex, so QA test 1 stops the job. Mutation test: planting a duplicate of 4000204 on temp tables made the move select 5 outlets instead of 6 (4000204 skipped).
+
 ## Errors Encountered
 
 | Error | Resolution |
 |-------|------------|
+| A mutation probe built by extracting the move's SELECT from 06 with an `awk` range ran past it: `sed -n '/A/,/B/p'` on a file where A recurs extracted the rest of 06, and psql executed it. The crosswalk references had been redirected to a temp table, but the `fwapg.pcic_subbasins*` statements ran for real and created a stray `fwapg.pcic_subbasins`. | Checked `pg_stat_user_tables`: the crosswalk's update count (36,998) and last analyze (16:35) are the job's, and the monthly table and snapshots are untouched. Dropped the stray table. Redid the probe with the SELECT written out by hand over temp tables only. Never pipe extracted job SQL into psql. |

@@ -102,8 +102,12 @@ FROM annual;
 -- whose PCIC descendant joins there (a child, or one anchored to it through
 -- unplaced children) is above the confluence its flow includes.
 -- pcic_crosswalk06_subbasins.sql moves it to the segment below (NewGraphEnvironment/fwapg#14;
--- 6 outlets in the 2026-10 build). Vertex and junction are compared within 1 mm:
--- adjacent FWA segments' measures differ in the last digits
+-- 6 outlets in the 2026-10 build). Line mouths are included: there is no segment
+-- below to move to, and the step > 0 rules of 06 and 07 would parent the
+-- descendant below the outlet, so such a case has to be looked at. So is an outlet
+-- left on its vertex because another placed outlet is stacked on it. Vertex and
+-- junction are compared within 1 mm: adjacent FWA segments' measures differ in
+-- the last digits
 SELECT 'no placed outlet sits above a confluence its PCIC child joins at' AS test, NOT EXISTS (
   SELECT 1
   FROM whse_basemapping.pcic_fwa_crosswalk x
@@ -113,7 +117,6 @@ SELECT 'no placed outlet sits above a confluence its PCIC child joins at' AS tes
   INNER JOIN fwapg.blk_paths bp ON bp.blue_line_key = c.blue_line_key
   CROSS JOIN LATERAL unnest(bp.path_blks, bp.path_measures) AS u(blk, measure)
   WHERE x.flag IS NULL
-  AND s.downstream_route_measure > 0
   AND abs(x.downstream_route_measure - s.downstream_route_measure) < 0.001
   AND u.blk = x.blue_line_key
   AND abs(u.measure - x.downstream_route_measure) < 0.001
