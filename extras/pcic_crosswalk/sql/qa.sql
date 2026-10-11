@@ -97,6 +97,39 @@ SELECT 'Kitsumkalum outlet 8007998 is placed and within 5% of PCIC' AS test,
   coalesce(bool_and(abs(q_acc - q_pcic) <= 0.05 * q_pcic), false) AS result
 FROM annual;
 
+-- a tributary's water enters at the junction, the start of the main-stem segment
+-- above it (FWA measures run [downstream, upstream)), so an outlet on that vertex
+-- whose PCIC child joins there is above the confluence its flow includes.
+-- pcic_crosswalk06_subbasins.sql moves it to the segment below (NewGraphEnvironment/fwapg#14;
+-- 6 outlets in the 2026-10 build). Vertex and junction are compared within 1 mm:
+-- adjacent FWA segments' measures differ in the last digits
+SELECT 'no placed outlet sits above a confluence its PCIC child joins at' AS test, NOT EXISTS (
+  SELECT 1
+  FROM whse_basemapping.pcic_fwa_crosswalk x
+  INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = x.linear_feature_id
+  INNER JOIN whse_basemapping.pcic_fwa_crosswalk c
+    ON c.dowsubid = x.subid AND c.flag IS NULL AND c.blue_line_key != x.blue_line_key
+  INNER JOIN fwapg.blk_paths bp ON bp.blue_line_key = c.blue_line_key
+  CROSS JOIN LATERAL unnest(bp.path_blks, bp.path_measures) AS u(blk, measure)
+  WHERE x.flag IS NULL
+  AND s.downstream_route_measure > 0
+  AND abs(x.downstream_route_measure - s.downstream_route_measure) < 0.001
+  AND u.blk = x.blue_line_key
+  AND abs(u.measure - x.downstream_route_measure) < 0.001
+) AS result;
+
+-- flow steps up at the junction itself, not on the segment above it: blue line
+-- 356362488 is joined by 356359224 at the start of segment 701317184, so 701317184
+-- carries the main stem's flow above (14 m3/s in June) and 701317270 below it the
+-- sum (695 m3/s). Before NewGraphEnvironment/fwapg#14, 701317184 carried 685
+SELECT 'tributary 356359224 steps up flow below its junction, not above it' AS test,
+  coalesce(bool_and(a.q_m3s < 0.5 * b.q_m3s), false) AS result
+FROM whse_basemapping.fwa_stream_networks_discharge_monthly a
+INNER JOIN whse_basemapping.fwa_stream_networks_discharge_monthly b ON b.month = a.month
+WHERE a.linear_feature_id = 701317184
+AND b.linear_feature_id = 701317270
+AND a.month = 6;
+
 -- drainage size at every placed outlet (qa_drainage.sql, NewGraphEnvironment/fwapg#7):
 -- outlets on a main stem whose PCIC drainage (river length and flow) is far from
 -- the FWA area they sit on. Measured 218 'small' and 126 'big' of 37,040; the

@@ -5,9 +5,9 @@
 Branch `14-pcic-crosswalk-flow-and-placement-at-a` off `newgraph`; PR `--base newgraph`.
 
 ## Phase 1: QA tests that fail on the current build
-- [ ] `sql/qa.sql`: "no placed outlet sits above a confluence its PCIC child joins at". The test looks for placed outlets on a vertex (measure = segment start, > 0) where a placed child (`dowsubid = subid`, on another blue line) has a path joining the outlet's line at that measure, and expects 0. It uses only the crosswalk, `fwapg.blk_paths` and the FWA streams.
-- [ ] `sql/qa.sql`: a named regression in the style of the Kitsumkalum test. On blue line 356362488 in June, segment 701317184 (starting at the junction) carries less than half of 701317270 (below it).
-- [ ] Run both against the current build. Both should return `f`. Record the values in `findings.md`.
+- [x] `sql/qa.sql`: "no placed outlet sits above a confluence its PCIC child joins at". The test looks for placed outlets on a vertex (measure = segment start, > 0) where a placed child (`dowsubid = subid`, on another blue line) has a path joining the outlet's line at that measure, and expects 0. It uses only the crosswalk, `fwapg.blk_paths` and the FWA streams.
+- [x] `sql/qa.sql`: a named regression in the style of the Kitsumkalum test. On blue line 356362488 in June, segment 701317184 (starting at the junction) carries less than half of 701317270 (below it).
+- [x] Run both against the current build. Both should return `f`. Record the values in `findings.md`.
 
 ## Phase 2: Segment flow steps up at the junction (part 1)
 - [ ] `sql/pcic_crosswalk07_segments.sql`: replace the `blk_on_or_upstream` call for outlets on another blue line with a strict test: an `EXISTS` over `fwapg.blk_paths` where the outlet's path reaches `s.blue_line_key` at `measure > s.downstream_route_measure`. The comment states why the test is strict here and why the shared function is unchanged.

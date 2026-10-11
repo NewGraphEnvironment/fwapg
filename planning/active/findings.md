@@ -43,6 +43,14 @@ Measured on the current build (local fresh-db, 2026-10-11):
   - After the move, 06's parent rule (`o.drm <= M`) and 07's segment ownership (`seg_measure <= s.drm`) give the right answer with no other change.
   - The child joins above the outlet's new segment start, so the outlet's segment carries its accumulated flow: the existing QA test "outlet segments carry accumulated flow" still holds.
 
+## Phase 1: the new QA tests on the current build (2026-10-11)
+
+Both return `f` on the #13 build, before any fix:
+- `no placed outlet sits above a confluence its PCIC child joins at`: f (the 6 outlets).
+- `tributary 356359224 steps up flow below its junction, not above it`: f. June on blue line 356362488 is 13.97 (701317113) -> 684.85 (701317184) -> 695.19 (701317270) m3/s. 76 placed outlets on 356359224 have a path joining 356362488 at 83036.9599489122, which is exactly 701317184's `downstream_route_measure`.
+
+Adjacent FWA segments' measures are not bit-equal: 701317270's `upstream_route_measure` is 83036.95988380806 against 701317184's `downstream_route_measure` of 83036.9599489122 (6.5e-5 apart). So the tests compare within 1 mm, and the Phase 3 move picks "the segment below" by order on the blue line, not by `upstream_route_measure = measure`.
+
 ## Errors Encountered
 
 | Error | Resolution |
