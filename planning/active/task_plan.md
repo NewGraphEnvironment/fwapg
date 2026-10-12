@@ -34,13 +34,13 @@ This PR delivers the check, the tooling and the drawn sample. The review (about 
 - [ ] Rerun the job. Confirm it reproduces the published build (md5 of both `.csv.gz` before and after; stop and ask if they differ) and that `pcic_qa_flow` gives 85 over 10x.
 
 ## Phase 3: Tests first for scoring (`review_test.sh`)
-- [ ] Fixture GeoPackages from a committed fixture design. Assert:
+- [x] Fixture GeoPackages from a committed fixture design. Assert:
   - known verdicts give the hand-computed per-stratum rates and Wilson intervals
   - a GeoPackage carrying another `sample_id` is refused
   - a GeoPackage whose review_id set differs from the design is refused
   - an unknown verdict is refused
   - a partly reviewed GeoPackage reports n reviewed of n drawn and does not count the blanks as errors
-- [ ] Restore each guard's bug and watch the matching assertion go red (mutation table in findings.md).
+- [x] Restore each guard's bug and watch the matching assertion go red (mutation table in findings.md).
 
 ## Phase 4: `review_build.sh`
 - [ ] `sql/review_sample.sql` draws deterministically (`md5(subid || stratum || seed)`, not `random()`): 60 random placed outlets, plus 12 each from `qa_following` flags, `candidate_rank > 1`, unplaced with a candidate (`broken_chain`, `demoted`), comparable-size confluences, and the existing flags (drainage `small`/`big`, >10x, gauge disagreements). An outlet drawn by several strata appears once and counts toward each. `review_id` comes from a second shuffled md5 order, which is also the working order.
@@ -53,8 +53,8 @@ This PR delivers the check, the tooling and the drawn sample. The review (about 
 - [ ] Self-checks before exit: the `review` fields are exactly the four review fields; per-stratum counts are min(cap, population); the review_id count matches the design.
 
 ## Phase 5: `review_score.sh`
-- [ ] Reads the filled `review` layer through GDAL (ogr2ogr to CSV, which also reads a GeoPackage QGIS left in WAL mode) and the design into psql temp tables, then runs `sql/review_score.sql`. It refuses on a `sample_id` or review_id-set mismatch, or an unknown verdict. It reports per stratum: drawn, reviewed, errors (anything not 'right'), rate, 95% Wilson interval, a breakdown by verdict, and low-confidence counts. It also reports the network rate (random stratum), the following check's precision (its stratum), and errors in the random stratum that no automatic check flagged.
-- [ ] `review_test.sh` passes.
+- [x] Reads the filled `review` layer through GDAL (ogr2ogr to CSV, which also reads a GeoPackage QGIS left in WAL mode) and the design into psql temp tables, then runs `sql/review_score.sql`. It refuses on a `sample_id` or review_id-set mismatch, or an unknown verdict. It reports per stratum: drawn, reviewed, errors (anything not 'right'), rate, 95% Wilson interval, a breakdown by verdict, and low-confidence counts. It also reports the network rate (random stratum), the following check's precision (its stratum), and errors in the random stratum that no automatic check flagged.
+- [x] `review_test.sh` passes.
 
 ## Phase 6: Build the sample, document
 - [ ] Run `review_build.sh` on the current build; commit `review/sample_design.csv`.

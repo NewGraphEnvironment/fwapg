@@ -11,3 +11,4 @@
 
 - Plan review folded into findings.md (md5 comparison, blinding, rename guard, sampling details)
 - Phase 1: `sql/qa_following.sql`, ceiling test in `sql/qa.sql`, wired into the job's QA step; measured, seeded, mutation-tested
+- Phases 3 and 5: `review_test.sh` (13 tests, 8 mutations red), `review_score.sh`, `sql/review_score.sql`; job rerun running (data/run8.log)

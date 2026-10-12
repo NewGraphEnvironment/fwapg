@@ -70,7 +70,26 @@ Probe (`share` of the PCIC segment 100-1000 m from its outlet within B m of each
 
 Mutations of the qa.sql test (each in a rolled-back transaction), all red: a measured outlet with NULL placed share; 200 more follows_other; everything unmeasured.
 
+## Scorer (Phases 3 and 5, 2026-10-12)
+
+- Design file is long format: `review_id, subid, stratum, drawn`. A row per stratum the outlet belongs to; only `drawn = t` rows enter a rate, so membership is known (for "random errors no check flagged") without leaking into the random rate.
+- 13 tests in `review_test.sh`, all pass. Mutation table (each in a scratch copy), all red:
+
+| mutation | caught by |
+|---|---|
+| M1 sample_id check off | another sample_id |
+| M2 duplicate check off | a review_id duplicated |
+| M3 id-set check off | a review_id missing; a review_id added |
+| M4 'maybe' accepted as a verdict | an unknown verdict |
+| M5 'sure' accepted as a confidence | an unknown confidence |
+| M6 undrawn membership counted | membership without a draw does not count |
+| M7 blank verdict counted as error | blank verdicts are unreviewed (scorer crashed: sqrt of a negative) |
+| M8 unflagged filter off | random errors no automatic check flagged |
+
 ## Errors Encountered
 
 | Error | Resolution |
 |-------|------------|
+| psql does not interpolate `:'var'` in `\copy` (`error: :: No such file or directory`) | load the temp tables with `-c "\copy ..."` in the same psql session as `-f` |
+| `greatest(0, NULL)` is 0: an unreviewed stratum showed an interval of 0-1 | dropped the clamp; Wilson stays in [0, 1] by construction |
+| Mutation probe read only `FAIL` lines, so M7 (scorer crashed, suite exit 3) read as "still green" | `score()` wrapper reports a crashing scorer as output, so checks fail instead of the run aborting |
