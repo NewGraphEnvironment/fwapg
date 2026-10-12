@@ -124,3 +124,27 @@ Mutations of the qa.sql test (each in a rolled-back transaction), all red: a mea
 | Round 2 (inside round 1's fix): a rebuild with the GeoPackage open in QGIS passed the guard (0 rows saved), `rm` left the `-wal`/`-shm`, later saves went to the deleted file, and a leftover `-wal` replayed into the new one | refuse on any sidecar, a header not `01 01` (WAL mode), or an open handle (`lsof`); each proven |
 | Round 2: a failed build left a partial GeoPackage at the live path (and the next run then refused it as "unreadable") | build to `review.building.gpkg`, move into place after the checks; a broken-layer mutant leaves the live file byte-identical |
 | Round 2: after a failed crosswalk run, `pcic_qa_outlets`/`pcic_qa_candidates` were from the previous build | `review_build.sh` refuses while `fwapg.pcic_outlets` exists; proven |
+| Round 3 (inside round 2's fix): the sidecar check ran only when `review.gpkg` existed, so a `-wal` left by a file moved aside replayed into the new build | sidecar check unconditional; proven |
+| Round 3: the live-file guard ran once, before a ~40 s build | `guard_live` runs again just before the `mv`; a sidecar touched mid-build refuses and leaves the live file byte-identical |
+| Round 3: `pcic_qa_gauges` survives a crosswalk rerun, so the draw could use the previous build's gauge flags (the committed draw did, matching only because the build reproduced exactly) | the job drops it at start, `review_build.sh` refuses without it; `qa_gauges.sh` rerun on this build: `qa_gauges.csv` byte-identical, draw unchanged |
+| Round 3: `load.sh` replaces the crosswalk and leaves local `pcic_qa_*` | cross-build invariant: every ranked placement on its candidate of that rank and blue line, outlet counts equal; a planted mismatch refuses |
+| Round 3 (low): `flags.csv` and the design copy beside the GeoPackage were written before the checks | written to `*.building.*`, moved into place with the GeoPackage |
+
+## Code-check mechanism (round 3)
+
+A fixed name stands in for provenance and ownership: each script assumes whatever sits at a path or table name came from this build and is held by no one. Round 3's enumeration of every place it reaches, with round 3's fixes applied:
+
+| place | guarded |
+|---|---|
+| `data/review/review.gpkg` (replaced) | yes: `guard_live` before the build and before the `mv` |
+| its `-wal`/`-shm`/`-journal` | yes: refused whether or not the GeoPackage exists |
+| `review.building.gpkg`, `*.building.csv` | yes: script-owned names |
+| `review/sample_design.csv` | yes: `cmp` refuses a new draw; written only on success |
+| `data/review/sample_design.csv`, `flags.csv` | yes: written only on success |
+| `fwapg.pcic_review_*` | yes: script-owned |
+| crosswalk vs `pcic_qa_outlets`/`candidates` | yes: staging guard and the cross-build invariant |
+| `pcic_qa_drainage`/`following`/`flow` | yes: written by the job with the crosswalk; a failed run leaves staging |
+| `pcic_qa_gauges` | yes: dropped by the job, required by `review_build.sh` |
+| `data/rivers.geojson`, `lakes.geojson` | no, accepted: context geometry only, rewritten by the job's first step |
+| `blk_paths` | yes: from the FWA alone, rebuilt inside the job |
+| `review_score.sh`, `review_test.sh` | yes: `mktemp -d` only; md5 ties GeoPackage to design |

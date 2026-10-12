@@ -26,22 +26,40 @@ DESIGN=review/sample_design.csv
 
 mkdir -p "$OUT" review
 
-# a crosswalk run that stopped (a failed QA test) leaves its staging tables and a
-# new crosswalk, but the previous run's pcic_qa_outlets and pcic_qa_candidates
-if [ "$($PSQL -tXA -c "SELECT to_regclass('fwapg.pcic_outlets') IS NULL")" != t ]; then
-  echo "fwapg.pcic_outlets exists: the last crosswalk run did not finish, so the kept tables are from another build" >&2
+# the tables read must come from one build. A crosswalk run that stopped (a failed
+# QA test) leaves its staging tables, a new crosswalk and the previous run's
+# pcic_qa_outlets and pcic_qa_candidates; load.sh replaces the crosswalk with the
+# published one and leaves every local pcic_qa_* table. Every placed outlet with a
+# rank sits on its candidate of that rank, and the outlets match one for one, only
+# when they are one build. pcic_crosswalk.sh drops pcic_qa_gauges, so a missing
+# one means qa_gauges.sh has not been run on this build
+if [ "$($PSQL -tXA -c "SELECT to_regclass('fwapg.pcic_outlets') IS NULL AND to_regclass('fwapg.pcic_qa_gauges') IS NOT NULL")" != t ]; then
+  echo "fwapg.pcic_outlets exists (the last crosswalk run did not finish) or fwapg.pcic_qa_gauges does not (run qa_gauges.sh)" >&2
   exit 1
 fi
+mismatch=$($PSQL -tXA -c "
+  SELECT (SELECT count(*) FROM whse_basemapping.pcic_fwa_crosswalk x
+          WHERE x.flag IS NULL AND x.candidate_rank IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM fwapg.pcic_qa_candidates c
+                          WHERE c.subid = x.subid AND c.candidate_rank = x.candidate_rank
+                          AND c.blue_line_key = x.blue_line_key))
+    + abs((SELECT count(*) FROM whse_basemapping.pcic_fwa_crosswalk) - (SELECT count(*) FROM fwapg.pcic_qa_outlets))")
+[ "$mismatch" = 0 ] || { echo "the crosswalk and pcic_qa_outlets/candidates are not one build ($mismatch mismatches): rerun pcic_crosswalk.sh" >&2; exit 1; }
 
 # the GeoPackage is filled in place, so a rebuild (the same draw rebuilds it) must
 # not delete answers. Refused while anything may hold it open or hold edits beside
 # it (an open handle, a -wal, -shm or -journal, a header in WAL mode: QGIS's saves
 # would go to the deleted file, or a leftover -wal replay into the new one), and
-# while its review layer has any filled row. One that cannot be read counts as filled
-if [ -e "$GPKG" ]; then
+# while its review layer has any filled row. One that cannot be read counts as
+# filled. A sidecar refuses even with no GeoPackage: one left by a file moved aside
+# would replay into the new one. Checked before the build and again just before
+# the new file is moved into place
+guard_live() {
+  local side mode filled
   for side in "$GPKG-wal" "$GPKG-shm" "$GPKG-journal"; do
-    [ ! -e "$side" ] || { echo "$side exists: close $GPKG in QGIS first" >&2; exit 1; }
+    [ ! -e "$side" ] || { echo "$side exists: close $GPKG in QGIS, or move it aside with the GeoPackage" >&2; exit 1; }
   done
+  [ -e "$GPKG" ] || return 0
   if command -v lsof > /dev/null && lsof -- "$GPKG" > /dev/null 2>&1; then
     echo "$GPKG is open in another program: close it first" >&2
     exit 1
@@ -55,19 +73,26 @@ if [ -e "$GPKG" ]; then
     echo "$GPKG holds ${filled:-unreadable} filled-in review rows; move it aside to rebuild" >&2
     exit 1
   fi
-fi
+}
+guard_live
 
 $PSQL -v seed="$SEED" -v cap="$CAP" -v cap_random="$CAP_RANDOM" -f sql/review_sample.sql
 
-$PSQL -c "\copy (SELECT review_id, subid, stratum, drawn FROM fwapg.pcic_review_design ORDER BY review_id, stratum) TO '$OUT/sample_design.csv' WITH (FORMAT csv, HEADER)"
+# every output is written beside its live name and moved into place once the
+# checks pass, so a failed build leaves the last good set, not a mix
+NEW=$OUT/review.building.gpkg
+NEW_DESIGN=$OUT/sample_design.building.csv
+NEW_FLAGS=$OUT/flags.building.csv
+rm -f "$NEW" "$NEW-wal" "$NEW-shm" "$NEW-journal" "$NEW_DESIGN" "$NEW_FLAGS"
+
+$PSQL -c "\copy (SELECT review_id, subid, stratum, drawn FROM fwapg.pcic_review_design ORDER BY review_id, stratum) TO '$NEW_DESIGN' WITH (FORMAT csv, HEADER)"
 # the committed design is the key to a review in progress: a new draw (a changed
 # build or seed) must not replace it silently
-if [ -e "$DESIGN" ] && ! cmp -s "$OUT/sample_design.csv" "$DESIGN"; then
+if [ -e "$DESIGN" ] && ! cmp -s "$NEW_DESIGN" "$DESIGN"; then
   echo "$DESIGN exists and differs from this draw; move it aside if a new review is intended" >&2
   exit 1
 fi
-cp "$OUT/sample_design.csv" "$DESIGN"
-sample_id=$(md5sum < "$DESIGN" | cut -c1-32)
+sample_id=$(md5sum < "$NEW_DESIGN" | cut -c1-32)
 
 # PCIC's network around the sample, without its ids: a subid would lead back to
 # the flag lists
@@ -80,10 +105,6 @@ SAMPLE="(SELECT DISTINCT d.review_id, d.subid, o.geom, o.probe_geom
   FROM fwapg.pcic_review_design d INNER JOIN fwapg.pcic_qa_outlets o ON o.subid = d.subid)"
 AREA="(SELECT ST_Union(ST_Buffer(geom, $BUFFER)) AS geom FROM $SAMPLE s)"
 
-# built beside the live file and moved into place once the checks pass, so a
-# failed build leaves the last good GeoPackage, not a partial one
-NEW=$OUT/review.building.gpkg
-rm -f "$NEW" "$NEW-wal" "$NEW-shm" "$NEW-journal"
 layer() {  # layer <name> <sql>; the first creates the GeoPackage
   local update=
   [ -e "$NEW" ] && update=-update
@@ -127,7 +148,7 @@ $PSQL -c "\copy (
   LEFT JOIN fwapg.pcic_qa_flow fl ON fl.subid = d.subid
   GROUP BY d.review_id, d.subid, x.flag, x.candidate_rank, dr.flag, fo.flag, fl.q_fwa, fl.q_pcic
   ORDER BY d.review_id
-) TO '$OUT/flags.csv' WITH (FORMAT csv, HEADER)"
+) TO '$NEW_FLAGS' WITH (FORMAT csv, HEADER)"
 
 $PSQL -c "DROP TABLE fwapg.pcic_review_rivers, fwapg.pcic_review_lakes"
 
@@ -149,5 +170,9 @@ leak=$(ogrinfo -so -al "$NEW" | awk -F: '/^(subid|dowsubid|stratum|flag|candidat
 [ -z "$leak" ] || { echo "the review GeoPackage carries $leak" >&2; exit 1; }
 
 $PSQL -c "DROP TABLE fwapg.pcic_review_strata"
+guard_live
 mv "$NEW" "$GPKG"
+mv "$NEW_FLAGS" "$OUT/flags.csv"
+cp "$NEW_DESIGN" "$DESIGN"
+mv "$NEW_DESIGN" "$OUT/sample_design.csv"
 echo "review: $want outlets in $GPKG (sample_id $sample_id); design in $DESIGN, flags in $OUT/flags.csv"

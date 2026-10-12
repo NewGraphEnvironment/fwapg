@@ -12,6 +12,10 @@ YEARS=1951/2012  # PNWNAmet run is 1950-2012; day 1 is a model start-up artefact
 
 mkdir -p data/rivers data/lakes data/series data/monthly
 
+# gauge checks of the previous build (qa_gauges.sh) do not describe this one;
+# review_build.sh refuses until qa_gauges.sh is rerun
+$PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_qa_gauges"
+
 # ----------
 # 1. PCIC network (rivers and lakes), cached page by page
 # ----------
