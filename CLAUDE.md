@@ -10,10 +10,12 @@ PostgreSQL/PostGIS extension of BC's Freshwater Atlas (FWA): extra tables, index
 - Pass `-R NewGraphEnvironment/fwapg` to `gh`. There is an `upstream` remote and no gh default repo, so a bare `gh` can act on smnorris/fwapg.
 - A `Closes #N` in a PR into `newgraph` does not close the issue (GitHub only acts on merges into the default branch, `main`). Close it by hand after the merge, with a comment naming the PR.
 - No workflow runs on a merge into `newgraph` unless it touches `docs/`: the Docker and migration workflows are scoped to `main`. An empty run list after a `newgraph` merge is the correct answer, not a missed dispatch.
-- Outputs of NGE-only extras (e.g. `extras/pcic_crosswalk`) go to `s3://fresh-bc/fwapg/`, not upstream's `bchamp` bucket.
+- Outputs of NGE-only extras (e.g. `extras/pcic_crosswalk`) go to `s3://fresh-bc/fwapg/extras/`, not upstream's `bchamp` bucket. `fwapg/extras/` is the only anonymously readable `fwapg/` prefix (`fwapg/dumps/` holds a full DB dump and stays private), so anything `load.sh` fetches must sit under it, at `https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/<file>`.
 - This fork is **public**. Hosts, the tailnet, credentials and links to private repos (rtj) stay out of its issues, PRs, commit messages and files: say what a job needs (memory, a database), and put the machine specifics in an rtj issue that links here. GitHub shows an issue's edit history, so a body that leaked is recreated, not edited.
 **Primary Language:** SQL (PL/pgSQL), shell, Python
 **Load:** `psql $DATABASE_URL -f db/schema.sql && ./load.sh` (see `docker/loader/Dockerfile` for deps)
+- On `newgraph`, `load.sh` needs PostgreSQL 15+ (the PCIC loads use `COPY ... HEADER MATCH`) and refuses an older server up front.
+- The published loader image builds from `main` and tags only, so it never carries `newgraph`'s `load.sh`. To add one fork table to an existing DB, run its file alone: `psql $DATABASE_URL -v ON_ERROR_STOP=1 -f load/<table>.sql`.
 
 <!-- BEGIN SOUL CONVENTIONS — DO NOT EDIT BELOW THIS LINE -->
 
