@@ -143,6 +143,52 @@ are flagged at 99.6% of 12,848 seeds within 5 times the placed stream's area, an
 That covers the case where the right line is among the candidates; the review below measures the rest.
 
 
+## Visual review
+
+Automatic checks find outlets that look wrong; they do not say how often a placement is wrong. That
+comes from a person looking at a random sample on a map (NewGraphEnvironment/fwapg#8). After the job and
+`qa_gauges.sh`:
+
+    ./review_build.sh
+
+draws 60 random placed outlets and 12 from each of five strata, each drawn separately (2026-10 build:
+119 outlets, population in brackets):
+
+- `random`: placed outlets (37,667), the only stratum the network's error rate comes from
+- `following`: flagged by the line-following check (434)
+- `rank_gt1`: placed on a candidate other than the nearest (608)
+- `unplaced`: left unplaced with a candidate, `broken_chain` or `demoted` (1,028)
+- `confluence`: placed within 200 m, along the stream, of a junction with a tributary of at least the
+  same stream order, or of its own line's mouth (7,001). Any junction would take 74% of placements
+- `flagged`: drainage `small` or `big`, more than 10 times PCIC's flow, or the PCIC outlet at a gauge
+  where the FWA and PCIC disagree (380)
+
+The draw is an md5 order of a fixed seed, so the same build draws the same sample. It writes:
+
+- `data/review/review.gpkg`: the `review` layer, one point per outlet at its PCIC outlet, with
+  `review_id` (also the working order) and the form: `verdict` (`right`, `wrong_stream`,
+  `wrong_position`, `should_not_be_placed`, `should_be_placed`), `confidence` (`low`, or blank for
+  high) and `note`. Context: the outlet's PCIC segment and probe point, PCIC rivers and lakes, every FWA
+  candidate (unranked), the placed position and the FWA streams within 2 km. Nothing in it says why an
+  outlet was drawn: no `subid`, stratum, rank or flag. For an unplaced outlet, `right` means it was
+  rightly left unplaced.
+- `data/review/flags.csv`: the strata and automatic flags per `review_id`, for after the review.
+- `review/sample_design.csv` (committed, and copied beside the GeoPackage): `review_id`, `subid` and each
+  stratum the outlet is in, `drawn` where that stratum drew it. The GeoPackage's `sample` table holds
+  its md5. A new draw stops rather than replace it.
+
+The QGIS project is built outside this repo from the GeoPackage. Score the filled-in GeoPackage with
+
+    ./review_score.sh data/review/review.gpkg
+
+It reports per stratum the outlets drawn and reviewed, errors (any verdict but `right`), the rate and
+its 95% Wilson interval, counting an outlet toward each stratum that drew it and nothing else. A
+blank verdict is unreviewed, not an error. It also reports errors in the random stratum that no
+automatic check flagged. It refuses a GeoPackage from another sample, a review layer that has lost,
+gained or repeated a `review_id`, and values outside the form's. With 12 per stratum an interval is
+about ±25 points wide: a flagged stratum shows what kinds of error it holds, not a precise rate.
+`./review_test.sh` tests the scoring.
+
 ## Output tables
 
 Both are published to `https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/<table>.csv.gz`, and `load.sh`
