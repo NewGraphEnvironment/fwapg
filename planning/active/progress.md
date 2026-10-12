@@ -13,3 +13,4 @@
 - Phase 1: `sql/qa_following.sql`, ceiling test in `sql/qa.sql`, wired into the job's QA step; measured, seeded, mutation-tested
 - Phases 3 and 5: `review_test.sh` (13 tests, 8 mutations red), `review_score.sh`, `sql/review_score.sql`; job rerun running (data/run8.log)
 - Phase 2: job keeps `pcic_qa_outlets`, `pcic_qa_candidates`, `pcic_qa_flow`; rerun reproduced the published outputs (sorted md5), all QA tests pass
+- Phase 4: `review_build.sh`, `sql/review_sample.sql`; 119 outlets drawn, self-checks pass, blinding checks mutation-tested; design committed

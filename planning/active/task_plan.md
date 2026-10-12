@@ -43,21 +43,21 @@ This PR delivers the check, the tooling and the drawn sample. The review (about 
 - [x] Restore each guard's bug and watch the matching assertion go red (mutation table in findings.md).
 
 ## Phase 4: `review_build.sh`
-- [ ] `sql/review_sample.sql` draws deterministically (`md5(subid || stratum || seed)`, not `random()`): 60 random placed outlets, plus 12 each from `qa_following` flags, `candidate_rank > 1`, unplaced with a candidate (`broken_chain`, `demoted`), comparable-size confluences, and the existing flags (drainage `small`/`big`, >10x, gauge disagreements). An outlet drawn by several strata appears once and counts toward each. `review_id` comes from a second shuffled md5 order, which is also the working order.
-- [ ] Writes `data/review/review.gpkg`:
+- [x] `sql/review_sample.sql` draws deterministically (`md5(subid || stratum || seed)`, not `random()`): 60 random placed outlets, plus 12 each from `qa_following` flags, `candidate_rank > 1`, unplaced with a candidate (`broken_chain`, `demoted`), comparable-size confluences, and the existing flags (drainage `small`/`big`, >10x, gauge disagreements). An outlet drawn by several strata appears once and counts toward each. `review_id` comes from a second shuffled md5 order, which is also the working order.
+- [x] Writes `data/review/review.gpkg`:
   - `review`: point at the PCIC outlet; `review_id`, `verdict` (empty), `confidence` (pre-filled `high`), `note` (empty). No subid, stratum or flag.
   - context keyed by `review_id`: the outlet's PCIC segment and the PCIC rivers and lakes around it (from `data/rivers.geojson` and `lakes.geojson`, clipped to a buffer around the sample), outlet and probe points, every FWA candidate (rank, blue line, name, distance), the placed position, and FWA streams in the buffer (blue line, name, order, edge type). Nothing that reveals a flag.
   - `flags`: review_id, strata, the crosswalk flag and the automatic flags, for after the review.
   - `sample`: one row holding `sample_id`, the md5 of the design file.
-- [ ] Writes `data/review/sample_design.csv` and copies it to `review/sample_design.csv`.
-- [ ] Self-checks before exit: the `review` fields are exactly the four review fields; per-stratum counts are min(cap, population); the review_id count matches the design.
+- [x] Writes `data/review/sample_design.csv` and copies it to `review/sample_design.csv`.
+- [x] Self-checks before exit: the `review` fields are exactly the four review fields; per-stratum counts are min(cap, population); the review_id count matches the design.
 
 ## Phase 5: `review_score.sh`
 - [x] Reads the filled `review` layer through GDAL (ogr2ogr to CSV, which also reads a GeoPackage QGIS left in WAL mode) and the design into psql temp tables, then runs `sql/review_score.sql`. It refuses on a `sample_id` or review_id-set mismatch, or an unknown verdict. It reports per stratum: drawn, reviewed, errors (anything not 'right'), rate, 95% Wilson interval, a breakdown by verdict, and low-confidence counts. It also reports the network rate (random stratum), the following check's precision (its stratum), and errors in the random stratum that no automatic check flagged.
 - [x] `review_test.sh` passes.
 
 ## Phase 6: Build the sample, document
-- [ ] Run `review_build.sh` on the current build; commit `review/sample_design.csv`.
+- [x] Run `review_build.sh` on the current build; commit `review/sample_design.csv`.
 - [ ] README: the line-following check (with its measurements), the kept `pcic_qa_*` tables, and a "Visual review" section covering strata and populations, blinding, verdicts and scoring, and noting that the QGIS project is built outside this repo.
 - [ ] Edit the #8 body: the line-following check, the smaller sample, the confluence definition, the fifth verdict, the design file's home, and what is left after the merge.
 

@@ -77,6 +77,23 @@ Mutations of the qa.sql test (each in a rolled-back transaction), all red: a mea
 - `pcic_qa_flow`: 85 of 37,667 placed outlets over 10x PCIC's flow and over 1 m3/s, the same as `qa_report.sql`'s list.
 - Following check in the job: 248 / 186 / 761 unmeasured, the same as the hand-built staging.
 
+## Review build (Phase 4, 2026-10-12)
+
+| stratum | population | drawn |
+|---|---|---|
+| random | 37,667 | 60 |
+| confluence | 7,001 | 12 |
+| flagged | 380 | 12 |
+| following | 434 | 12 |
+| rank_gt1 | 608 | 12 |
+| unplaced | 1,028 | 12 |
+
+- 126 draws, 119 distinct outlets. `sample_id` `4c365b9d65b8bf9f34a1489832e6858b`, seed `fwapg8`. 37 s to build; `review.gpkg` 10.7 MB (fwa_streams 10,014 features, pcic_rivers 469, candidates 281, placed 107).
+- Confluence is 7,001, not the 4,073 measured at the plan gate: the own-mouth rule from the plan review adds ~2,900.
+- Determinism: four builds in a row wrote the same design (the committed-design guard `cmp` passed each time).
+- Blinding checks mutated on a copy of the GeoPackage: a `stratum` column on `review` fails the field check; `subid` on `pcic_segment` and `stratum` are named by the leak scan. The clean build scans empty.
+- `review_score.sh` on the blank GeoPackage: every stratum drawn, 0 reviewed.
+
 ## Scorer (Phases 3 and 5, 2026-10-12)
 
 - Design file is long format: `review_id, subid, stratum, drawn`. A row per stratum the outlet belongs to; only `drawn = t` rows enter a rate, so membership is known (for "random errors no check flagged") without leaking into the random rate.
@@ -100,3 +117,6 @@ Mutations of the qa.sql test (each in a rolled-back transaction), all red: a mea
 | psql does not interpolate `:'var'` in `\copy` (`error: :: No such file or directory`) | load the temp tables with `-c "\copy ..."` in the same psql session as `-f` |
 | `greatest(0, NULL)` is 0: an unreviewed stratum showed an interval of 0-1 | dropped the clamp; Wilson stays in [0, 1] by construction |
 | Mutation probe read only `FAIL` lines, so M7 (scorer crashed, suite exit 3) read as "still green" | `score()` wrapper reports a crashing scorer as output, so checks fail instead of the run aborting |
+| `ogr2ogr -update` on a GeoPackage that does not exist: "Unable to open existing output datasource" | first layer creates, later ones update |
+| bash 3.2: an empty array is unbound under `set -u` | plain string flag, unquoted |
+| `ogrinfo -so -q` prints no field list on GDAL 3.13, so the field check read "" | no `-q` in the checks |
