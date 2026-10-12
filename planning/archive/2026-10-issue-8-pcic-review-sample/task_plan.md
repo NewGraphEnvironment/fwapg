@@ -66,7 +66,7 @@ This PR delivers the check, the tooling and the drawn sample. The review (about 
 - [x] The job rerun reproduces the published outputs (md5)
 - [x] `/code-check` clean
 - [x] PWF checkboxes match landed work
-- [ ] `/planning-archive`, then `/gh-pr-push` (base `newgraph`, `-R NewGraphEnvironment/fwapg`)
+- [x] `/planning-archive`, then `/gh-pr-push` (base `newgraph`, `-R NewGraphEnvironment/fwapg`)
 
 ## Files
 - `extras/pcic_crosswalk/pcic_crosswalk.sh` (step 5), `sql/qa.sql`, `README.md`
