@@ -26,6 +26,18 @@ DESIGN=review/sample_design.csv
 
 mkdir -p "$OUT" review
 
+# the GeoPackage is filled in place, so a rebuild (the same draw rebuilds it) must
+# not delete answers. One that cannot be read counts as filled
+if [ -e "$GPKG" ]; then
+  filled=$(ogrinfo -sql "SELECT count(*) AS n FROM review
+      WHERE coalesce(verdict, '') != '' OR coalesce(confidence, '') != '' OR coalesce(note, '') != ''" "$GPKG" \
+    | awk '/^ *n \(/{print $NF}') || filled=
+  if [ "$filled" != 0 ]; then
+    echo "$GPKG holds ${filled:-unreadable} filled-in review rows; move it aside to rebuild" >&2
+    exit 1
+  fi
+fi
+
 $PSQL -v seed="$SEED" -v cap="$CAP" -v cap_random="$CAP_RANDOM" -f sql/review_sample.sql
 
 $PSQL -c "\copy (SELECT review_id, subid, stratum, drawn FROM fwapg.pcic_review_design ORDER BY review_id, stratum) TO '$OUT/sample_design.csv' WITH (FORMAT csv, HEADER)"

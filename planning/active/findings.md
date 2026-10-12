@@ -120,3 +120,4 @@ Mutations of the qa.sql test (each in a rolled-back transaction), all red: a mea
 | `ogr2ogr -update` on a GeoPackage that does not exist: "Unable to open existing output datasource" | first layer creates, later ones update |
 | bash 3.2: an empty array is unbound under `set -u` | plain string flag, unquoted |
 | `ogrinfo -so -q` prints no field list on GDAL 3.13, so the field check read "" | no `-q` in the checks |
+| Code-check round 1: a rebuild deleted `review.gpkg` with any verdicts in it (same draw passes the design guard) | refuse when the review layer has any filled row, or cannot be read; proven on filled, corrupt and blank files |
