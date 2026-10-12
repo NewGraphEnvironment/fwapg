@@ -12,6 +12,10 @@ YEARS=1951/2012  # PNWNAmet run is 1950-2012; day 1 is a model start-up artefact
 
 mkdir -p data/rivers data/lakes data/series data/monthly
 
+# the previous build's stamp and gauge checks (qa_gauges.sh) do not describe this
+# one: review_build.sh refuses until this run passes QA and qa_gauges.sh is rerun
+$PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_qa_build, fwapg.pcic_qa_gauges"
+
 # ----------
 # 1. PCIC network (rivers and lakes), cached page by page
 # ----------
@@ -165,6 +169,17 @@ $PSQL -c "ANALYZE whse_basemapping.fwa_stream_networks_discharge_monthly"
 # drainage size at every placed outlet (fwapg#7), tested in qa.sql
 $PSQL -f sql/qa_drainage.sql
 $PSQL -c "\copy (SELECT * FROM fwapg.pcic_qa_drainage ORDER BY subid) TO 'data/qa_drainage.csv' WITH (FORMAT csv, HEADER)"
+# does each placed outlet's PCIC segment follow the FWA line it is on (fwapg#8), tested in qa.sql
+$PSQL -f sql/qa_following.sql
+$PSQL -c "\copy (SELECT * FROM fwapg.pcic_qa_following ORDER BY subid) TO 'data/qa_following.csv' WITH (FORMAT csv, HEADER)"
+# mean annual flow at each placed outlet, PCIC's and accumulated on the FWA, kept
+# with the outlets and candidates for the review in fwapg#8 (review_build.sh)
+$PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_qa_flow"
+$PSQL -c "CREATE TABLE fwapg.pcic_qa_flow AS
+  SELECT m.subid, avg(q.q_m3s) AS q_pcic, avg(m.q_acc) AS q_fwa
+  FROM fwapg.pcic_subbasins_monthly m
+  INNER JOIN fwapg.pcic_outlet_monthly q ON q.subid = m.subid AND q.month = m.month
+  GROUP BY m.subid"
 
 # keep the staging tables for debugging when a test fails; a NULL result (a test
 # over no rows) prints "name|" and fails too
@@ -178,5 +193,14 @@ $PSQL -f sql/qa_report.sql
 $PSQL -c "\copy whse_basemapping.pcic_fwa_crosswalk TO 'pcic_fwa_crosswalk.csv' DELIMITER ',' CSV HEADER"
 $PSQL -c "\copy whse_basemapping.fwa_stream_networks_discharge_monthly TO 'fwa_stream_networks_discharge_monthly.csv' DELIMITER ',' CSV HEADER"
 gzip -f pcic_fwa_crosswalk.csv fwa_stream_networks_discharge_monthly.csv
-$PSQL -c "DROP TABLE fwapg.pcic_rivers, fwapg.pcic_lakes, fwapg.pcic_outlets, fwapg.pcic_candidates, fwapg.pcic_voters, fwapg.pcic_demoted, fwapg.pcic_outlet_monthly, fwapg.pcic_subbasins, fwapg.pcic_subbasins_monthly"
+$PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_qa_outlets, fwapg.pcic_qa_candidates"
+$PSQL -c "ALTER TABLE fwapg.pcic_outlets RENAME TO pcic_qa_outlets"
+$PSQL -c "ALTER TABLE fwapg.pcic_candidates RENAME TO pcic_qa_candidates"
+# stamp the crosswalk the kept pcic_qa_* tables belong to, once all of them are in
+# place, so review_build.sh can tell it from one placed by another run or loaded
+# by load.sh
+$PSQL -c "CREATE TABLE fwapg.pcic_qa_build AS
+  SELECT md5(string_agg(x::text, '|' ORDER BY x.subid)) AS crosswalk_md5, now() AS built_at
+  FROM whse_basemapping.pcic_fwa_crosswalk x"
+$PSQL -c "DROP TABLE fwapg.pcic_rivers, fwapg.pcic_lakes, fwapg.pcic_voters, fwapg.pcic_demoted, fwapg.pcic_outlet_monthly, fwapg.pcic_subbasins, fwapg.pcic_subbasins_monthly"
 echo 'PCIC crosswalk complete, see whse_basemapping.pcic_fwa_crosswalk and whse_basemapping.fwa_stream_networks_discharge_monthly'

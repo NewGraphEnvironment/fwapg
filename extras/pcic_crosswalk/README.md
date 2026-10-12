@@ -93,8 +93,12 @@ of it rebuilding the blue line paths and 6 min writing flow per segment. The job
    losses), so `q` is clamped at zero.
 7. **QA and export.** Runs the tests in `sql/qa.sql` and stops, keeping the staging tables, if any fails;
    then prints `sql/qa_report.sql`, writes both output tables to `.csv.gz`, and drops the `fwapg.pcic_*`
-   staging tables. The QA tables `fwapg.pcic_qa_drainage` (step 7's drainage check) and
-   `fwapg.pcic_qa_gauges` (`qa_gauges.sh`) are kept for review.
+   staging tables. Kept for review: the QA tables `fwapg.pcic_qa_drainage` and `fwapg.pcic_qa_following`
+   (the drainage and line-following checks below), `fwapg.pcic_qa_flow` (mean annual flow at each placed
+   outlet, PCIC's and accumulated on the FWA) and `fwapg.pcic_qa_gauges` (`qa_gauges.sh`), and the
+   staging tables `fwapg.pcic_qa_outlets` and `fwapg.pcic_qa_candidates` (outlet and probe points, every
+   FWA candidate), which `review_build.sh` reads. `fwapg.pcic_qa_build` holds the md5 of the crosswalk
+   they were built with; the job drops it and `pcic_qa_gauges` when it starts.
 
 To check against every Water Survey of Canada gauge in BC with discharge in the PCIC years (needs the
 job's outputs and its `data/` cache; writes `data/qa_gauges.csv`):
@@ -123,6 +127,75 @@ flagged; a wrong stream of similar size (within about 5 times) is not. Flags are
 (NewGraphEnvironment/fwapg#8): lake connector lines, double-line river construction lines and regulated
 flow (the Cheslatta River) trip it too.
 
+The drainage check cannot see a wrong stream of similar size; the line-following check
+(`sql/qa_following.sql`, written to `data/qa_following.csv`) can. For each placed river outlet, the part
+of its PCIC segment between 100 m and 1 km from the outlet (the first 100 m runs through the confluence,
+where both branches are near) is compared with the FWA line of each candidate: the share of it within
+50 m of the line. A side channel and its main stem count as one river. An outlet is flagged
+`follows_other` where another river's line follows the segment better by more than half its length, and
+`follows_none` where no candidate's line follows more than a fifth of it (the right stream may be beyond
+the candidates, or the networks differ there); with under 100 m of segment it is `unmeasured`. Lake
+outlets are not checked: they have no segment of their own. In the 2026-10 build: of 37,293 placed river
+outlets, 248 `follows_other` and 186 `follows_none`, and 761 unmeasured. The placed river's share has a
+median of 1.0 and a 5th percentile of 0.91. The gap between the other river's share and the placed
+river's is bimodal, and the 0.5 margin falls in the gap (30 outlets between 0.2 and 0.6). 179 of the 248 are
+in no other flag list. Seeded errors (every outlet that passes, moved onto another river's candidate)
+are flagged at 99.6% of 12,848 seeds within 5 times the placed stream's area, and 99.5% of 32,765 others.
+That covers the case where the right line is among the candidates; the review below measures the rest.
+
+
+## Visual review
+
+Automatic checks find outlets that look wrong; they do not say how often a placement is wrong. That
+comes from a person looking at a random sample on a map (NewGraphEnvironment/fwapg#8). After the job and
+`qa_gauges.sh`:
+
+    ./review_build.sh
+
+draws 60 random placed outlets and 12 from each of five strata, each drawn separately (2026-10 build:
+119 outlets, population in brackets):
+
+- `random`: placed outlets (37,667), the only stratum the network's error rate comes from
+- `following`: flagged by the line-following check (434)
+- `rank_gt1`: placed on a candidate other than the nearest (608)
+- `unplaced`: left unplaced with a candidate, `broken_chain` or `demoted` (1,028)
+- `confluence`: placed within 200 m, along the stream, of a junction with a tributary of at least the
+  same stream order, or of its own line's mouth (7,001). Any junction would take 74% of placements
+- `flagged`: drainage `small` or `big`, more than 10 times PCIC's flow, or the PCIC outlet at a gauge
+  where the FWA and PCIC disagree (380)
+
+The draw is an md5 order of a fixed seed, so the same build draws the same sample. It writes:
+
+- `data/review/review.gpkg`: the `review` layer, one point per outlet at its PCIC outlet, with
+  `review_id` (also the working order) and the form: `verdict` (`right`, `wrong_stream`,
+  `wrong_position`, `should_not_be_placed`, `should_be_placed`), `confidence` (`low`, or blank for
+  high) and `note`. Context: the outlet's PCIC segment and probe point, PCIC rivers and lakes, every FWA
+  candidate (unranked), the placed position and the FWA streams within 2 km. Nothing in it says why an
+  outlet was drawn: no `subid`, stratum, rank or flag. For an unplaced outlet, `right` means it was
+  rightly left unplaced.
+- `data/review/flags.csv`: the strata and automatic flags per `review_id`, for after the review. Each
+  row carries the `sample_id`: `review_id` is reassigned by every draw.
+- `review/sample_design.csv` (committed, and copied beside the GeoPackage): `review_id`, `subid` and each
+  stratum the outlet is in, `drawn` where that stratum drew it. The GeoPackage's `sample` table holds
+  its md5. A new draw stops rather than replace it.
+
+It refuses to run unless the crosswalk is the one the kept `pcic_qa_*` tables were built with (its md5
+matches `pcic_qa_build`, so not after `load.sh` or a run that did not finish) and `qa_gauges.sh` has run
+on this build. It refuses to replace a GeoPackage that holds any answer, is open, or has a `-wal`,
+`-shm` or `-journal` beside it, and writes its outputs beside their live names, moving them into place
+only once its checks pass.
+
+The QGIS project is built outside this repo from the GeoPackage. Score the filled-in GeoPackage with
+
+    ./review_score.sh data/review/review.gpkg
+
+It reports per stratum the outlets drawn and reviewed, errors (any verdict but `right`), the rate and
+its 95% Wilson interval, counting an outlet toward each stratum that drew it and nothing else. A
+blank verdict is unreviewed, not an error. It also reports errors in the random stratum that no
+automatic check flagged. It refuses a GeoPackage from another sample, a review layer that has lost,
+gained or repeated a `review_id`, and values outside the form's. With 12 per stratum an interval is
+about ±25 points wide: a flagged stratum shows what kinds of error it holds, not a precise rate.
+`./review_test.sh` tests the scoring.
 
 ## Output tables
 
