@@ -36,6 +36,40 @@ Not yet offered upstream.
 - User: "Days of review? Don't have it.. what is the minimum sample that is meaningful?" Sizing: 0 errors in n gives a 95% upper bound of about 3/n (30: 10%, 60: 5%, 100: 3%); 10 draws from a stratum find a class affecting 20% of it with probability 0.89. Chose 60 random + 12 per flagged stratum (~120 outlets), plus an automatic line-following check over every placement.
 - The job drops `pcic_outlets`, `pcic_candidates`, `pcic_rivers`, `pcic_outlet_monthly`, `pcic_subbasins_monthly` at step 5; `qa_gauges.sh` uses and drops `fwapg.pcic_qa_rivers`.
 
+## Plan review (Plan agent, 2026-10-12) and what was done with it
+
+- md5 of `.csv.gz` can never match: gzip stores name and mtime, and both exports are `\copy <table>` with no ORDER BY (the monthly table is filled by `xargs -P 4`). Compare `gzip -dc | LC_ALL=C sort | md5` instead; copy the published files aside before the rerun.
+- Phase 1 needs staging the job drops: rebuilt by hand for development (ogr2ogr rivers/lakes, `00_outlets.sql`, `02_candidates.sql`; 3.5 min). The rebuilt candidates reproduce 37,661 of 37,666 ranked placements exactly; the other 5 are outlets 06 moved 1 mm below a junction.
+- `ALTER TABLE ... RENAME` fails when a previous run left the target: drop if exists first.
+- Blinding: `flags` goes in a separate file, not a layer in `review.gpkg`; strip `subid`/`dowsubid` from PCIC rivers; candidates shown unranked (rank reveals the `candidate_rank > 1` stratum). Not addressed: a placed point off every candidate reveals one of the 6 outlets 06 moved.
+- `confidence` left empty (pre-filled `high` makes an untouched record look answered); blank counts as high in scoring.
+- Scoring also refuses duplicated review_ids.
+- "Counts toward each" means each stratum that drew it, not membership, or flagged draws leak into the random stratum.
+- Confluence stratum also includes the placed line's own mouth (a main-stem outlet put on a tributary near its mouth).
+- md5 draw: separator between fields, `COLLATE "C"`, seed fixed and recorded.
+- 12 per stratum gives a Wilson interval of about +/-25 points: that is a rough precision for the following check, not a calibration. Stated as such.
+- The network rate covers placed outlets only.
+
+## Line-following check (Phase 1, 2026-10-12)
+
+Probe (`share` of the PCIC segment 100-1000 m from its outlet within B m of each candidate's line, grouped by watershed_key):
+
+| | B = 50 m | B = 100 m |
+|---|---|---|
+| follows_other (other > placed + 0.5) | 248 | 246 |
+| other > placed + 0.2 to 0.5 | 21 | 16 |
+| follows_none (both < 0.2) | 186 | 132 |
+| placed share, 5th percentile | 0.91 | 1.0 |
+
+- 37,293 placed river outlets (374 lake outlets not checked), 761 with under 100 m to measure. Runtime 21 s.
+- Other-minus-placed histogram (0.2 bins from -1): 34,571 / 776 / 406 / 272 / 107 / 131 / 18 / 12 / 51 / 160 / 28. Bimodal; 0.5 sits in the gap.
+- Overlap: of 248 follows_other, 69 drainage-flagged, 40 rank > 1, 1 gauge disagreement; of 186 follows_none, 65 drainage-flagged.
+- Seeded: each passing outlet moved onto another river's candidate: 12,792 of 12,848 flagged with area within 0.2-5x (99.6%), 32,607 of 32,765 otherwise (99.5%). Conditional on the right line being a candidate that follows PCIC.
+- Nicola 3008978: share 1.0 on the Nicola, 0 on Clapperton Creek.
+- 217 placed outlets have `direction_method = 'none'` (outlet end arbitrary); measured around the end that was placed.
+
+Mutations of the qa.sql test (each in a rolled-back transaction), all red: a measured outlet with NULL placed share; 200 more follows_other; everything unmeasured.
+
 ## Errors Encountered
 
 | Error | Resolution |

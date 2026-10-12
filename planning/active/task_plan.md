@@ -24,10 +24,10 @@ This PR delivers the check, the tooling and the drawn sample. The review (about 
 - Current build: placed 37,667; `candidate_rank > 1` 608; `broken_chain` 985; `demoted` 43; gauge disagreements 33; >10x 85; drainage `small` 218, `big` 126.
 
 ## Phase 1: Line-following check (`sql/qa_following.sql`)
-- [ ] For each placed river outlet: the PCIC segment's first ≤1 km up from its outlet, and for each of its candidates the share of that length within a buffer of the candidate's blue line. Flag `follows_other` where another candidate's line follows clearly better, and `follows_none` where no candidate's line follows. The buffer and margins are set from the measured distribution, not guessed.
-- [ ] Measure: the distribution, the flag counts, and the overlap with the drainage, gauge and >10x lists.
-- [ ] Seeded errors, as #7 did: move N placed outlets onto another candidate of similar area and count how many are flagged; put the Nicola main stem back on Clapperton Creek.
-- [ ] Wire it into the job's QA step beside `qa_drainage.sql`: keep `fwapg.pcic_qa_following`, write `data/qa_following.csv`, and add a ceiling test to `sql/qa.sql` set from the measured count.
+- [x] For each placed river outlet: the PCIC segment's first ≤1 km up from its outlet, and for each of its candidates the share of that length within a buffer of the candidate's blue line. Flag `follows_other` where another candidate's line follows clearly better, and `follows_none` where no candidate's line follows. The buffer and margins are set from the measured distribution, not guessed.
+- [x] Measure: the distribution, the flag counts, and the overlap with the drainage, gauge and >10x lists.
+- [x] Seeded errors, as #7 did: move N placed outlets onto another candidate of similar area and count how many are flagged; put the Nicola main stem back on Clapperton Creek.
+- [x] Wire it into the job's QA step beside `qa_drainage.sql`: keep `fwapg.pcic_qa_following`, write `data/qa_following.csv`, and add a ceiling test to `sql/qa.sql` set from the measured count.
 
 ## Phase 2: Keep the job's review inputs, rerun
 - [ ] Step 5: rename `pcic_outlets` and `pcic_candidates` to `pcic_qa_outlets` and `pcic_qa_candidates` instead of dropping them, and write `fwapg.pcic_qa_flow` (subid, mean annual q_pcic, q_fwa) from the `annual` CTE `qa.sql` uses.

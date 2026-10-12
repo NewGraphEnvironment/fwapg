@@ -6,3 +6,8 @@
 - Created branch `8-pcic-crosswalk-visual-review-of-a-sample` off `newgraph`
 - Scaffolded PWF baseline from issue #8 with approved phases
 - Next: start Phase 1
+
+## Session 2026-10-12
+
+- Plan review folded into findings.md (md5 comparison, blinding, rename guard, sampling details)
+- Phase 1: `sql/qa_following.sql`, ceiling test in `sql/qa.sql`, wired into the job's QA step; measured, seeded, mutation-tested

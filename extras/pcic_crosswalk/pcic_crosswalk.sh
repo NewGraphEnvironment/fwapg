@@ -165,6 +165,9 @@ $PSQL -c "ANALYZE whse_basemapping.fwa_stream_networks_discharge_monthly"
 # drainage size at every placed outlet (fwapg#7), tested in qa.sql
 $PSQL -f sql/qa_drainage.sql
 $PSQL -c "\copy (SELECT * FROM fwapg.pcic_qa_drainage ORDER BY subid) TO 'data/qa_drainage.csv' WITH (FORMAT csv, HEADER)"
+# does each placed outlet's PCIC segment follow the FWA line it is on (fwapg#8), tested in qa.sql
+$PSQL -f sql/qa_following.sql
+$PSQL -c "\copy (SELECT * FROM fwapg.pcic_qa_following ORDER BY subid) TO 'data/qa_following.csv' WITH (FORMAT csv, HEADER)"
 
 # keep the staging tables for debugging when a test fails; a NULL result (a test
 # over no rows) prints "name|" and fails too

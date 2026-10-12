@@ -216,3 +216,17 @@ SELECT 'at most 300 main-stem outlets flagged small and 200 big by the drainage 
   AND count(*) FILTER (WHERE flag = 'big') <= 200 AS result
 FROM fwapg.pcic_qa_drainage;
 
+
+-- line-following at every placed river outlet (qa_following.sql,
+-- NewGraphEnvironment/fwapg#8): outlets whose PCIC segment follows another
+-- river's FWA line, or none. Measured 248 'follows_other' and 186 'follows_none'
+-- of 36,532 measured; seeding outlets onto another river's candidate flags 99.6%,
+-- so a class of misplacement takes 'follows_other' far past its ceiling. An outlet
+-- with enough segment to measure but no share on its own placed river means the
+-- check is broken, and fails the test
+SELECT 'at most 400 placed outlets follow another river and 300 none, every measured outlet has a placed share' AS test,
+  count(*) FILTER (WHERE flag IS DISTINCT FROM 'unmeasured') > 10000
+  AND count(*) FILTER (WHERE part_m >= 100 AND placed_share IS NULL) = 0
+  AND count(*) FILTER (WHERE flag = 'follows_other') <= 400
+  AND count(*) FILTER (WHERE flag = 'follows_none') <= 300 AS result
+FROM fwapg.pcic_qa_following;
