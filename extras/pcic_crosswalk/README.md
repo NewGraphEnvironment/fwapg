@@ -97,7 +97,8 @@ of it rebuilding the blue line paths and 6 min writing flow per segment. The job
    (the drainage and line-following checks below), `fwapg.pcic_qa_flow` (mean annual flow at each placed
    outlet, PCIC's and accumulated on the FWA) and `fwapg.pcic_qa_gauges` (`qa_gauges.sh`), and the
    staging tables `fwapg.pcic_qa_outlets` and `fwapg.pcic_qa_candidates` (outlet and probe points, every
-   FWA candidate), which `review_build.sh` reads.
+   FWA candidate), which `review_build.sh` reads. `fwapg.pcic_qa_build` holds the md5 of the crosswalk
+   they were built with; the job drops it and `pcic_qa_gauges` when it starts.
 
 To check against every Water Survey of Canada gauge in BC with discharge in the PCIC years (needs the
 job's outputs and its `data/` cache; writes `data/qa_gauges.csv`):
@@ -172,10 +173,17 @@ The draw is an md5 order of a fixed seed, so the same build draws the same sampl
   candidate (unranked), the placed position and the FWA streams within 2 km. Nothing in it says why an
   outlet was drawn: no `subid`, stratum, rank or flag. For an unplaced outlet, `right` means it was
   rightly left unplaced.
-- `data/review/flags.csv`: the strata and automatic flags per `review_id`, for after the review.
+- `data/review/flags.csv`: the strata and automatic flags per `review_id`, for after the review. Each
+  row carries the `sample_id`: `review_id` is reassigned by every draw.
 - `review/sample_design.csv` (committed, and copied beside the GeoPackage): `review_id`, `subid` and each
   stratum the outlet is in, `drawn` where that stratum drew it. The GeoPackage's `sample` table holds
   its md5. A new draw stops rather than replace it.
+
+It refuses to run unless the crosswalk is the one the kept `pcic_qa_*` tables were built with (its md5
+matches `pcic_qa_build`, so not after `load.sh` or a run that did not finish) and `qa_gauges.sh` has run
+on this build. It refuses to replace a GeoPackage that holds any answer, is open, or has a `-wal`,
+`-shm` or `-journal` beside it, and writes its outputs beside their live names, moving them into place
+only once its checks pass.
 
 The QGIS project is built outside this repo from the GeoPackage. Score the filled-in GeoPackage with
 

@@ -129,8 +129,11 @@ Mutations of the qa.sql test (each in a rolled-back transaction), all red: a mea
 | Round 3: `pcic_qa_gauges` survives a crosswalk rerun, so the draw could use the previous build's gauge flags (the committed draw did, matching only because the build reproduced exactly) | the job drops it at start, `review_build.sh` refuses without it; `qa_gauges.sh` rerun on this build: `qa_gauges.csv` byte-identical, draw unchanged |
 | Round 3: `load.sh` replaces the crosswalk and leaves local `pcic_qa_*` | cross-build invariant: every ranked placement on its candidate of that rank and blue line, outlet counts equal; a planted mismatch refuses |
 | Round 3 (low): `flags.csv` and the design copy beside the GeoPackage were written before the checks | written to `*.building.*`, moved into place with the GeoPackage |
+| Round 4 (inside round 3's fix): the cross-build invariant passed a crosswalk placed by other logic over the same candidates (500 outlets moved to rank 2, 200 demoted: `mismatch = 0`), so `following`/`flagged` and `flags.csv` described another placement | replaced the staging check and the invariant with a stamp: the job drops `fwapg.pcic_qa_build` and `pcic_qa_gauges` at start and writes the crosswalk's md5 once the staging tables are renamed; `review_build.sh` requires both tables and the md5. Proven: no stamp refuses, a tampered stamp refuses; full rerun reproduced the published outputs (sorted md5), `qa_gauges.csv` and the design unchanged |
+| Round 4: a new draw replaced the old review's `flags.csv`, which carried no `sample_id` (review_id is reassigned per draw) | `flags.csv` carries `sample_id`; the new-draw message names `$OUT/` |
+| Own review of round 4's fix: the stamp was written before the export and renames, so a failure there left a valid stamp over the previous build's `pcic_qa_outlets` | stamp written after the renames |
 
-## Code-check mechanism (round 3)
+## Code-check mechanism (rounds 3-4)
 
 A fixed name stands in for provenance and ownership: each script assumes whatever sits at a path or table name came from this build and is held by no one. Round 3's enumeration of every place it reaches, with round 3's fixes applied:
 
@@ -140,11 +143,11 @@ A fixed name stands in for provenance and ownership: each script assumes whateve
 | its `-wal`/`-shm`/`-journal` | yes: refused whether or not the GeoPackage exists |
 | `review.building.gpkg`, `*.building.csv` | yes: script-owned names |
 | `review/sample_design.csv` | yes: `cmp` refuses a new draw; written only on success |
-| `data/review/sample_design.csv`, `flags.csv` | yes: written only on success |
+| `data/review/sample_design.csv`, `flags.csv` | yes: written only on success; `flags.csv` names its `sample_id` (round 4) |
 | `fwapg.pcic_review_*` | yes: script-owned |
-| crosswalk vs `pcic_qa_outlets`/`candidates` | yes: staging guard and the cross-build invariant |
-| `pcic_qa_drainage`/`following`/`flow` | yes: written by the job with the crosswalk; a failed run leaves staging |
-| `pcic_qa_gauges` | yes: dropped by the job, required by `review_build.sh` |
+| crosswalk vs every kept `pcic_qa_*` table | yes (round 4): md5 stamp written by the job last, checked by `review_build.sh`; covers a failed run, `load.sh` and other placement logic |
+| `pcic_qa_drainage`/`following`/`flow` | yes: written by the job with the crosswalk, under the stamp |
+| `pcic_qa_gauges` | yes: dropped by the job, required by `review_build.sh`. Accepted residual: `load.sh` also reloads the discharge table `qa_gauges.sql` reads; under a matching crosswalk md5 it is the same deterministic build's discharge. Stamping it too is not cheap (40.5M rows: `string_agg` runs out of memory) |
 | `data/rivers.geojson`, `lakes.geojson` | no, accepted: context geometry only, rewritten by the job's first step |
 | `blk_paths` | yes: from the FWA alone, rebuilt inside the job |
 | `review_score.sh`, `review_test.sh` | yes: `mktemp -d` only; md5 ties GeoPackage to design |

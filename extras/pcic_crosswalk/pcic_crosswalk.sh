@@ -12,9 +12,9 @@ YEARS=1951/2012  # PNWNAmet run is 1950-2012; day 1 is a model start-up artefact
 
 mkdir -p data/rivers data/lakes data/series data/monthly
 
-# gauge checks of the previous build (qa_gauges.sh) do not describe this one;
-# review_build.sh refuses until qa_gauges.sh is rerun
-$PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_qa_gauges"
+# the previous build's stamp and gauge checks (qa_gauges.sh) do not describe this
+# one: review_build.sh refuses until this run passes QA and qa_gauges.sh is rerun
+$PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_qa_build, fwapg.pcic_qa_gauges"
 
 # ----------
 # 1. PCIC network (rivers and lakes), cached page by page
@@ -196,5 +196,11 @@ gzip -f pcic_fwa_crosswalk.csv fwa_stream_networks_discharge_monthly.csv
 $PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_qa_outlets, fwapg.pcic_qa_candidates"
 $PSQL -c "ALTER TABLE fwapg.pcic_outlets RENAME TO pcic_qa_outlets"
 $PSQL -c "ALTER TABLE fwapg.pcic_candidates RENAME TO pcic_qa_candidates"
+# stamp the crosswalk the kept pcic_qa_* tables belong to, once all of them are in
+# place, so review_build.sh can tell it from one placed by another run or loaded
+# by load.sh
+$PSQL -c "CREATE TABLE fwapg.pcic_qa_build AS
+  SELECT md5(string_agg(x::text, '|' ORDER BY x.subid)) AS crosswalk_md5, now() AS built_at
+  FROM whse_basemapping.pcic_fwa_crosswalk x"
 $PSQL -c "DROP TABLE fwapg.pcic_rivers, fwapg.pcic_lakes, fwapg.pcic_voters, fwapg.pcic_demoted, fwapg.pcic_outlet_monthly, fwapg.pcic_subbasins, fwapg.pcic_subbasins_monthly"
 echo 'PCIC crosswalk complete, see whse_basemapping.pcic_fwa_crosswalk and whse_basemapping.fwa_stream_networks_discharge_monthly'

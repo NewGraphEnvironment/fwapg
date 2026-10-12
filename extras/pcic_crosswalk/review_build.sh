@@ -26,25 +26,19 @@ DESIGN=review/sample_design.csv
 
 mkdir -p "$OUT" review
 
-# the tables read must come from one build. A crosswalk run that stopped (a failed
-# QA test) leaves its staging tables, a new crosswalk and the previous run's
-# pcic_qa_outlets and pcic_qa_candidates; load.sh replaces the crosswalk with the
-# published one and leaves every local pcic_qa_* table. Every placed outlet with a
-# rank sits on its candidate of that rank, and the outlets match one for one, only
-# when they are one build. pcic_crosswalk.sh drops pcic_qa_gauges, so a missing
-# one means qa_gauges.sh has not been run on this build
-if [ "$($PSQL -tXA -c "SELECT to_regclass('fwapg.pcic_outlets') IS NULL AND to_regclass('fwapg.pcic_qa_gauges') IS NOT NULL")" != t ]; then
-  echo "fwapg.pcic_outlets exists (the last crosswalk run did not finish) or fwapg.pcic_qa_gauges does not (run qa_gauges.sh)" >&2
-  exit 1
-fi
-mismatch=$($PSQL -tXA -c "
-  SELECT (SELECT count(*) FROM whse_basemapping.pcic_fwa_crosswalk x
-          WHERE x.flag IS NULL AND x.candidate_rank IS NOT NULL
-          AND NOT EXISTS (SELECT 1 FROM fwapg.pcic_qa_candidates c
-                          WHERE c.subid = x.subid AND c.candidate_rank = x.candidate_rank
-                          AND c.blue_line_key = x.blue_line_key))
-    + abs((SELECT count(*) FROM whse_basemapping.pcic_fwa_crosswalk) - (SELECT count(*) FROM fwapg.pcic_qa_outlets))")
-[ "$mismatch" = 0 ] || { echo "the crosswalk and pcic_qa_outlets/candidates are not one build ($mismatch mismatches): rerun pcic_crosswalk.sh" >&2; exit 1; }
+# the tables read must come from one build. pcic_crosswalk.sh drops its stamp
+# (fwapg.pcic_qa_build) and pcic_qa_gauges when it starts and stamps the crosswalk's
+# md5 once QA passes, so a missing stamp is a run that did not finish, a missing
+# pcic_qa_gauges is qa_gauges.sh not yet run on this build, and a crosswalk that no
+# longer hashes to the stamp was replaced (load.sh, or a run of other placement
+# logic) and no longer matches the kept pcic_qa_* tables. load.sh replaces the
+# discharge table too; a crosswalk identical to the stamp's comes from the same
+# deterministic build, and so does its discharge
+present=$($PSQL -tXA -c "SELECT to_regclass('fwapg.pcic_qa_build') IS NOT NULL AND to_regclass('fwapg.pcic_qa_gauges') IS NOT NULL")
+[ "$present" = t ] || { echo "no fwapg.pcic_qa_build or fwapg.pcic_qa_gauges: run pcic_crosswalk.sh to the end, then qa_gauges.sh" >&2; exit 1; }
+same=$($PSQL -tXA -c "SELECT (SELECT crosswalk_md5 FROM fwapg.pcic_qa_build)
+  = (SELECT md5(string_agg(x::text, '|' ORDER BY x.subid)) FROM whse_basemapping.pcic_fwa_crosswalk x)")
+[ "$same" = t ] || { echo "the crosswalk is not the one the kept pcic_qa_* tables were built with: rerun pcic_crosswalk.sh and qa_gauges.sh" >&2; exit 1; }
 
 # the GeoPackage is filled in place, so a rebuild (the same draw rebuilds it) must
 # not delete answers. Refused while anything may hold it open or hold edits beside
@@ -89,7 +83,7 @@ $PSQL -c "\copy (SELECT review_id, subid, stratum, drawn FROM fwapg.pcic_review_
 # the committed design is the key to a review in progress: a new draw (a changed
 # build or seed) must not replace it silently
 if [ -e "$DESIGN" ] && ! cmp -s "$NEW_DESIGN" "$DESIGN"; then
-  echo "$DESIGN exists and differs from this draw; move it aside if a new review is intended" >&2
+  echo "$DESIGN exists and differs from this draw; for a new review, move it and $OUT/ aside (flags.csv is the old review's)" >&2
   exit 1
 fi
 sample_id=$(md5sum < "$NEW_DESIGN" | cut -c1-32)
@@ -132,9 +126,10 @@ layer fwa_streams "SELECT f.blue_line_key, f.gnis_name, f.stream_order, f.edge_t
   FROM whse_basemapping.fwa_stream_networks_sp f, $AREA a WHERE ST_Intersects(f.geom, a.geom)"
 layer sample "SELECT '$sample_id'::text AS sample_id"
 
-# why each outlet was drawn, kept out of the review GeoPackage
+# why each outlet was drawn, kept out of the review GeoPackage; review_id is
+# reassigned by every draw, so each row names its sample
 $PSQL -c "\copy (
-  SELECT d.review_id,
+  SELECT '$sample_id' AS sample_id, d.review_id,
     string_agg(d.stratum, ' ' ORDER BY d.stratum) FILTER (WHERE d.drawn) AS drawn_for,
     string_agg(d.stratum, ' ' ORDER BY d.stratum) AS strata,
     x.flag AS crosswalk_flag, x.candidate_rank, dr.flag AS drainage_flag, fo.flag AS following_flag,
