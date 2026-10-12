@@ -70,6 +70,13 @@ Probe (`share` of the PCIC segment 100-1000 m from its outlet within B m of each
 
 Mutations of the qa.sql test (each in a rolled-back transaction), all red: a measured outlet with NULL placed share; 200 more follows_other; everything unmeasured.
 
+## Job rerun (Phase 2, 2026-10-12)
+
+- `data/run8.log`: 13:30:09-13:57:32 UTC (27.4 min), exit 0, all 17 `qa.sql` tests `t` including the new following ceiling.
+- Outputs reproduce the published build: `gzip -dc | LC_ALL=C sort | md5sum` equal before and after (crosswalk `ddf99b6c...`, monthly `8079debe...`). The local copies matched S3's sizes before the rerun. Nothing to re-upload.
+- `pcic_qa_flow`: 85 of 37,667 placed outlets over 10x PCIC's flow and over 1 m3/s, the same as `qa_report.sql`'s list.
+- Following check in the job: 248 / 186 / 761 unmeasured, the same as the hand-built staging.
+
 ## Scorer (Phases 3 and 5, 2026-10-12)
 
 - Design file is long format: `review_id, subid, stratum, drawn`. A row per stratum the outlet belongs to; only `drawn = t` rows enter a rate, so membership is known (for "random errors no check flagged") without leaking into the random rate.

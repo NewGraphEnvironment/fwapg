@@ -93,8 +93,11 @@ of it rebuilding the blue line paths and 6 min writing flow per segment. The job
    losses), so `q` is clamped at zero.
 7. **QA and export.** Runs the tests in `sql/qa.sql` and stops, keeping the staging tables, if any fails;
    then prints `sql/qa_report.sql`, writes both output tables to `.csv.gz`, and drops the `fwapg.pcic_*`
-   staging tables. The QA tables `fwapg.pcic_qa_drainage` (step 7's drainage check) and
-   `fwapg.pcic_qa_gauges` (`qa_gauges.sh`) are kept for review.
+   staging tables. Kept for review: the QA tables `fwapg.pcic_qa_drainage` and `fwapg.pcic_qa_following`
+   (the drainage and line-following checks below), `fwapg.pcic_qa_flow` (mean annual flow at each placed
+   outlet, PCIC's and accumulated on the FWA) and `fwapg.pcic_qa_gauges` (`qa_gauges.sh`), and the
+   staging tables `fwapg.pcic_qa_outlets` and `fwapg.pcic_qa_candidates` (outlet and probe points, every
+   FWA candidate), which `review_build.sh` reads.
 
 To check against every Water Survey of Canada gauge in BC with discharge in the PCIC years (needs the
 job's outputs and its `data/` cache; writes `data/qa_gauges.csv`):
@@ -122,6 +125,22 @@ main stem on Clapperton Creek; outlets moved onto streams with 10 times, or a te
 flagged; a wrong stream of similar size (within about 5 times) is not. Flags are a review list
 (NewGraphEnvironment/fwapg#8): lake connector lines, double-line river construction lines and regulated
 flow (the Cheslatta River) trip it too.
+
+The drainage check cannot see a wrong stream of similar size; the line-following check
+(`sql/qa_following.sql`, written to `data/qa_following.csv`) can. For each placed river outlet, the part
+of its PCIC segment between 100 m and 1 km from the outlet (the first 100 m runs through the confluence,
+where both branches are near) is compared with the FWA line of each candidate: the share of it within
+50 m of the line. A side channel and its main stem count as one river. An outlet is flagged
+`follows_other` where another river's line follows the segment better by more than half its length, and
+`follows_none` where no candidate's line follows more than a fifth of it (the right stream may be beyond
+the candidates, or the networks differ there); with under 100 m of segment it is `unmeasured`. Lake
+outlets are not checked: they have no segment of their own. In the 2026-10 build: of 37,293 placed river
+outlets, 248 `follows_other` and 186 `follows_none`, and 761 unmeasured. The placed river's share has a
+median of 1.0 and a 5th percentile of 0.91. The gap between the other river's share and the placed
+river's is bimodal, and the 0.5 margin falls in the gap (30 outlets between 0.2 and 0.6). 179 of the 248 are
+in no other flag list. Seeded errors (every outlet that passes, moved onto another river's candidate)
+are flagged at 99.6% of 12,848 seeds within 5 times the placed stream's area, and 99.5% of 32,765 others.
+That covers the case where the right line is among the candidates; the review below measures the rest.
 
 
 ## Output tables

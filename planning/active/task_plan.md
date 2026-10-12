@@ -30,8 +30,8 @@ This PR delivers the check, the tooling and the drawn sample. The review (about 
 - [x] Wire it into the job's QA step beside `qa_drainage.sql`: keep `fwapg.pcic_qa_following`, write `data/qa_following.csv`, and add a ceiling test to `sql/qa.sql` set from the measured count.
 
 ## Phase 2: Keep the job's review inputs, rerun
-- [ ] Step 5: rename `pcic_outlets` and `pcic_candidates` to `pcic_qa_outlets` and `pcic_qa_candidates` instead of dropping them, and write `fwapg.pcic_qa_flow` (subid, mean annual q_pcic, q_fwa) from the `annual` CTE `qa.sql` uses.
-- [ ] Rerun the job. Confirm it reproduces the published build (md5 of both `.csv.gz` before and after; stop and ask if they differ) and that `pcic_qa_flow` gives 85 over 10x.
+- [x] Step 5: rename `pcic_outlets` and `pcic_candidates` to `pcic_qa_outlets` and `pcic_qa_candidates` instead of dropping them, and write `fwapg.pcic_qa_flow` (subid, mean annual q_pcic, q_fwa) from the `annual` CTE `qa.sql` uses.
+- [x] Rerun the job. Confirm it reproduces the published build (md5 of both `.csv.gz` before and after; stop and ask if they differ) and that `pcic_qa_flow` gives 85 over 10x.
 
 ## Phase 3: Tests first for scoring (`review_test.sh`)
 - [x] Fixture GeoPackages from a committed fixture design. Assert:
@@ -63,7 +63,7 @@ This PR delivers the check, the tooling and the drawn sample. The review (about 
 
 ## Validation
 - [ ] `review_test.sh` passes; `review_build.sh` self-checks pass on the real build; `sql/qa.sql` passes on the rerun
-- [ ] The job rerun reproduces the published outputs (md5)
+- [x] The job rerun reproduces the published outputs (md5)
 - [ ] `/code-check` clean
 - [ ] PWF checkboxes match landed work
 - [ ] `/planning-archive`, then `/gh-pr-push` (base `newgraph`, `-R NewGraphEnvironment/fwapg`)
