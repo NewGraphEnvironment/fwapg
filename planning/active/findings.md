@@ -151,3 +151,7 @@ A fixed name stands in for provenance and ownership: each script assumes whateve
 | `data/rivers.geojson`, `lakes.geojson` | no, accepted: context geometry only, rewritten by the job's first step |
 | `blk_paths` | yes: from the FWA alone, rebuilt inside the job |
 | `review_score.sh`, `review_test.sh` | yes: `mktemp -d` only; md5 ties GeoPackage to design |
+
+## Code-check termination (2026-10-12)
+
+Round 4 found a defect inside round 3's fix, so the loop ended by enumeration rather than by a quiet round. Every table named in `review_build.sh`, `review_score.sh`, `review_test.sh`, `sql/review_sample.sql` and `sql/review_score.sql` (grep for `fwapg.` and `whse_basemapping.`: 14) and every path `review_build.sh` reads or writes (8) maps to a row of the table above. `fwapg.pcic_qa_build` has one writer (the job, after the renames). `pcic_qa_gauges` has one writer (`qa_gauges.sql`), and the job drops it. `fwa_stream_networks_sp` and `blk_paths` derive from the FWA alone. Agents: a plan review plus four code-check rounds (five); no sixth was spawned.

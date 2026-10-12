@@ -59,13 +59,13 @@ This PR delivers the check, the tooling and the drawn sample. The review (about 
 ## Phase 6: Build the sample, document
 - [x] Run `review_build.sh` on the current build; commit `review/sample_design.csv`.
 - [x] README: the line-following check (with its measurements), the kept `pcic_qa_*` tables, and a "Visual review" section covering strata and populations, blinding, verdicts and scoring, and noting that the QGIS project is built outside this repo.
-- [ ] Edit the #8 body: the line-following check, the smaller sample, the confluence definition, the fifth verdict, the design file's home, and what is left after the merge.
+- [x] Edit the #8 body: the line-following check, the smaller sample, the confluence definition, the fifth verdict, the design file's home, and what is left after the merge.
 
 ## Validation
 - [x] `review_test.sh` passes; `review_build.sh` self-checks pass on the real build; `sql/qa.sql` passes on the rerun
 - [x] The job rerun reproduces the published outputs (md5)
-- [ ] `/code-check` clean
-- [ ] PWF checkboxes match landed work
+- [x] `/code-check` clean
+- [x] PWF checkboxes match landed work
 - [ ] `/planning-archive`, then `/gh-pr-push` (base `newgraph`, `-R NewGraphEnvironment/fwapg`)
 
 ## Files
