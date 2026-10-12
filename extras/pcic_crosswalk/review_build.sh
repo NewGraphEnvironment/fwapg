@@ -26,9 +26,28 @@ DESIGN=review/sample_design.csv
 
 mkdir -p "$OUT" review
 
+# a crosswalk run that stopped (a failed QA test) leaves its staging tables and a
+# new crosswalk, but the previous run's pcic_qa_outlets and pcic_qa_candidates
+if [ "$($PSQL -tXA -c "SELECT to_regclass('fwapg.pcic_outlets') IS NULL")" != t ]; then
+  echo "fwapg.pcic_outlets exists: the last crosswalk run did not finish, so the kept tables are from another build" >&2
+  exit 1
+fi
+
 # the GeoPackage is filled in place, so a rebuild (the same draw rebuilds it) must
-# not delete answers. One that cannot be read counts as filled
+# not delete answers. Refused while anything may hold it open or hold edits beside
+# it (an open handle, a -wal, -shm or -journal, a header in WAL mode: QGIS's saves
+# would go to the deleted file, or a leftover -wal replay into the new one), and
+# while its review layer has any filled row. One that cannot be read counts as filled
 if [ -e "$GPKG" ]; then
+  for side in "$GPKG-wal" "$GPKG-shm" "$GPKG-journal"; do
+    [ ! -e "$side" ] || { echo "$side exists: close $GPKG in QGIS first" >&2; exit 1; }
+  done
+  if command -v lsof > /dev/null && lsof -- "$GPKG" > /dev/null 2>&1; then
+    echo "$GPKG is open in another program: close it first" >&2
+    exit 1
+  fi
+  mode=$(od -An -j 18 -N 2 -t x1 "$GPKG" | tr -d ' \n')
+  [ "$mode" = 0101 ] || { echo "$GPKG is in write-ahead-log mode ($mode): close it in QGIS first" >&2; exit 1; }
   filled=$(ogrinfo -sql "SELECT count(*) AS n FROM review
       WHERE coalesce(verdict, '') != '' OR coalesce(confidence, '') != '' OR coalesce(note, '') != ''" "$GPKG" \
     | awk '/^ *n \(/{print $NF}') || filled=
@@ -61,12 +80,15 @@ SAMPLE="(SELECT DISTINCT d.review_id, d.subid, o.geom, o.probe_geom
   FROM fwapg.pcic_review_design d INNER JOIN fwapg.pcic_qa_outlets o ON o.subid = d.subid)"
 AREA="(SELECT ST_Union(ST_Buffer(geom, $BUFFER)) AS geom FROM $SAMPLE s)"
 
-rm -f "$GPKG"
+# built beside the live file and moved into place once the checks pass, so a
+# failed build leaves the last good GeoPackage, not a partial one
+NEW=$OUT/review.building.gpkg
+rm -f "$NEW" "$NEW-wal" "$NEW-shm" "$NEW-journal"
 layer() {  # layer <name> <sql>; the first creates the GeoPackage
   local update=
-  [ -e "$GPKG" ] && update=-update
+  [ -e "$NEW" ] && update=-update
   # unquoted on purpose: empty for the first layer (an empty array is unbound under set -u on bash 3.2)
-  ogr2ogr -f GPKG "$GPKG" "$PG" $update -nln "$1" -sql "$2" -a_srs EPSG:3005
+  ogr2ogr -f GPKG "$NEW" "$PG" $update -nln "$1" -sql "$2" -a_srs EPSG:3005
 }
 layer review "SELECT review_id, NULL::text AS verdict, NULL::text AS confidence, NULL::text AS note, geom
   FROM $SAMPLE s ORDER BY review_id"
@@ -112,9 +134,9 @@ $PSQL -c "DROP TABLE fwapg.pcic_review_rivers, fwapg.pcic_review_lakes"
 # checks (ogrinfo without -q: with it, GDAL 3.13 prints no fields): the review layer holds the form and nothing else, every drawn outlet is
 # in it once, each stratum drew min(cap, population), and no layer carries an id
 # or a flag that would unblind the review
-fields=$(ogrinfo -so "$GPKG" review | awk -F: '/^[a-z_]+: /{print $1}' | paste -sd, -)
+fields=$(ogrinfo -so "$NEW" review | awk -F: '/^[a-z_]+: /{print $1}' | paste -sd, -)
 [ "$fields" = "review_id,verdict,confidence,note" ] || { echo "review layer fields: $fields" >&2; exit 1; }
-n=$(ogrinfo -sql 'SELECT count(DISTINCT review_id) AS n, count(*) AS m FROM review' "$GPKG" | awk '/^ *n \(/{n=$NF} /^ *m \(/{m=$NF} END {print n "," m}')
+n=$(ogrinfo -sql 'SELECT count(DISTINCT review_id) AS n, count(*) AS m FROM review' "$NEW" | awk '/^ *n \(/{n=$NF} /^ *m \(/{m=$NF} END {print n "," m}')
 want=$($PSQL -tXA -c "SELECT count(DISTINCT review_id) FROM fwapg.pcic_review_design")
 [ "$n" = "$want,$want" ] || { echo "review layer holds $n (distinct, all) review_ids, the design $want" >&2; exit 1; }
 short=$($PSQL -tXA -c "
@@ -123,8 +145,9 @@ short=$($PSQL -tXA -c "
   WHERE (SELECT count(*) FROM fwapg.pcic_review_design d WHERE d.stratum = p.stratum AND d.drawn)
     != least(CASE WHEN p.stratum = 'random' THEN $CAP_RANDOM ELSE $CAP END, p.population)")
 [ -z "$short" ] || { echo "strata drawn short of min(cap, population): $short" >&2; exit 1; }
-leak=$(ogrinfo -so -al "$GPKG" | awk -F: '/^(subid|dowsubid|stratum|flag|candidate_rank|distance_to_stream|strata|drawn): /' | sort -u)
-[ -z "$leak" ] || { echo "review.gpkg carries $leak" >&2; exit 1; }
+leak=$(ogrinfo -so -al "$NEW" | awk -F: '/^(subid|dowsubid|stratum|flag|candidate_rank|distance_to_stream|strata|drawn): /' | sort -u)
+[ -z "$leak" ] || { echo "the review GeoPackage carries $leak" >&2; exit 1; }
 
 $PSQL -c "DROP TABLE fwapg.pcic_review_strata"
+mv "$NEW" "$GPKG"
 echo "review: $want outlets in $GPKG (sample_id $sample_id); design in $DESIGN, flags in $OUT/flags.csv"

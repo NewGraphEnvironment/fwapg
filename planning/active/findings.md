@@ -121,3 +121,6 @@ Mutations of the qa.sql test (each in a rolled-back transaction), all red: a mea
 | bash 3.2: an empty array is unbound under `set -u` | plain string flag, unquoted |
 | `ogrinfo -so -q` prints no field list on GDAL 3.13, so the field check read "" | no `-q` in the checks |
 | Code-check round 1: a rebuild deleted `review.gpkg` with any verdicts in it (same draw passes the design guard) | refuse when the review layer has any filled row, or cannot be read; proven on filled, corrupt and blank files |
+| Round 2 (inside round 1's fix): a rebuild with the GeoPackage open in QGIS passed the guard (0 rows saved), `rm` left the `-wal`/`-shm`, later saves went to the deleted file, and a leftover `-wal` replayed into the new one | refuse on any sidecar, a header not `01 01` (WAL mode), or an open handle (`lsof`); each proven |
+| Round 2: a failed build left a partial GeoPackage at the live path (and the next run then refused it as "unreadable") | build to `review.building.gpkg`, move into place after the checks; a broken-layer mutant leaves the live file byte-identical |
+| Round 2: after a failed crosswalk run, `pcic_qa_outlets`/`pcic_qa_candidates` were from the previous build | `review_build.sh` refuses while `fwapg.pcic_outlets` exists; proven |
