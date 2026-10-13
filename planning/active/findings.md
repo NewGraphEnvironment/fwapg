@@ -117,3 +117,44 @@ Work from this repo (`fwapg`), not from link or fresh. Fix option 1 above (resto
 
 | Error | Resolution |
 |-------|------------|
+
+## Phase 1–2 results (2026-10-13)
+
+**The fix is an exact revert.** With the 16-line CTE (text from the `postgisftw` copy, `upstream/main:db/schema.sql:1453-1468`) inserted before `-- aggregate the result and dump to singlepart` in the `whse_basemapping` copy (after `schema.sql:3884`), the function body is byte-identical to:
+- the `postgisftw` copy in the same `schema.sql`;
+- the local DB's `whse_basemapping` body (loaded before PR 185);
+- the local DB's `postgisftw` body.
+
+All three are `md5(prosrc)` = `04ab3875b15e4cbf10a413be7acfb1e5`, 18,883 chars, `exbc AS` ×2. The unfixed upstream body is 18,206 chars with `exbc AS` ×1. So PR 185 changed nothing else in this function. `grep -c 'exbc AS' db/schema.sql` goes from 3 to 4. The migration body equals the edited `schema.sql` body (a Python line compare, recorded with the commits).
+
+**Behaviour.** Measured in the local DB (`fwapg`, PG 17.5). The fixed body and the unfixed `upstream/main` body were created as `exbc_test.fwa_watershedatmeasure` and `exbc_test.fwa_watershedatmeasure_unfixed`; only the function name in the header was renamed, so unqualified calls resolve through the DB search_path exactly as in `whse_basemapping`. The schema was dropped afterwards.
+
+```sql
+SELECT p.label, w.refine_method, w.area_ha,
+  round((st_area(st_difference(w.geom, (SELECT st_union(geom) FROM whse_basemapping.fwa_bcboundary))) / 1e6)::numeric, 1) AS km2_outside_bc
+FROM pts p, LATERAL exbc_test.fwa_watershedatmeasure(p.blk, p.meas) w;
+```
+
+| call | refine_method | area_ha | km² outside BC | expected (issue) |
+|---|---|---|---|---|
+| (360873822, 166030) Bulkley | CUT | 231944.70 | 0.0 | 231944.7 |
+| (356570348, 160000) Kootenay R. | CUT | 3469676.93 | 12452.9 | 3469676.9, 12452.9 |
+| (356570348, 110000) Kootenay Lake | LAKE | 4650676.78 | 12452.9 | 4650676.8 |
+| (356570372, 1203700) Columbia | CUT | 8743886.64 | 12452.9 | 8743886.6 |
+
+At the Bulkley point, `exbc_test.fwa_watershedatmeasure_unfixed` raises `relation "exbc" does not exist` (at `RETURN QUERY`, line 26). The four calls took 35 s in total.
+
+The plan review noted this area test is **partly circular**: the fixed body, its callees and the data are the same objects that produced the expected values. That is the point (the fix is a revert to them), but the non-circular evidence is the unfixed body's error together with the md5 equalities.
+
+**Migration path, as CI runs it.** Scratch DB `fwapg_exbc_test` on the local server: `CREATE EXTENSION postgis`, the search_path from `docker/db/search_path.sh`, then `upstream/main:db/schema.sql` loaded with `ON_ERROR_STOP` (rc 0, `exbc AS` ×1 in the `whse_basemapping` body). Run from `db/` with `DATABASE_URL` set inline to the scratch DB:
+- `migrate.sh --dry-run` lists the one migration;
+- `migrate.sh` applies it (`CREATE FUNCTION`, version 202610131450);
+- a re-run reports "No pending migrations".
+
+After that: `exbc AS` ×2, `db_version` = `0,202610131450`, and the function's COMMENT is kept. A second scratch DB loaded with the **fixed** `schema.sql` comes up with `exbc AS` ×2 in both copies. Both scratch DBs were dropped.
+
+**Limits** (from the plan review):
+- **An empty fresh install takes the lake branch.** The lake-check subquery returns no row, and `NULL IS FALSE` is false, so neither the error nor the fix shows without data, in CI or here. CI therefore proves only that the migration parses and applies. The repro needs a DB loaded with `load.sh`.
+- **No CI runs on the `newgraph` PR or the pushed fork branch.** Both workflows trigger only on `main`, so the local scratch-DB run is the only migration test before the upstream PR.
+- **A future upstream migration with an earlier timestamp would be skipped.** `migrate.sh` compares timestamps with `>`, so once 202610131450 is recorded on a `newgraph` DB, such a migration is skipped silently. This is a low risk.
+- **The group-shortcut case is not reachable under the current `load.sh`.** `cache.sh` writes `fwa_watershed_groups_poly` without codes, and `fwa_basins_poly` is built from them, so both shortcuts stay empty on a standard load.

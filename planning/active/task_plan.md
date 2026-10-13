@@ -20,16 +20,16 @@ Full issue body (with its plan and measurements) is in `findings.md`.
   It is opened as a PR into `newgraph`.
 
 ## Phase 1: The fix, on the upstream branch
-- [ ] Branch `fix-watershedatmeasure-exbc` off `upstream/main` (confirm its head is still 8b3904e, or note what moved).
-- [ ] Migration `db/migrations/<ts>__fix_watershedatmeasure_exbc.sql`, created with `db/create_migration.sh`. Inside `BEGIN`/`COMMIT`: `CREATE OR REPLACE FUNCTION whse_basemapping.fwa_watershedatmeasure(...)`, taking the body extracted from `schema.sql:3630` onward (signature, language and attributes unchanged) with the `exbc` CTE inserted before `agg`. Commit.
-- [ ] Make the same CTE insertion in `db/schema.sql`. Then check:
+- [x] Branch `fix-watershedatmeasure-exbc` off `upstream/main` (confirm its head is still 8b3904e, or note what moved).
+- [x] Migration `db/migrations/<ts>__fix_watershedatmeasure_exbc.sql`, created with `db/create_migration.sh`. Inside `BEGIN`/`COMMIT`: `CREATE OR REPLACE FUNCTION whse_basemapping.fwa_watershedatmeasure(...)`, taking the body extracted from `schema.sql:3630` onward (signature, language and attributes unchanged) with the `exbc` CTE inserted before `agg`. Commit.
+- [x] Make the same CTE insertion in `db/schema.sql`. Then check:
   - the diff from `upstream/main` is exactly those lines;
   - the migration's function body equals the edited `schema.sql` body byte for byte, as a script check rather than by eye.
 
   Commit.
 
 ## Phase 2: Test
-- [ ] Behaviour, in the loaded local database. Create `exbc_test.fwa_watershedatmeasure` twice: once from the fixed body, and once (under a different name) from the unfixed `upstream/main` body. Run four calls against the fixed one:
+- [x] Behaviour, in the loaded local database. Create `exbc_test.fwa_watershedatmeasure` twice: once from the fixed body, and once (under a different name) from the unfixed `upstream/main` body. Run four calls against the fixed one:
 
   | call | expect |
   |---|---|
@@ -39,15 +39,16 @@ Full issue body (with its plan and measurements) is in `findings.md`.
   | (356570372, 1203700) Columbia | 8743886.6 ha |
 
   The unfixed one must raise `relation "exbc" does not exist` at the Bulkley point. Also diff the fixed body against the local database's own `whse_basemapping` body (the pre-PR 185 version) and record what differs. Then drop `exbc_test`. If the newer body calls something the old database lacks, record it, and test in the scratch database below instead.
-- [ ] Migration path, as CI does it:
+- [x] Migration path, as CI does it:
   - Create a scratch database `fwapg_exbc_test` on the local server and load `upstream/main`'s `schema.sql` into it.
   - Run `migrate.sh --dry-run`, then `migrate.sh`.
   - Assert three things: the function's `prosrc` contains `exbc AS` twice; `fwapg.db_version` holds the migration's timestamp; a second run says "up to date".
 
   Then drop the scratch database. This touches no data the PCIC job uses.
-- [ ] Record the results table and commands in `findings.md`.
+- [x] Record the results table and commands in `findings.md`.
 
 ## Phase 3: `newgraph` PR and upstream draft
+- [ ] `/code-check` on the upstream branch (`upstream/main..fix-watershedatmeasure-exbc`) **before** pushing or cherry-picking (plan review O1), plus the widened leak grep over the diff **and** the commit messages (G1).
 - [ ] Push `fix-watershedatmeasure-exbc` to `origin` (the fork). Open no PR from it yet.
 - [ ] On the PWF branch, cherry-pick both commits. The `newgraph` diff must equal the upstream branch's diff.
 - [ ] Write `planning/active/upstream_pr.md`, the upstream PR draft. It covers:
