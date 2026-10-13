@@ -17,28 +17,28 @@ The `postgisftw` copy in `schema.sql` still defines `exbc` in both paths, so onl
 **Round 2 (this plan):** smnorris asked on smnorris/fwapg#199 for the fix to be redone by removing `exbc`. Scope decided at the plan gate (2026-10-13): **Middle**, which removes every `exbc` CTE and `UNION ALL` branch from both copies of the function. Tables, schemas, `hydroshed()`, `fwa_huc12()` and `postgisftw.hydroshed` stay (upstream #184).
 
 ## Phase 1: Upstream branch `watershedatmeasure-drop-exbc` off `upstream/main`
-- [ ] Branch off `upstream/main` (`8b3904e`, re-fetched first). Commits carry no `planning/`, no NGE issue numbers and no `Claude-Session:` trailer.
-- [ ] Migration `db/migrations/<ts>__watershedatmeasure_drop_exbc.sql` (via `create_migration.sh`, ts > 202610131450): `CREATE OR REPLACE` of both functions, bodies taken from `upstream/main:db/schema.sql` minus the `exbc` CTEs and branches.
-- [ ] Same edits in `db/schema.sql` at all four sites, with the lake-path comma fixed. Check: `grep -c exbc db/schema.sql` = 0, and no `hydroshed`/`wbdhu12`/`Huc12` remains inside either function body.
+- [x] Branch off `upstream/main` (`8b3904e`, re-fetched first). Commits carry no `planning/`, no NGE issue numbers and no `Claude-Session:` trailer.
+- [x] Migration `db/migrations/202610131654__watershedatmeasure_drop_exbc.sql` (via `create_migration.sh`, ts > 202610131450): `CREATE OR REPLACE` of both functions, bodies taken from `upstream/main:db/schema.sql` minus the `exbc` CTEs and branches.
+- [x] Same edits in `db/schema.sql` at all four sites, with the lake-path comma fixed. Check: `grep -c exbc db/schema.sql` = 0, and no `hydroshed`/`wbdhu12`/`Huc12` remains inside either function body.
 
 ## Phase 2: Test
-- [ ] Bodies agree: after the migration, `md5(prosrc)` of the two copies is equal (they were equal before #185).
-- [ ] Areas, with both new functions in a scratch schema on the loaded local DB, at the four points (expected unchanged, because the hydrosheds/NHD tables are empty): Bulkley `(360873822, 166030)` 231944.70; Kootenay R. `(356570348, 160000)` 3469676.93; Kootenay Lake `(356570348, 110000)` 4650676.78 (lake path); Columbia `(356570372, 1203700)` 8743886.64. Plus 12,452.9 km² outside BC at the three cross-border points. Drop the scratch schema.
-- [ ] Migration path, as in round 1: scratch DB from `upstream/main:db/schema.sql`, then `migrate.sh` applies the migration, records the version, re-runs as a no-op and keeps the function COMMENTs. A second scratch DB loads the new `schema.sql` cleanly. Drop both scratch DBs.
-- [ ] Record the results in `findings.md`.
+- [x] Bodies agree: after the migration, `md5(prosrc)` of the two copies is equal (they were equal before #185).
+- [x] Areas, with both new functions in a scratch schema on the loaded local DB, at the four points (expected unchanged, because the hydrosheds/NHD tables are empty): Bulkley `(360873822, 166030)` 231944.70; Kootenay R. `(356570348, 160000)` 3469676.93; Kootenay Lake `(356570348, 110000)` 4650676.78 (lake path); Columbia `(356570372, 1203700)` 8743886.64. Plus 12,452.9 km² outside BC at the three cross-border points. Drop the scratch schema.
+- [x] Migration path, as in round 1: scratch DB from `upstream/main:db/schema.sql`, then `migrate.sh` applies the migration, records the version, re-runs as a no-op and keeps the function COMMENTs. A second scratch DB loads the new `schema.sql` cleanly. Drop both scratch DBs.
+- [x] Record the results in `findings.md`.
 
 ## Phase 3: Upstream PR (stops for approval)
 - [ ] Push the branch to `origin`. Draft the title and a ~200-word body in `planning/active/upstream_pr.md`: what changed, that it replaces #199 per his reply, the test table. No session link, no upstream issue.
 - [ ] **After approval of the text:** open the PR to `smnorris/fwapg` (`--head NewGraphEnvironment:watershedatmeasure-drop-exbc`), then close #199 with a one-line comment pointing to it. Close #199 only once the new PR exists.
 
 ## Phase 4: `newgraph` PR
-- [ ] On this PWF branch (off `newgraph`): `git revert` round 1's two code commits (migration + `schema.sql`), then cherry-pick Phase 1's commits. Check that `git diff watershedatmeasure-drop-exbc HEAD -- db/` is empty.
+- [x] On this PWF branch (off `newgraph`): `git revert` round 1's two code commits (migration + `schema.sql`), then cherry-pick Phase 1's commits. Check that `git diff watershedatmeasure-drop-exbc HEAD -- db/` is empty.
 - [ ] Delete the remote `fix-watershedatmeasure-exbc` once #199 is closed.
 - [ ] Update the #1 body: round 2 steps ticked, new upstream PR linked. #1 stays open until upstream merges.
 - [ ] `/planning-archive`, then `/gh-pr-push` (`--base newgraph -R NewGraphEnvironment/fwapg`).
 
 ## Validation
-- [ ] Phase 2 checks pass
+- [x] Phase 2 checks pass (except one unexercised case, see findings)
 - [ ] `/code-check` clean on each commit
 - [ ] PWF checkboxes match landed work
 - [ ] `/planning-archive` on completion

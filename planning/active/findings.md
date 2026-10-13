@@ -120,7 +120,30 @@ Work from this repo (`fwapg`), not from link or fresh. Round 1 took option 1 (re
 
 ## Round 2 results
 
+**Edit (Phase 1).** `upstream/main:db/schema.sql` had four `exbc` sites. The removal is a regex script with an asserted match count per site (lake CTE 2, river CTE 1, river branch 2, lake branch 2). The river-path CTE was already gone from the `whse_basemapping` copy, which was the bug. Result: `schema.sql` loses 80 lines, `grep -c exbc` = 0, and the two function bodies are textually identical (a `diff` of the extracted functions, header aside). The migration `202610131654__watershedatmeasure_drop_exbc.sql` holds both functions as extracted from the edited `schema.sql`, with `CREATE` → `CREATE OR REPLACE`.
+
+Upstream branch `watershedatmeasure-drop-exbc` (off `upstream/main` 8b3904e): 6a4bed3 (migration) and 2daa9e7 (`schema.sql`), with no `Claude-Session:` trailer. On this branch they are f2aba13 (revert of round 1's 627050e + a616f45; afterwards `db/` equals `upstream/main`), then the cherry-picks c1c466b and aafc47a; afterwards `db/` equals the upstream branch.
+
+**Areas (Phase 2).** Local DB `fwapg` (the `fresh-db` container, PG 17.5), the same DB as round 1. Both functions there are the pre-#185 body (md5 `04ab3875…`), it holds 2,053 xborder polygons, and `hybas_lev12_v1c` / `wbdhu12` are empty. Both new bodies were created in scratch schema `exbc_test` and run at the four points, next to the current `whse_basemapping` function. Script: `scratchpad/test_areas.sql`; the schema was dropped afterwards.
+
+| point | refine | area_ha | km² outside BC | geometry = current fn | = postgisftw copy |
+|---|---|---|---|---|---|
+| Bulkley | CUT | 231944.70 | 0.0 | t | t |
+| Kootenay R. | CUT | 3469676.93 | 12452.9 | t | t |
+| Kootenay Lake | LAKE | 4650676.78 | 12452.9 | t | t |
+| Columbia | CUT | 8743886.64 | 12452.9 | t | t |
+
+"Geometry =" compares `md5(ST_AsBinary(geom))`, so the result is byte-identical to the old body that still had `exbc`, as expected with the source tables empty. The 12 calls took 47 s.
+
+**Migration path (Phase 2).** Run inside the container over its local socket, because a host connection without a password works only for the `fwapg` database (stored credentials were not read). Two scratch DBs, each with postgis and the `docker/db/search_path.sh` search_path:
+- A, from `upstream/main:db/schema.sql` (rc 0). Before: `whse_basemapping` md5 `eb39c37c…`, which has `exbc`; `postgisftw` md5 `04ab3875…`. `migrate.sh --dry-run` lists the one migration, `migrate.sh` applies it (two `CREATE FUNCTION`), and a re-run says "No pending migrations". After: both copies md5 `d58003b945f4db09ef722d7f754ff20a`, no `exbc`, COMMENTs kept, `db_version` = `0,202610131654`.
+- B, from the new `schema.sql` (rc 0, 0 errors in the load log): both copies are `d58003b9…` with comments, which equals A after migration.
+- Not exercised: B's simulation of a `newgraph` DB that had already applied round 1 (version 202610131450). The setup statement failed (`schema "fwapg" already exists`, because `schema.sql` creates that schema), so that run applied from version 0 instead. The case holds by `migrate.sh`'s string comparison: `202610131654 > 202610131450` (checked in bash). It is not a measured run.
+- Both scratch DBs were dropped (0 `fwapg_exbc%` left), and `/tmp/exbc` was removed from the container.
+
 ## Errors Encountered
 
 | Error | Resolution |
 |-------|------------|
+| `fe_sendauth: no password supplied` creating scratch DBs from the host | Ran the scratch-DB test with `docker exec` inside the container (local socket) |
+| `ls` wrapper coloured the migration filename, so `$(ls ...)` gave a bad path | Use the literal path / glob, not `ls` output |
