@@ -49,9 +49,9 @@ Full issue body (with its plan and measurements) is in `findings.md`.
 
 ## Phase 3: `newgraph` PR and upstream draft
 - [x] `/code-check` on the upstream branch (`upstream/main..fix-watershedatmeasure-exbc`) **before** pushing or cherry-picking (plan review O1), plus the widened leak grep over the diff **and** the commit messages (G1).
-- [ ] Push `fix-watershedatmeasure-exbc` to `origin` (the fork). Open no PR from it yet.
-- [ ] On the PWF branch, cherry-pick both commits. The `newgraph` diff must equal the upstream branch's diff.
-- [ ] Write `planning/active/upstream_pr.md`, the upstream PR draft. It covers:
+- [x] Push `fix-watershedatmeasure-exbc` to `origin` (the fork). Open no PR from it yet.
+- [x] On the PWF branch, cherry-pick both commits. The `newgraph` diff must equal the upstream branch's diff.
+- [x] Write `planning/active/upstream_pr.md`, the upstream PR draft. It covers:
   - the title;
   - the repro (any non-lake point on a fresh install), pinned to 8b3904e;
   - the deleting commit (3c43bdd, upstream PR 185);
@@ -60,8 +60,8 @@ Full issue body (with its plan and measurements) is in `findings.md`.
   - upstream issue 184 as the alternative.
 
   It contains no NGE issue links, hosts or private repos.
-- [ ] `/code-check branch`, then archive the planning files, then `/gh-pr-push` the PWF branch with `--base newgraph -R NewGraphEnvironment/fwapg`. The PR body says it carries the same two commits as the pending upstream PR and links #1.
-- [ ] Tick the matching boxes in #1's body. #1 stays open (a `newgraph` merge doesn't close it), and is closed when upstream merges or declines.
+- [x] `/code-check branch`, then archive the planning files, then `/gh-pr-push` the PWF branch with `--base newgraph -R NewGraphEnvironment/fwapg`. The PR body says it carries the same two commits as the pending upstream PR and links #1.
+- [x] Tick the matching boxes in #1's body. #1 stays open (a `newgraph` merge doesn't close it), and is closed when upstream merges or declines.
 
 ## Not in this run
 - **Posting the upstream PR** waits for your approval of the draft. Then: `gh pr create -R smnorris/fwapg --base main --head NewGraphEnvironment:fix-watershedatmeasure-exbc`.
@@ -71,10 +71,10 @@ Full issue body (with its plan and measurements) is in `findings.md`.
 
 ## Validation
 
-- [ ] The four expected areas reproduce, and the unfixed body errors in the same harness.
-- [ ] The migration applies on a fresh `schema.sql` database, is recorded in `db_version`, and is a no-op on a re-run.
-- [ ] The upstream branch's diff from `upstream/main` is only the migration file plus the CTE lines in `schema.sql`. The PWF branch's diff, outside `planning/`, is the same.
-- [ ] `grep -rnE 'NewGraphEnvironment|fwapg#|fresh-bc|rtj' ` over the upstream branch's diff and the draft comes back empty.
-- [ ] `/code-check` clean (`/code-check branch`)
-- [ ] PWF checkboxes match landed work
-- [ ] `/planning-archive` on completion
+- [x] The four expected areas reproduce, and the unfixed body errors in the same harness.
+- [x] The migration applies on a fresh `schema.sql` database, is recorded in `db_version`, and is a no-op on a re-run.
+- [x] The upstream branch's diff from `upstream/main` is only the migration file plus the CTE lines in `schema.sql`. The PWF branch's diff, outside `planning/`, is the same.
+- [x] `grep -rnE 'NewGraphEnvironment|fwapg#|fresh-bc|rtj' ` over the upstream branch's diff and the draft comes back empty.
+- [x] `/code-check` clean (`/code-check branch`)
+- [x] PWF checkboxes match landed work
+- [x] `/planning-archive` on completion
