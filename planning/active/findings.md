@@ -4,7 +4,7 @@
 
 ## Problem
 
-PR #185 "Xborder" (upstream `smnorris/fwapg`, merged 2026-01-16) accidentally removed the `exbc` CTE from the non-lake code path in `FWA_WatershedAtMeasure`, while keeping the reference to it in the `agg` CTE at line 329.
+PR #185 "Xborder" (upstream `smnorris/fwapg`, merged 2026-01-16) removed the `exbc` CTE from the non-lake code path in `FWA_WatershedAtMeasure` but kept the `UNION ALL ... FROM exbc` branch that reads it in the `agg` CTE (`db/schema.sql:3929` at upstream 8b3904e). Going by that PR's notes ("do not load nhd or hydrosheds", "update fwa_watershedatmeasure to use new xborder data"), dropping the CTE looks intended, and the leftover branch is the bug.
 
 **Every non-lake call fails, not only cross-border points.** PL/pgSQL plans the whole `RETURN QUERY` statement, so the undefined `exbc` is an error at any point the non-lake branch handles. Measured 2026-10-12 on a database built from `db/schema.sql` at NewGraphEnvironment/fwapg@b010209 (NewGraphEnvironment/fresh#253's loader run, evidence `fresh/data-raw/logs/docker_load_253/`):
 
@@ -64,7 +64,7 @@ So removing the `exbc` branches from `agg` in both paths gives the same area as 
 
 ## Plan
 
-Work from this repo (`fwapg`), not from link or fresh. Fix option 1 above (restore the CTE): an exact revert of an accidental deletion, the easiest upstream review, and the behaviour already measured to count cross-border area. Option 2 (drop the `exbc` branches) stays with upstream issue 184.
+Work from this repo (`fwapg`), not from link or fresh. Fix option 1 above (restore the CTE): an exact revert of the deleted lines, the easiest upstream review, and the behaviour already measured to count cross-border area. The upstream PR body offers option 2 (drop the `exbc` branches, in line with upstream issue 184) as the alternative, and upstream picks.
 
 **State to start from (2026-10-12):**
 - Branch `fix-exbc-nonlake` (`4708405`, 2026-02-17) already restores the CTE, but in `db/sql/FWA_WatershedAtMeasure.sql`, which upstream deleted when it moved to `db/schema.sql` (upstream PR 193). It cannot be PR'd as is; use it only as the text of the fix.
@@ -86,7 +86,7 @@ Work from this repo (`fwapg`), not from link or fresh. Fix option 1 above (resto
 - [ ] Run `migrate.sh --dry-run` against a scratch database to confirm the migration parses and applies.
 - [ ] Push the branch to this fork (`origin`) and write the upstream PR title and body as a draft in the PWF, for approval. No PR into this fork's `main`: that branch tracks upstream.
 - [ ] **Upstream PR to `smnorris/fwapg` only after the operator approves that specific PR**, from the feature branch (`gh pr create -R smnorris/fwapg --base main --head NewGraphEnvironment:<branch>`), never from `main` (no write to smnorris repos without it). The body pins `8b3904e`, gives the repro (any non-lake point errors on a fresh install), the deleting commit (`3c43bdd`, upstream PR 185), and the test table, and mentions upstream issue 184 as the alternative.
-- [ ] **`newgraph` gets the fix through its own PR**, so our databases rebuild with a working function while upstream decides: once the upstream branch is tested, cherry-pick its commit onto a branch off `newgraph` and open a PR with `--base newgraph -R NewGraphEnvironment/fwapg`. Cherry-pick rather than re-edit, so that when `newgraph` later merges upstream's version the two changes are identical and do not conflict. Merging it does not close this issue (`newgraph` is not the default branch); the issue stays open until upstream merges or declines.
+- [ ] **`newgraph` gets the fix through its own PR**, so our databases rebuild with a working function while upstream decides: once the upstream branch is tested, cherry-pick its two commits onto a branch off `newgraph` and open a PR with `--base newgraph -R NewGraphEnvironment/fwapg`. Cherry-pick rather than re-edit, so that if upstream takes option 1 unchanged, `newgraph`'s later merge of upstream brings identical changes. If upstream takes option 2 instead, reconcile at that merge: `newgraph`'s `schema.sql` would otherwise keep a CTE nothing reads. Merging it does not close this issue (`newgraph` is not the default branch); the issue stays open until upstream merges or declines.
 - [ ] Afterwards: retire `fix-exbc-nonlake`. Once the fix is upstream, NewGraphEnvironment/fresh can rebuild its local DB with `docker/load.sh` (until then, rebuilding gives a broken `fwa_watershedatmeasure`).
 
 **Not covered here:** the group-shortcut case above (cross-border area dropped where `fwa_watershed_groups_poly` has codes). Measure it before raising it upstream; it may relate to upstream issue 52 ("Do not use watershed groups for upstream analysis").

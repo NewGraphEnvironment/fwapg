@@ -2,7 +2,7 @@
 
 ## Problem
 
-PR #185 "Xborder" (upstream `smnorris/fwapg`, merged 2026-01-16) accidentally removed the `exbc` CTE from the non-lake code path in `FWA_WatershedAtMeasure`, while keeping the reference to it in the `agg` CTE at line 329.
+PR #185 "Xborder" (upstream `smnorris/fwapg`, merged 2026-01-16) removed the `exbc` CTE from the non-lake code path in `FWA_WatershedAtMeasure` but kept the `UNION ALL ... FROM exbc` branch that reads it in the `agg` CTE (`db/schema.sql:3929` at upstream 8b3904e). Going by that PR's notes ("do not load nhd or hydrosheds", "update fwa_watershedatmeasure to use new xborder data"), dropping the CTE looks intended, and the leftover branch is the bug.
 
 **Every non-lake call fails, not only cross-border points.** PL/pgSQL plans the whole `RETURN QUERY` statement, so the undefined `exbc` is an error at any point the non-lake branch handles. Measured 2026-10-12 on a database built from `db/schema.sql` at NewGraphEnvironment/fwapg@b010209 (NewGraphEnvironment/fresh#253's loader run, evidence `fresh/data-raw/logs/docker_load_253/`):
 
@@ -48,7 +48,7 @@ Full issue body (with its plan and measurements) is in `findings.md`.
 - [x] Record the results table and commands in `findings.md`.
 
 ## Phase 3: `newgraph` PR and upstream draft
-- [ ] `/code-check` on the upstream branch (`upstream/main..fix-watershedatmeasure-exbc`) **before** pushing or cherry-picking (plan review O1), plus the widened leak grep over the diff **and** the commit messages (G1).
+- [x] `/code-check` on the upstream branch (`upstream/main..fix-watershedatmeasure-exbc`) **before** pushing or cherry-picking (plan review O1), plus the widened leak grep over the diff **and** the commit messages (G1).
 - [ ] Push `fix-watershedatmeasure-exbc` to `origin` (the fork). Open no PR from it yet.
 - [ ] On the PWF branch, cherry-pick both commits. The `newgraph` diff must equal the upstream branch's diff.
 - [ ] Write `planning/active/upstream_pr.md`, the upstream PR draft. It covers:
