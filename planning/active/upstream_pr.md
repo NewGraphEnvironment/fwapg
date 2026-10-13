@@ -8,7 +8,7 @@ gh pr create -R smnorris/fwapg --base main \
   --title "<title below>" --body-file <body below>
 ```
 
-Before posting, decide on the `Claude-Session:` trailer in the two commit messages: keep it, or strip it with a reword and force-push of the fork branch.
+Before posting, decide **which fix to send** (option 1 = this branch, or option 2 = delete the dangling branch; see the body), and decide on the `Claude-Session:` trailer in the two commit messages: keep it, or strip it with a reword and force-push of the fork branch.
 
 ---
 
@@ -16,7 +16,7 @@ Before posting, decide on the `Claude-Session:` trailer in the two commit messag
 
 **Body:**
 
-The Xborder change (#185, 3c43bdd) removed the `exbc` CTE from the non-lake path of `whse_basemapping.fwa_watershedatmeasure` but kept the `FROM exbc` that reads it in `agg`. In `db/schema.sql` at 8b3904e, the non-lake path reads `FROM exbc` at line 3929, and the only `exbc AS` in that function is in the lake path (line 4051).
+The Xborder change (#185, 3c43bdd) removed the `exbc` CTE from the non-lake path of `whse_basemapping.fwa_watershedatmeasure` but kept the `UNION ALL ... FROM exbc` branch that reads it in `agg`. Going by that PR's notes ("do not load nhd or hydrosheds", "update fwa_watershedatmeasure to use new xborder data"), dropping the CTE looks intended, and the leftover branch is the bug. In `db/schema.sql` at 8b3904e, the non-lake path reads `FROM exbc` at line 3929, and the only `exbc AS` in that function is in the lake path (line 4051).
 
 PL/pgSQL plans the whole `RETURN QUERY`, so **every** point the non-lake branch handles fails, not just points with area across the border. On a database loaded with `load.sh` from the current `schema.sql`:
 
@@ -30,6 +30,15 @@ The `postgisftw` copy of the function was not affected.
 On an empty database (no data loaded) the lake check returns no row and the function takes the lake branch, so the error only shows once data is loaded.
 
 ### Change
+
+There are two ways to fix it, and they give the same result on a standard load:
+
+1. **Restore the CTE (this PR).** It is the smallest diff to review, and it makes the two copies of the function identical again.
+2. **Delete the dangling `UNION ALL ... FROM exbc` branch from `agg`.** This follows #185's intent and #184. For consistency, it would probably also mean removing `exbc` from the lake path and from the `postgisftw` copy.
+
+I've sent option 1. I'm happy to switch to option 2 if that's the direction you want for the hydrosheds/NHD logic.
+
+The files in this PR:
 
 - `db/migrations/202610131450__fix_watershedatmeasure_exbc.sql`: `CREATE OR REPLACE FUNCTION` with the CTE restored, unchanged from the version before #185. This is the first file in `db/migrations/`.
 - `db/schema.sql`: the same 16 lines, so fresh installs get a working function.
@@ -66,5 +75,5 @@ The unfixed body raises `relation "exbc" does not exist` at the Bulkley point. "
 ### Notes
 
 - **Cross-border area comes from `fwa_watersheds_xborder_poly`, not from this CTE.** `exbc` reads `hydrosheds.hybas_lev12_v1c` and `usgs.wbdhu12`, which `load.sh` no longer fills. That data reaches the result through `fwa_watersheds_poly`, so restoring the CTE fixes the error and adds no area.
-- **The alternative is #184.** Dropping the `exbc` branches from `agg` in both paths, along the lines #184 proposes for the hydrosheds/NHD logic, gives the same areas. I went with the revert here as the smaller change to review. Happy to switch if you'd prefer that route.
+- **Results differ only where hydrosheds or WBD are still loaded.** There, option 1 adds the hydroshed/HUC12 area outside BC on top of the cross-border polygons. That is what the lake path and the `postgisftw` copy already do today.
 - **The migration re-applies on every CI run.** The `fwapg-db:main` image has no `fwapg.db_version`, so `test-migration.yml` will apply this migration each time. It is idempotent.
