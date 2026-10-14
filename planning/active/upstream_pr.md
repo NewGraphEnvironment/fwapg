@@ -14,7 +14,7 @@ Replaces #199, as discussed there: rather than restoring the `exbc` CTE, this re
 
 It's a migration plus the same edit in `schema.sql`, so fresh installs work too. Drop the `schema.sql` commit if you'd rather regenerate it. The hydrosheds/usgs tables and functions are untouched (#184).
 
-Tested on a loaded db. The geometries are byte-identical to the pre-#185 function, and the migration applies on a db built from `schema.sql` and re-runs as a no-op.
+Tested on a loaded db. The geometries are byte-identical to the pre-#185 function (its hydrosheds/NHD tables are empty, as on any load since #185), and the migration applies on a db built from `schema.sql` and re-runs as a no-op.
 
 | point | area_ha |
 |---|---|

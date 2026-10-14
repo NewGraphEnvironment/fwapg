@@ -39,7 +39,7 @@ The `postgisftw` copy in `schema.sql` still defines `exbc` in both paths, so onl
 
 ## Validation
 - [x] Phase 2 checks pass
-- [ ] `/code-check` clean on each commit
+- [x] `/code-check` clean (branch mode, 3 rounds, ended by an enumeration of 42 claims)
 - [ ] PWF checkboxes match landed work
 - [ ] `/planning-archive` on completion
 
