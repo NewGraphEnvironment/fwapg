@@ -12,3 +12,4 @@
 - Phase 3: upstream PR drafted in `upstream_pr.md`, held for approval
 - `/code-check branch` (base `origin/newgraph`) round 1 running
 - Pushed `watershedatmeasure-drop-exbc` to origin (2aad0d4); #1 body updated with the round 2 status. Upstream PR text held for approval
+- Operator approved the upstream text. Posted smnorris/fwapg#200 (head `watershedatmeasure-drop-exbc`, ad3815a + 2aad0d4); closed smnorris/fwapg#199 with "Closing in favour of #200, which removes `exbc` instead."; deleted `origin/fix-watershedatmeasure-exbc`; #1 body updated. #1 stays open until upstream merges

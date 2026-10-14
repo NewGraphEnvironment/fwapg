@@ -29,18 +29,18 @@ The `postgisftw` copy in `schema.sql` still defines `exbc` in both paths, so onl
 
 ## Phase 3: Upstream PR (stops for approval)
 - [x] Push the branch to `origin`. Draft the title and a ~200-word body in `planning/active/upstream_pr.md`: what changed, that it replaces #199 per his reply, the test table. No session link, no upstream issue.
-- [ ] **After approval of the text:** open the PR to `smnorris/fwapg` (`--head NewGraphEnvironment:watershedatmeasure-drop-exbc`), then close #199 with a one-line comment pointing to it. Close #199 only once the new PR exists.
+- [x] **After approval of the text:** open the PR to `smnorris/fwapg` (`--head NewGraphEnvironment:watershedatmeasure-drop-exbc`), then close #199 with a one-line comment pointing to it. Close #199 only once the new PR exists.
 
 ## Phase 4: `newgraph` PR
 - [x] On this PWF branch (off `newgraph`): `git revert` round 1's two code commits (migration + `schema.sql`), then cherry-pick Phase 1's commits. Check that `git diff watershedatmeasure-drop-exbc HEAD -- db/` is empty.
-- [ ] Delete the remote `fix-watershedatmeasure-exbc` once #199 is closed.
+- [x] Delete the remote `fix-watershedatmeasure-exbc` once #199 is closed.
 - [x] Update the #1 body: round 2 steps ticked, new upstream PR linked. #1 stays open until upstream merges.
 - [x] `/planning-archive`, then `/gh-pr-push` (`--base newgraph -R NewGraphEnvironment/fwapg`).
 
 ## Validation
 - [x] Phase 2 checks pass
 - [x] `/code-check` clean (branch mode, 3 rounds, ended by an enumeration of 42 claims)
-- [x] PWF checkboxes match landed work (open: the upstream PR post, closing #199 and deleting `fix-watershedatmeasure-exbc`, all held for approval)
+- [x] PWF checkboxes match landed work (the upstream post, closing #199 and deleting `fix-watershedatmeasure-exbc` done 2026-10-13 after approval)
 - [x] `/planning-archive` on completion
 
 ## Notes from exploration

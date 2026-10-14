@@ -1,4 +1,4 @@
-# Upstream PR draft (needs approval before posting)
+# Upstream PR (posted as smnorris/fwapg#200 on 2026-10-13, text approved by the operator)
 
 **Repo:** smnorris/fwapg, base `main`, head `NewGraphEnvironment:watershedatmeasure-drop-exbc`
 

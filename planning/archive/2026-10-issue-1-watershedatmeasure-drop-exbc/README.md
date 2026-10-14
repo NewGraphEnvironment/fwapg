@@ -1,6 +1,6 @@
 ## Outcome
 
-Round 2 of #1. On smnorris/fwapg#199 the maintainer said dropping hydrosheds/NHD had been the intent of upstream PR 185, and asked for round 1 (restore the `exbc` CTE) to be redone by deleting the leftover `UNION ALL`. Scope chosen at the plan gate was Middle: every `exbc` CTE and branch is removed from both copies of `fwa_watershedatmeasure` (`whse_basemapping` and `postgisftw`, river and lake paths), so neither reads hydrosheds or NHD; the tables and functions stay (upstream issue 184). The change is migration `202610131654__watershedatmeasure_drop_exbc.sql` plus the same edit in `db/schema.sql`. It is on branch `watershedatmeasure-drop-exbc` off `upstream/main` (ad3815a, 2aad0d4, pushed to `origin`); the upstream PR text is drafted in `upstream_pr.md` and **not posted**. On `newgraph` it arrives as a revert of round 1 (f2aba13) plus cherry-picks, so `db/` equals the upstream branch.
+Round 2 of #1. On smnorris/fwapg#199 the maintainer said dropping hydrosheds/NHD had been the intent of upstream PR 185, and asked for round 1 (restore the `exbc` CTE) to be redone by deleting the leftover `UNION ALL`. Scope chosen at the plan gate was Middle: every `exbc` CTE and branch is removed from both copies of `fwa_watershedatmeasure` (`whse_basemapping` and `postgisftw`, river and lake paths), so neither reads hydrosheds or NHD; the tables and functions stay (upstream issue 184). The change is migration `202610131654__watershedatmeasure_drop_exbc.sql` plus the same edit in `db/schema.sql`. It is on branch `watershedatmeasure-drop-exbc` off `upstream/main` (ad3815a, 2aad0d4, pushed to `origin`); the upstream PR was posted as smnorris/fwapg#200 (text in `upstream_pr.md`), smnorris/fwapg#199 was closed with a pointer to it, and round 1's `fix-watershedatmeasure-exbc` branch was deleted. On `newgraph` it arrives as a revert of round 1 (f2aba13) plus cherry-picks, so `db/` equals the upstream branch.
 
 The durable result, covering where cross-border area comes from and the three load eras of a db, is in `research/fwa_watershedatmeasure_xborder.md`.
 
@@ -14,4 +14,4 @@ The durable result, covering where cross-border area comes from and the three lo
 
 `findings.md` "Round 2 results" and "Code-check"; `review-round*.md`.
 
-Closed by: PR into `newgraph` from `1-watershedatmeasure-drop-exbc` (see #1). #1 stays open until upstream merges.
+Closed by: PR #29 into `newgraph` from `1-watershedatmeasure-drop-exbc`; upstream smnorris/fwapg#200. #1 stays open until upstream merges.

@@ -1,6 +1,6 @@
 # Cross-border area in FWA_WatershedAtMeasure
 
-**Verified:** 2026-10-13 · **Issues:** NewGraphEnvironment/fwapg#1 (round 1 restored `exbc`, round 2 removed it), smnorris/fwapg#199 (round 1 upstream, superseded), upstream issue 184 (drop hydrosheds/NHD) · **Produced by:** `fwa_watershedatmeasure()` run at four points on a loaded local fwapg, with migration runs on scratch DBs; SQL and results in `planning/archive/2026-10-issue-1-watershedatmeasure-exbc/` and `planning/archive/2026-10-issue-1-watershedatmeasure-drop-exbc/`
+**Verified:** 2026-10-13 · **Issues:** NewGraphEnvironment/fwapg#1 (round 1 restored `exbc`, round 2 removed it), smnorris/fwapg#199 (round 1 upstream, superseded), smnorris/fwapg#200 (round 2 upstream), upstream issue 184 (drop hydrosheds/NHD) · **Produced by:** `fwa_watershedatmeasure()` run at four points on a loaded local fwapg, with migration runs on scratch DBs; SQL and results in `planning/archive/2026-10-issue-1-watershedatmeasure-exbc/` and `planning/archive/2026-10-issue-1-watershedatmeasure-drop-exbc/`
 
 ## Where the area outside BC comes from
 
