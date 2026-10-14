@@ -122,7 +122,7 @@ Work from this repo (`fwapg`), not from link or fresh. Round 1 took option 1 (re
 
 **Edit (Phase 1).** `upstream/main:db/schema.sql` had four `exbc` sites. The removal is a regex script with an asserted match count per site (lake CTE 2, river CTE 1, river branch 2, lake branch 2). The river-path CTE was already gone from the `whse_basemapping` copy, which was the bug. Result: `schema.sql` loses 80 lines, `grep -c exbc` = 0, and the two function bodies are textually identical (a `diff` of the extracted functions, header aside). The migration `202610131654__watershedatmeasure_drop_exbc.sql` holds both functions as extracted from the edited `schema.sql`, with `CREATE` → `CREATE OR REPLACE`.
 
-Upstream branch `watershedatmeasure-drop-exbc` (off `upstream/main` 8b3904e): 6a4bed3 (migration) and 2daa9e7 (`schema.sql`), with no `Claude-Session:` trailer. On this branch they are f2aba13 (revert of round 1's 627050e + a616f45; afterwards `db/` equals `upstream/main`), then the cherry-picks c1c466b and aafc47a; afterwards `db/` equals the upstream branch.
+Upstream branch `watershedatmeasure-drop-exbc` (off `upstream/main` 8b3904e): 4777ee9 (migration) and 70c1b79 (`schema.sql`), with no `Claude-Session:` trailer. On this branch they are f2aba13 (revert of round 1's 627050e + a616f45; afterwards `db/` equals `upstream/main`), then the cherry-picks 6e9ed8e and a776190; afterwards `db/` equals the upstream branch.
 
 **Areas (Phase 2).** Local DB `fwapg` (the `fresh-db` container, PG 17.5), the same DB as round 1. Both functions there are the pre-#185 body (md5 `04ab3875…`), it holds 2,053 xborder polygons, and `hybas_lev12_v1c` / `wbdhu12` are empty. Both new bodies were created in scratch schema `exbc_test` and run at the four points, next to the current `whse_basemapping` function. Script: `scratchpad/test_areas.sql`; the schema was dropped afterwards.
 
@@ -147,3 +147,7 @@ Upstream branch `watershedatmeasure-drop-exbc` (off `upstream/main` 8b3904e): 6a
 |-------|------------|
 | `fe_sendauth: no password supplied` creating scratch DBs from the host | Ran the scratch-DB test with `docker exec` inside the container (local socket) |
 | `ls` wrapper coloured the migration filename, so `$(ls ...)` gave a bad path | Use the literal path / glob, not `ls` output |
+
+## Code-check (branch, base `origin/newgraph`)
+
+- **Round 1** (`review-round1.md`): no SQL bugs; one fragile finding, accepted and fixed. On a db loaded before #185, with hydrosheds and NHD filled and no xborder polygons, the migration silently drops area outside BC. Fixed with a comment in the migration naming the precondition (`load/fwa_watersheds_xborder_poly.sql`), folded into the upstream migration commit before the push (now 4777ee9) and re-picked here.
