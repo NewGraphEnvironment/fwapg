@@ -38,7 +38,7 @@ The `postgisftw` copy in `schema.sql` still defines `exbc` in both paths, so onl
 - [ ] `/planning-archive`, then `/gh-pr-push` (`--base newgraph -R NewGraphEnvironment/fwapg`).
 
 ## Validation
-- [x] Phase 2 checks pass (except one unexercised case, see findings)
+- [x] Phase 2 checks pass
 - [ ] `/code-check` clean on each commit
 - [ ] PWF checkboxes match landed work
 - [ ] `/planning-archive` on completion
