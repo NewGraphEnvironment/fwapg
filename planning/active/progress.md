@@ -22,3 +22,5 @@
 - Reference 1951-2012 build started at 20:44Z from the worktree at 2873970. It runs last, so the `pcic_qa_build` stamp and the review tables describe it.
 - Reference 1951-2012 build exited 0 at 21:59Z (1 h 15 min). Its monthly table equals the first build row for row. The Phase 2 regression passes (1e-14 relative), and `qa_gauges.sh` ran for both periods, the reference last. Numbers are in findings.md; `research/pcic_routed_flow_periods.md` and the README carry them.
 - Next: Phase 6, publishing.
+- Uploaded the 9 `pcic.*.csv.gz` files to `s3://fresh-bc/fwapg/extras/` (22:04-22:12Z). An anonymous HEAD on each returns 200, with Content-Length equal to the local size.
+- Filed fwapg#31 (drop the frozen `whse_basemapping` loads once wet reads `pcic`, plus #23's `extras/discharge` question) and wet#101 (move wet's reads to `pcic.discharge_monthly` with a run filter).
