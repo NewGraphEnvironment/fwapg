@@ -38,8 +38,10 @@ The run is set by the environment:
 The job checks that hydromosaic lists the model and scenario before fetching. Runs share the `fwapg.pcic_*`
 staging tables and `fwapg.blk_paths`: run them one at a time.
 
-With the downloads cached, the job took 28-33 min (2026-10-10, local Docker database on a 128 GB machine), about 16 min
-of it rebuilding the blue line paths and 6 min writing flow per segment. The job:
+A monthly run took 1 h 15 min (2026-10-17, local Docker PostgreSQL 17.5 on a 128 GB machine): 4 min paging the network,
+19 min fetching the series, 32 min from the blue line paths to monthly flow, and 21 min for QA, the swap into `pcic` and the
+`.csv.gz` files. `WEEKLY=1` took 2 h 53 min, most of the difference being the swap of 175.6M weekly rows (79 min) and the
+fetch (27 min, network-bound). The job:
 
 1. **Network.** Pages PCIC's `rivers` and `lakes` collections from `bbox-server` (BC Albers) into
    `data/`, and loads them. Each river segment's outlet is the end that touches its downstream feature
@@ -139,7 +141,9 @@ the flow on the FWA segment at the gauge, which isolates crosswalk error from PC
 both with the gauge. In the 2026-10 build, at 538 gauges: FWA flow within 10% of PCIC's at 494
 (207 of 210 gauges of 100-1,000 km², 134 of 139 of 1,000-10,000 km²); 11 more where another PCIC
 branch at the confluence matches; 33 disagree, 27 of them under 100 km². The FWA stream picked by
-drainage area matched the gauge's area within 10% at 559 of 603 gauges. One gauge in detail:
+drainage area matched the gauge's area within 10% at 559 of 603 gauges. Those are 1951-2012; over 1981-2010, at 431
+gauges: FWA within 10% of PCIC at 401, 9 more on another branch, 21 disagree (18 under 100 km²), and PCIC over observed
+has a median of 0.988 (0.949 over 1951-2012). One gauge in detail:
 
     ./qa_gauge.sh 08EE003
 
@@ -332,6 +336,12 @@ These are frozen: the job no longer writes them. They will be dropped once their
   22,184 m³/s (8%) of local runoff.
 - A side channel carries the flow of outlets placed on it and its share of local runoff, not the main
   channel's flow.
+- Flow is clamped at zero where the period's local runoff is negative. For 1981-2010 that applies to 0.98%
+  of rows, monthly or weekly alike. On mid-network segments (placed outlets above, and not an outlet's own
+  segment) it is 0.05%: 1,579 monthly rows and 6,742 weekly. Almost all fall on the freshet, April to
+  early June, and the worst week (May 28-Jun 3, 805 mid-network segments) is close to the worst month
+  (May, 774). A weekly step does not add clamping (`research/pcic_routed_flow_periods.md`). A window
+  built from the daily tables is clamped once, after averaging, as the job does.
 - Known cases, listed by `sql/qa_report.sql` and open in NewGraphEnvironment/fwapg#8: 85 placed
   outlets carry more than 10 times PCIC's flow (mostly PCIC siblings that sit one above the other on
   the FWA, where flow follows the FWA); the Spillimacheen reaches the Columbia through a side channel

@@ -147,6 +147,42 @@ A row is clamped when its flow before the clamp (`q_raw`) is below zero. Mid-net
 - **Reading:** a weekly step does not increase clamping. The overall share is unchanged (0.977% against 0.978%), and the worst week is only 4% above the worst month on mid-network segments (805 against 774). Clamping is a property of where the outlets sit in the network: negative local runoff on the rising freshet, which a month-long mean already contains. A shorter step does not create it.
 - **Size of the clamp:** almost every mid-network clamp is below -1 L/s: 1,577 of 1,579 monthly and 6,742 of 6,742 weekly. Across all segments the share is 81% for both steps: 321,937 of 396,489 monthly, 1,386,298 of 1,715,490 weekly.
 
+## Build: PNWNAmet 1951-2012, monthly, the reference (2026-10-17, commit 2873970)
+
+Log `extras/pcic_crosswalk/data/run25_1951-2012.log`. It ran last, so `fwapg.pcic_qa_build` and the review tables describe it.
+
+- **QA:** all 16 `qa.sql` tests `t`.
+- **`pcic.runs`:** 40,524,444 rows, 3,377,037 segments, monthly_q_sum 178035348.248310, which is the published first build exactly.
+  - Crosswalk md5 `b1a710836df2cafea0ef514b7ed1c338`, and weights rows and share sum, equal the 1981-2010 run's, so the export guard passed.
+  - daily_q_sum 633459324.098216.
+- **`planning/active/tests/compare_monthly_vs_first_build.sql`:** 0 rows only in either table and 0 rows differing; max abs diff 0.
+- **`planning/active/tests/regress_daily_vs_ymonmean.sh`:** 584,256 keys on both sides, 0 unmatched, 0 over tolerance; max abs diff 2.46e-11, max rel 1.02e-14; `missing.txt` identical.
+- **Runtime:** 1 h 15 min (UTC 20:43:47-21:59:13).
+
+  | step | time |
+  |---|---|
+  | network | 4 min |
+  | fetch, 20:47:37-21:06:20 | 19 min |
+  | paths to monthly flow, to 21:37:56 | 32 min |
+  | QA | 1 min |
+  | swap, 21:39:12-21:58:18 | 19 min |
+  | files | 1 min |
+- **Clamped rows, monthly:** 381,947 (0.943%) on all segments; 1,568 (0.049%) mid-network. Apr-Jun: 404, 766 and 387 mid-network.
+- **Sizes:** `subbasin_daily` 279.6 MB and `discharge_monthly` 232.2 MB, `.csv.gz`.
+- **Weights file:** 26 bytes smaller than the 1981-2010 build's (37,757,492 against 37,757,518).
+  - `upstream_subids` comes from `array_agg` with no order: 940 of 87,444 multi-element arrays are not sorted.
+  - The likely cause is element order. That is not established, because the earlier file was overwritten.
+  - Accepted: flow sums over the set, and the guard fingerprint matched.
+
+### Gauges (`qa_gauges.sh`, logs `data/qa_gauges_<period>.log`)
+
+| period | gauges | compared | FWA within 10% of PCIC | other branch | disagree | PCIC/obs median | area within 10% |
+|---|---|---|---|---|---|---|---|
+| 1951-2012 | 604 | 538 | 494 | 11 | 33 (27 < 100 km²) | 0.949 | 559 of 603 |
+| 1981-2010 | 475 | 431 | 401 | 9 | 21 (18 < 100 km²) | 0.988 | 447 of 475 |
+
+The 1951-2012 numbers are the same as the README's figures from the first build.
+
 ## Errors Encountered
 
 | Error | Resolution |

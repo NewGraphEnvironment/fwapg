@@ -19,7 +19,7 @@
 - [x] Add the parameters `MODEL` (default `PNWNAmet`), `SCENARIO` (`historical`) and `YEARS` (`1951/2012`), as environment overrides at the top of `pcic_crosswalk.sh`. `PERIOD` (e.g. `1951-2012`) is derived from `YEARS`. Add `WEEKLY=1` to build the weekly table as well; the monthly table is always built.
 - [x] Put the cache in its own directory per run: `data/daily/<model>_<scenario>_<period>/` (the scenario string made safe as a slug). `fetch_batch` writes `subid,month,day,n_days,q_m3s` (366 bins) and still deletes the NetCDF. The `.split` and resume logic and `missing.txt` become per run.
 - [x] Load the daily climatology into `fwapg.pcic_outlet_daily (subid, month, day, n_days, q_m3s)`, which replaces `pcic_outlet_monthly`. The `no_series` test in `04_select.sql` reads it.
-- [ ] Regression: monthly means derived from the new 1951–2012 daily cache, with `n_days` as weights, match `data/monthly/*.csv` within 1e-6 relative at every `(subid, month)`.
+- [x] Regression: monthly means derived from the new 1951–2012 daily cache, with `n_days` as weights, match `data/monthly/*.csv` within 1e-6 relative at every `(subid, month)`.
 
 ## Phase 3: Weights, then period tables
 - [x] Change `06_subbasins.sql` to build `fwapg.pcic_subbasins_daily (subid, month, day, n_days, q_local, q_acc)`. The local-runoff and depth-ordered accumulation logic is unchanged; its key gains `(month, day)` in place of `month`.
@@ -43,10 +43,10 @@
 - [x] Give `qa_gauges.sh` and `qa_gauge.sh` the run (model, scenario, period). They read `pcic.discharge_monthly` and take `YEARS` from the period.
 
 ## Phase 5: Builds and measurements
-- [ ] Rebuild 1951–2012 PNWNAmet (refetch to the daily cache). The QA must pass, and the monthly run's fingerprint must equal the published one (40,524,444 rows, 3,377,037 segments, 178035348.248310). Allow a stated tolerance only if the measured differences are rounding at the 5th decimal, with the count and the largest difference recorded.
-- [ ] Build 1981–2010 PNWNAmet with `WEEKLY=1`. Run the QA and `qa_gauges.sh` over 1981–2010.
-- [ ] Measure the routing lag: clamped rows per period, monthly against weekly, on all segments and on mid-network ones, with the worst weeks named (the rising freshet). Record it in findings.md and in a `research/pcic_routed_flow_periods.md` topic file that #28 can cite.
-- [ ] Measure the outputs: row counts and `.csv.gz` sizes against the issue's estimates (175M rows and about 950 MB weekly), and the job's runtime per step from `date -u`.
+- [x] Rebuild 1951–2012 PNWNAmet (refetch to the daily cache). The QA must pass, and the monthly run's fingerprint must equal the published one (40,524,444 rows, 3,377,037 segments, 178035348.248310). Allow a stated tolerance only if the measured differences are rounding at the 5th decimal, with the count and the largest difference recorded.
+- [x] Build 1981–2010 PNWNAmet with `WEEKLY=1`. Run the QA and `qa_gauges.sh` over 1981–2010.
+- [x] Measure the routing lag: clamped rows per period, monthly against weekly, on all segments and on mid-network ones, with the worst weeks named (the rising freshet). Record it in findings.md and in a `research/pcic_routed_flow_periods.md` topic file that #28 can cite.
+- [x] Measure the outputs: row counts and `.csv.gz` sizes against the issue's estimates (175M rows and about 950 MB weekly), and the job's runtime per step from `date -u`.
 
 ## Phase 6: Publish and hand off
 - [ ] Upload the new files to `s3://fresh-bc/fwapg/extras/`, then check that anonymous GETs return 200 and that the sizes match. If auto mode refuses the upload, hand over the bare `aws s3 cp` commands.

@@ -20,3 +20,5 @@
 - Code-check over the branch: 3 rounds, 14 findings, all fixed; ended by enumeration (`review-enumeration.md`). Commits 8a0af41, a62c193, 2873970.
 - 1981-2010 `WEEKLY=1` build (frozen worktree at 7bccc64; the code-check fixes do not change its output) exited 0 at 20:43Z after 2 h 53 min. All 22 QA tests passed, the crosswalk md5 is the same as the first build's, and the export swap and `.csv.gz` writes worked on real data. Numbers and the clamp table are in findings.md.
 - Reference 1951-2012 build started at 20:44Z from the worktree at 2873970. It runs last, so the `pcic_qa_build` stamp and the review tables describe it.
+- Reference 1951-2012 build exited 0 at 21:59Z (1 h 15 min). Its monthly table equals the first build row for row. The Phase 2 regression passes (1e-14 relative), and `qa_gauges.sh` ran for both periods, the reference last. Numbers are in findings.md; `research/pcic_routed_flow_periods.md` and the README carry them.
+- Next: Phase 6, publishing.
