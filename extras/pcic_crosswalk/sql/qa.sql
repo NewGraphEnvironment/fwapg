@@ -7,7 +7,7 @@
 -- pcic_crosswalk07_segments.sql), so only that one is checked
 WITH placed AS (
   SELECT DISTINCT ON (x.linear_feature_id) x.subid, x.linear_feature_id
-  FROM whse_basemapping.pcic_fwa_crosswalk x
+  FROM fwapg.pcic_fwa_crosswalk x
   WHERE x.flag IS NULL
   ORDER BY x.linear_feature_id, x.downstream_route_measure DESC, x.depth DESC, x.subid DESC
 )
@@ -15,7 +15,7 @@ SELECT 'outlet segments carry accumulated flow' AS test,
   bool_and(abs(d.q_m3s - greatest(m.q_acc, 0)) <= 0.001) AS result
 FROM placed p
 INNER JOIN fwapg.pcic_subbasins_monthly m ON m.subid = p.subid
-INNER JOIN whse_basemapping.fwa_stream_networks_discharge_monthly d
+INNER JOIN fwapg.pcic_discharge_monthly d
   ON d.linear_feature_id = p.linear_feature_id AND d.month = m.month;
 
 -- flow accumulated on the FWA matches PCIC's outflow (mean annual, within 5%) at
@@ -39,14 +39,14 @@ WHERE q_pcic > 100;
 -- most outlets with an FWA candidate are placed
 SELECT 'placed >= 90% of outlets with a candidate' AS test,
   count(*) FILTER (WHERE flag IS NULL)::numeric / count(*) FILTER (WHERE flag IS DISTINCT FROM 'no_candidate') >= 0.9 AS result
-FROM whse_basemapping.pcic_fwa_crosswalk;
+FROM fwapg.pcic_fwa_crosswalk;
 
 -- every output segment has twelve months and no negative flow
 SELECT 'twelve months per segment' AS test, bool_and(n = 12) AS result
-FROM (SELECT count(*) AS n FROM whse_basemapping.fwa_stream_networks_discharge_monthly GROUP BY linear_feature_id) s;
+FROM (SELECT count(*) AS n FROM fwapg.pcic_discharge_monthly GROUP BY linear_feature_id) s;
 
 SELECT 'no negative flow' AS test, NOT EXISTS (
-  SELECT 1 FROM whse_basemapping.fwa_stream_networks_discharge_monthly WHERE q_m3s < 0
+  SELECT 1 FROM fwapg.pcic_discharge_monthly WHERE q_m3s < 0
 ) AS result;
 
 -- mean annual flow rarely drops by more than 10% from one segment to the next
@@ -56,7 +56,7 @@ SELECT 'no negative flow' AS test, NOT EXISTS (
 WITH annual AS (
   SELECT s.blue_line_key, s.downstream_route_measure, avg(d.q_m3s) AS q
   FROM whse_basemapping.fwa_stream_networks_sp s
-  INNER JOIN whse_basemapping.fwa_stream_networks_discharge_monthly d ON s.linear_feature_id = d.linear_feature_id
+  INNER JOIN fwapg.pcic_discharge_monthly d ON s.linear_feature_id = d.linear_feature_id
   GROUP BY s.blue_line_key, s.downstream_route_measure
 ),
 pairs AS (
@@ -110,9 +110,9 @@ FROM annual;
 -- differ from the segment start it names by float noise
 SELECT 'no placed outlet sits above a confluence its PCIC child joins at' AS test, NOT EXISTS (
   SELECT 1
-  FROM whse_basemapping.pcic_fwa_crosswalk x
+  FROM fwapg.pcic_fwa_crosswalk x
   INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = x.linear_feature_id
-  INNER JOIN whse_basemapping.pcic_fwa_crosswalk c
+  INNER JOIN fwapg.pcic_fwa_crosswalk c
     ON c.anchor_subid = x.subid AND c.flag IS NULL AND c.blue_line_key != x.blue_line_key
   INNER JOIN fwapg.blk_paths bp ON bp.blue_line_key = c.blue_line_key
   CROSS JOIN LATERAL unnest(bp.path_blks, bp.path_measures) AS u(blk, measure)
@@ -131,7 +131,7 @@ SELECT 'tributary 356567538 carries flow' AS test,
 FROM (
   SELECT max(d.q_m3s) AS q
   FROM whse_basemapping.fwa_stream_networks_sp s
-  INNER JOIN whse_basemapping.fwa_stream_networks_discharge_monthly d ON d.linear_feature_id = s.linear_feature_id
+  INNER JOIN fwapg.pcic_discharge_monthly d ON d.linear_feature_id = s.linear_feature_id
   WHERE s.blue_line_key = 356567538
 ) m;
 
@@ -150,8 +150,8 @@ WITH pairs AS (
     AND u.blk = p.blue_line_key
     AND u.measure >= s.downstream_route_measure + 0.001
   ) AS ok
-  FROM whse_basemapping.pcic_fwa_crosswalk c
-  INNER JOIN whse_basemapping.pcic_fwa_crosswalk p ON p.subid = c.fwa_parent_subid
+  FROM fwapg.pcic_fwa_crosswalk c
+  INNER JOIN fwapg.pcic_fwa_crosswalk p ON p.subid = c.fwa_parent_subid
   INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = p.linear_feature_id
   WHERE c.flag IS NULL
   AND c.blue_line_key != p.blue_line_key
@@ -166,8 +166,8 @@ FROM pairs;
 -- sum (695 m3/s). Before NewGraphEnvironment/fwapg#14, 701317184 carried 685
 SELECT 'tributary 356359224 steps up flow below its junction, not above it' AS test,
   coalesce(bool_and(a.q_m3s < 0.5 * b.q_m3s), false) AS result
-FROM whse_basemapping.fwa_stream_networks_discharge_monthly a
-INNER JOIN whse_basemapping.fwa_stream_networks_discharge_monthly b ON b.month = a.month
+FROM fwapg.pcic_discharge_monthly a
+INNER JOIN fwapg.pcic_discharge_monthly b ON b.month = a.month
 WHERE a.linear_feature_id = 701317184
 AND b.linear_feature_id = 701317270
 AND a.month = 6;
@@ -197,9 +197,9 @@ WITH junctions AS (
 SELECT 'flow steps up on the segment above the junction at <= 1,000 junctions over 1 m3/s' AS test,
   count(*) > 10000 AND count(*) FILTER (WHERE qu.q_m3s - qa.q_m3s > 0.5 * qt.q_m3s) <= 1000 AS result
 FROM junctions j
-INNER JOIN whse_basemapping.fwa_stream_networks_discharge_monthly qt ON qt.linear_feature_id = j.trib_lfid AND qt.month = 6
-INNER JOIN whse_basemapping.fwa_stream_networks_discharge_monthly qu ON qu.linear_feature_id = j.upper_lfid AND qu.month = 6
-INNER JOIN whse_basemapping.fwa_stream_networks_discharge_monthly qa ON qa.linear_feature_id = j.above_lfid AND qa.month = 6
+INNER JOIN fwapg.pcic_discharge_monthly qt ON qt.linear_feature_id = j.trib_lfid AND qt.month = 6
+INNER JOIN fwapg.pcic_discharge_monthly qu ON qu.linear_feature_id = j.upper_lfid AND qu.month = 6
+INNER JOIN fwapg.pcic_discharge_monthly qa ON qa.linear_feature_id = j.above_lfid AND qa.month = 6
 WHERE qt.q_m3s > 1;
 
 -- drainage size at every placed outlet (qa_drainage.sql, NewGraphEnvironment/fwapg#7):

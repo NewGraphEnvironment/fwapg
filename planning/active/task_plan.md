@@ -16,20 +16,20 @@
 - [x] Write the week bins and the weights formula into findings.md as the spec the code is tested against.
 
 ## Phase 2: Fetch keeps a daily climatology, with the run as parameters
-- [ ] Add the parameters `MODEL` (default `PNWNAmet`), `SCENARIO` (`historical`) and `YEARS` (`1951/2012`), as environment overrides at the top of `pcic_crosswalk.sh`. `PERIOD` (e.g. `1951-2012`) is derived from `YEARS`. Add `WEEKLY=1` to build the weekly table as well; the monthly table is always built.
-- [ ] Put the cache in its own directory per run: `data/daily/<model>_<scenario>_<period>/` (the scenario string made safe as a slug). `fetch_batch` writes `subid,month,day,n_days,q_m3s` (366 bins) and still deletes the NetCDF. The `.split` and resume logic and `missing.txt` become per run.
-- [ ] Load the daily climatology into `fwapg.pcic_outlet_daily (subid, month, day, n_days, q_m3s)`, which replaces `pcic_outlet_monthly`. The `no_series` test in `04_select.sql` reads it.
+- [x] Add the parameters `MODEL` (default `PNWNAmet`), `SCENARIO` (`historical`) and `YEARS` (`1951/2012`), as environment overrides at the top of `pcic_crosswalk.sh`. `PERIOD` (e.g. `1951-2012`) is derived from `YEARS`. Add `WEEKLY=1` to build the weekly table as well; the monthly table is always built.
+- [x] Put the cache in its own directory per run: `data/daily/<model>_<scenario>_<period>/` (the scenario string made safe as a slug). `fetch_batch` writes `subid,month,day,n_days,q_m3s` (366 bins) and still deletes the NetCDF. The `.split` and resume logic and `missing.txt` become per run.
+- [x] Load the daily climatology into `fwapg.pcic_outlet_daily (subid, month, day, n_days, q_m3s)`, which replaces `pcic_outlet_monthly`. The `no_series` test in `04_select.sql` reads it.
 - [ ] Regression: monthly means derived from the new 1951–2012 daily cache, with `n_days` as weights, match `data/monthly/*.csv` within 1e-6 relative at every `(subid, month)`.
 
 ## Phase 3: Weights, then period tables
-- [ ] Change `06_subbasins.sql` to build `fwapg.pcic_subbasins_daily (subid, month, day, n_days, q_local, q_acc)`. The local-runoff and depth-ordered accumulation logic is unchanged; its key gains `(month, day)` in place of `month`.
-- [ ] Change `07_segments.sql` to write weights instead of flow: `fwapg.pcic_segment_weights (linear_feature_id, watershed_group_code, subid, share, upstream_subids)`, still per watershed group under `xargs -P 4`. Placement, nearest outlet and share logic stay as they are.
-- [ ] New `08_periods.sql` (`-v step=month|week`). It averages the sub-basin daily table into period means weighted by `n_days`, then applies the weights with the clamp. It writes the step's staging table (`linear_feature_id, watershed_group_code, <step>, q_m3s`, rounded to 5 decimals as now) and records unclamped-negative counts per period.
-- [ ] Adapt `qa.sql`, `qa_report.sql` and `qa_drainage.sql` to the daily staging tables, with the monthly table still the one under test. Add weekly tests when `WEEKLY=1`: 52 rows per segment, no negative flow, and outlet segments carrying accumulated flow.
-- [ ] Add the clamp report to `qa_report.sql`: clamped rows per month and per week, split into all segments and mid-network ones (a segment that is not on an outlet's own segment and has upstream outlets).
+- [x] Change `06_subbasins.sql` to build `fwapg.pcic_subbasins_daily (subid, month, day, n_days, q_local, q_acc)`. The local-runoff and depth-ordered accumulation logic is unchanged; its key gains `(month, day)` in place of `month`.
+- [x] Change `07_segments.sql` to write weights instead of flow: `fwapg.pcic_segment_weights (linear_feature_id, watershed_group_code, subid, share, upstream_subids)`, still per watershed group under `xargs -P 4`. Placement, nearest outlet and share logic stay as they are.
+- [x] New `08_periods.sql` (`-v step=month|week`). It averages the sub-basin daily table into period means weighted by `n_days`, then applies the weights with the clamp. It writes the step's staging table (`linear_feature_id, watershed_group_code, <step>, q_m3s`, rounded to 5 decimals as now) and records unclamped-negative counts per period.
+- [x] Adapt `qa.sql`, `qa_report.sql` and `qa_drainage.sql` to the daily staging tables, with the monthly table still the one under test. Add weekly tests when `WEEKLY=1`: 52 rows per segment, no negative flow, and outlet segments carrying accumulated flow.
+- [x] Add the clamp report to `qa_report.sql`: clamped rows per month and per week, split into all segments and mid-network ones (a segment that is not on an outlet's own segment and has upstream outlets).
 
 ## Phase 4: `pcic` schema and per-run export (#23)
-- [ ] Rename the build's crosswalk to the staging name `fwapg.pcic_fwa_crosswalk` in every job file (04–07, qa*, review_*, `qa_gauges.sql`), so a build no longer writes into `whse_basemapping`.
+- [x] Rename the build's crosswalk to the staging name `fwapg.pcic_fwa_crosswalk` in every job file (04–07, qa*, review_*, `qa_gauges.sql`), so a build no longer writes into `whse_basemapping`.
 - [ ] Export with a staged swap. Create `pcic` with these tables:
   - `fwa_crosswalk`;
   - `segment_weights`;
@@ -40,7 +40,7 @@
   Write the run's rows to staging and fingerprint them (rows, segments, `sum(round(q_m3s::numeric, 6))`). Then, in one transaction, delete the run's rows and insert the new ones. Refuse the swap if the crosswalk's md5 differs from the md5 of a run already in `pcic.runs`: the weights and crosswalk are shared between runs. `fwapg.pcic_qa_build` keeps working for `review_build.sh`.
 - [ ] Write a `.csv.gz` per table and run, e.g. `pcic_discharge_monthly_pnwnamet_historical_1981-2010.csv.gz`. The crosswalk and weights are written once.
 - [ ] Add `load/pcic_*.sql`: create if missing, then for each run file delete that run's rows and `\copy ... HEADER MATCH`, in one transaction. `load.sh` loads the crosswalk, the weights, both PNWNAmet monthly runs and the sub-basin daily. Weekly is not loaded by default: at about 950 MB, the README gives the one-line `psql -f`. The two `whse_basemapping` loads stay as they are until wet moves.
-- [ ] Give `qa_gauges.sh` and `qa_gauge.sh` the run (model, scenario, period). They read `pcic.discharge_monthly` and take `YEARS` from the period.
+- [x] Give `qa_gauges.sh` and `qa_gauge.sh` the run (model, scenario, period). They read `pcic.discharge_monthly` and take `YEARS` from the period.
 
 ## Phase 5: Builds and measurements
 - [ ] Rebuild 1951–2012 PNWNAmet (refetch to the daily cache). The QA must pass, and the monthly run's fingerprint must equal the published one (40,524,444 rows, 3,377,037 segments, 178035348.248310). Allow a stated tolerance only if the measured differences are rounding at the 5th decimal, with the count and the largest difference recorded.
