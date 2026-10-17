@@ -19,3 +19,5 @@ Closed by: PR #29 into `newgraph` from `1-watershedatmeasure-drop-exbc`; upstrea
 ## Afterwards (2026-10-17)
 
 Upstream merged smnorris/fwapg#200 (ae8f7c7) on 2026-10-14 without the `schema.sql` commit: `schema.sql` is a `pg_dump` snapshot regenerated at a release, and builds are expected to run every migration since. The maintainer also applied the migration to the shared NGE database he manages. PR #29 was reworked to match: the `schema.sql` cherry-pick is reverted (6ae538d) and `upstream/main` is merged in, so `newgraph`'s `db/` equals upstream's. `CLAUDE.md` and the research note now say a build runs `db/migrate.sh` after `schema.sql`; round 1's `CLAUDE.md` line saying a rebuild from `schema.sql` was enough was wrong.
+
+`scripts/`: `test_areas.sql` (the four-point area and `md5(ST_AsBinary)` comparison), `mig_test.sh` / `mig_test2.sh` (migration scenarios A and B on scratch DBs), `drop_exbc.py` (the edit that removed the four `exbc` sites).
