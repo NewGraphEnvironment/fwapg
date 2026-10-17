@@ -39,7 +39,7 @@
 
   Write the run's rows to staging and fingerprint them (rows, segments, `sum(round(q_m3s::numeric, 6))`). Then, in one transaction, delete the run's rows and insert the new ones. Refuse the swap if the crosswalk's md5 differs from the md5 of a run already in `pcic.runs`: the weights and crosswalk are shared between runs. `fwapg.pcic_qa_build` keeps working for `review_build.sh`.
 - [x] Write a `.csv.gz` per table and run, e.g. `pcic_discharge_monthly_pnwnamet_historical_1981-2010.csv.gz`. The crosswalk and weights are written once. (Shipped as `pcic.<table>.csv.gz` for the shared tables and `pcic.<table>.<run>.csv.gz` per run, e.g. `pcic.discharge_monthly.pnwnamet_historical_1981-2010.csv.gz`.)
-- [ ] Add `load/pcic_*.sql`: create if missing, then for each run file delete that run's rows and `\copy ... HEADER MATCH`, in one transaction. `load.sh` loads the crosswalk, the weights, both PNWNAmet monthly runs and the sub-basin daily. Weekly is not loaded by default: at about 950 MB, the README gives the one-line `psql -f`. The two `whse_basemapping` loads stay as they are until wet moves.
+- [x] Add `load/pcic_*.sql`: create if missing, then for each run file delete that run's rows and `\copy ... HEADER MATCH`, in one transaction. `load.sh` loads the crosswalk, the weights, both PNWNAmet monthly runs and the sub-basin daily. Weekly is not loaded by default: at about 950 MB, the README gives the one-line `psql -f`. The two `whse_basemapping` loads stay as they are until wet moves.
 - [x] Give `qa_gauges.sh` and `qa_gauge.sh` the run (model, scenario, period). They read `pcic.discharge_monthly` and take `YEARS` from the period.
 
 ## Phase 5: Builds and measurements
@@ -56,8 +56,8 @@
 
 ## Validation
 
-- [ ] Tests pass: the Phase 2 regression, Phase 5 fingerprint equality, `qa.sql` all `t` on both builds, and the weekly tests
-- [ ] `/code-check` clean (each commit, or once over the branch with `/code-check branch`)
+- [x] Tests pass: the Phase 2 regression, Phase 5 fingerprint equality, `qa.sql` all `t` on both builds, and the weekly tests
+- [x] `/code-check` clean (each commit, or once over the branch with `/code-check branch`)
 - [ ] PWF checkboxes match landed work
 - [ ] `/planning-archive` on completion
 

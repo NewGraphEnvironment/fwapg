@@ -24,3 +24,4 @@
 - Next: Phase 6, publishing.
 - Uploaded the 9 `pcic.*.csv.gz` files to `s3://fresh-bc/fwapg/extras/` (22:04-22:12Z). An anonymous HEAD on each returns 200, with Content-Length equal to the local size.
 - Filed fwapg#31 (drop the frozen `whse_basemapping` loads once wet reads `pcic`, plus #23's `extras/discharge` question) and wet#101 (move wet's reads to `pcic.discharge_monthly` with a run filter).
+- Load test from S3: in a new scratch database (ltree only), `load.sh`'s pcic section ran unchanged (22:13-22:46Z, 33 min). For both runs, rows and sums match `pcic.runs` for `discharge_monthly`, `subbasin_daily` and the weights; 48,716 crosswalk rows and 366 day bins. Scratch database dropped.
