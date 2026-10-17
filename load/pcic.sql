@@ -5,8 +5,11 @@
 -- pcic.runs gains (or replaces) the published runs, with the fingerprints
 -- load/pcic_run.sql checks each run's file against. The crosswalk, weights and
 -- week bins are replaced, after checking them against those fingerprints. A run
--- built in this database on another crosswalk would be left on the wrong one, so
--- that stops the load (as in extras/pcic_crosswalk/sql/pcic_export.sql).
+-- built in this database on another crosswalk or weights, and not published,
+-- would be left on the wrong ones, so that stops the load (as in
+-- extras/pcic_crosswalk/sql/pcic_export.sql). A published run's rows already in
+-- this database are kept only where they are what its published fingerprint
+-- describes; the rest are deleted, so that only load/pcic_run.sql brings them back.
 -- One transaction, so a failed download or check leaves the tables as they were.
 BEGIN;
 
@@ -42,12 +45,37 @@ BEGIN;
     SELECT string_agg(r.model || ' / ' || r.scenario || ' / ' || r.period, ', ') INTO other
     FROM pcic.runs r
     WHERE NOT EXISTS (SELECT 1 FROM runs_in i WHERE (i.model, i.scenario, i.period) = (r.model, r.scenario, r.period))
-    AND r.crosswalk_md5 IS DISTINCT FROM cw_md5;
+    AND (r.crosswalk_md5, r.weights_rows, r.weights_share_sum) IS DISTINCT FROM (cw_md5, w_rows, w_sum);
     IF other IS NOT NULL THEN
-      RAISE EXCEPTION 'runs % in this database were built on another crosswalk: rebuild them, or remove them from pcic.runs, first', other;
+      RAISE EXCEPTION 'runs % in this database were built on another crosswalk or weights: rebuild them, or remove them from pcic.runs, first', other;
     END IF;
   END $$;
 
+  -- a published run's rows here that are not the published ones
+  DELETE FROM pcic.subbasin_daily t USING runs_in i
+  WHERE (t.model, t.scenario, t.period) = (i.model, i.scenario, i.period)
+  AND NOT EXISTS (
+    SELECT 1 FROM pcic.runs r
+    WHERE (r.model, r.scenario, r.period) = (i.model, i.scenario, i.period)
+    AND (r.crosswalk_md5, r.daily_rows, r.daily_subbasins, r.daily_q_sum)
+      IS NOT DISTINCT FROM (i.crosswalk_md5, i.daily_rows, i.daily_subbasins, i.daily_q_sum)
+  );
+  DELETE FROM pcic.discharge_monthly t USING runs_in i
+  WHERE (t.model, t.scenario, t.period) = (i.model, i.scenario, i.period)
+  AND NOT EXISTS (
+    SELECT 1 FROM pcic.runs r
+    WHERE (r.model, r.scenario, r.period) = (i.model, i.scenario, i.period)
+    AND (r.crosswalk_md5, r.monthly_rows, r.monthly_segments, r.monthly_q_sum)
+      IS NOT DISTINCT FROM (i.crosswalk_md5, i.monthly_rows, i.monthly_segments, i.monthly_q_sum)
+  );
+  DELETE FROM pcic.discharge_weekly t USING runs_in i
+  WHERE (t.model, t.scenario, t.period) = (i.model, i.scenario, i.period)
+  AND NOT EXISTS (
+    SELECT 1 FROM pcic.runs r
+    WHERE (r.model, r.scenario, r.period) = (i.model, i.scenario, i.period)
+    AND (r.crosswalk_md5, r.weekly_rows, r.weekly_segments, r.weekly_q_sum)
+      IS NOT DISTINCT FROM (i.crosswalk_md5, i.weekly_rows, i.weekly_segments, i.weekly_q_sum)
+  );
   DELETE FROM pcic.runs r USING runs_in i WHERE (i.model, i.scenario, i.period) = (r.model, r.scenario, r.period);
   INSERT INTO pcic.runs SELECT * FROM runs_in;
   TRUNCATE pcic.fwa_crosswalk, pcic.segment_weights, pcic.day_bins;

@@ -31,6 +31,9 @@ WEEKLY=${WEEKLY:-0}
 PERIOD=${YEARS/\//-}
 # the run's name in cache directories and export files, e.g. pnwnamet_historical_1981-2010
 RUN=$(printf '%s_%s_%s' "$MODEL" "$SCENARIO" "$PERIOD" | tr 'A-Z' 'a-z' | tr -cs 'a-z0-9.\n-' _)
+# days in YEARS: a series that does not cover every one stops the run (cdo
+# selyear only warns about years it does not have)
+NDAYS=$($PSQL -tXA -c "SELECT make_date(${YEARS#*/}, 12, 31) - make_date(${YEARS%/*}, 1, 1) + 1")
 SERIES=data/series/$RUN
 DAILY=data/daily/$RUN
 
@@ -104,12 +107,14 @@ fetch_batch() {
     done
     if [ "$code" = 200 ]; then
       # mean of each calendar day over YEARS; outlet order is the file's basin_name
-      # order, day order the reduced file's dates. A series with a missing day in
-      # YEARS stops the run: every day must count, so that a longer period's mean
-      # can weight each calendar day by its count in YEARS (fwapg.pcic_day_bins).
+      # order, day order the reduced file's dates. A series without every day of
+      # YEARS, or with a missing value in them, stops the run: every day must count,
+      # so that a longer period's mean can weight each calendar day by its count in
+      # YEARS (fwapg.pcic_day_bins).
       # This runs under xargs without set -e, so every step is checked.
       outlets=$(ncdump -v basin_name "$nc" | sed -n '/basin_name =/,/;/p' | grep -oE '"[^"]+"' | tr -d '"' | paste -sd, -) \
         && [ -n "$outlets" ] \
+        && [ "$(cdo -s ntime -selyear,"$YEARS" "$nc" 2> /dev/null)" = "$NDAYS" ] \
         && miss=$(cdo -s -outputf,%.0f -fldsum -timsum -setmisstoc,1 -setrtoc,-1e300,1e300,0 -selyear,"$YEARS" "$nc" 2> /dev/null) \
         && [ "$miss" = 0 ] \
         && cdo -s -O ydaymean -selyear,"$YEARS" "$nc" "${nc%.nc}_day.nc" \
@@ -157,7 +162,7 @@ fetch_batch() {
   fetch_batch "${ids%.txt}a.txt" && fetch_batch "${ids%.txt}b.txt"
 }
 export -f fetch_batch
-export PCIC MODEL SCENARIO YEARS SERIES DAILY
+export PCIC MODEL SCENARIO YEARS NDAYS SERIES DAILY
 
 # a wrong MODEL or SCENARIO is a 422 for every outlet, which the batching would
 # read as mixed domains and halve down to every outlet missing: check that
@@ -174,7 +179,8 @@ ls "$SERIES"/batch_*.txt | grep -E '_[0-9]{4}\.txt$' | xargs -P 3 -I {} bash -c 
 
 # 28 of 48,716 outlets had no PNWNAmet series in 2026-10; many more is a run that
 # hydromosaic serves for only part of the network, or a fetch gone wrong
-n=$(cat "$SERIES/missing.txt" 2> /dev/null | wc -l)
+n=0
+[ -e "$SERIES/missing.txt" ] && n=$(wc -l < "$SERIES/missing.txt")
 [ "$n" -le 100 ] || { echo "$n outlets have no series in this run, see $SERIES/missing.txt" >&2; exit 1; }
 
 # the days of YEARS by calendar day, with each day's count and week
@@ -183,7 +189,7 @@ $PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_outlet_daily"
 $PSQL -c "CREATE TABLE fwapg.pcic_outlet_daily (subid integer, month integer, day integer, q_m3s double precision, PRIMARY KEY (subid, month, day))"
 cat "$DAILY"/*.csv | $PSQL -c "\copy fwapg.pcic_outlet_daily FROM STDIN WITH (FORMAT csv)"
 # every outlet with a series has every calendar day of YEARS
-n=$($PSQL -tXA -c "SELECT count(*) FROM (SELECT subid FROM fwapg.pcic_outlet_daily GROUP BY subid HAVING count(*) != (SELECT count(*) FROM fwapg.pcic_day_bins)) s")
+n=$($PSQL -tXA -c "SELECT count(*) FROM (SELECT subid FROM fwapg.pcic_outlet_daily GROUP BY subid HAVING count(*) != (SELECT count(*) FROM fwapg.pcic_day_bins WHERE n_days > 0)) s")
 [ "$n" -eq 0 ] || { echo "$n outlets lack calendar days of $YEARS" >&2; exit 1; }
 
 # ----------

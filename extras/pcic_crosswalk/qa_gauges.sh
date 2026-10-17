@@ -62,15 +62,20 @@ ogr2ogr -f PostgreSQL "PG:$DATABASE_URL" data/rivers.geojson \
   -lco GEOMETRY_NAME=geom -select subid
 $PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_qa_outlet_monthly, fwapg.pcic_qa_stations, fwapg.pcic_qa_wsc_monthly"
 # PCIC's monthly flow at every outlet, from the run's daily climatology weighted
-# by each calendar day's count in YEARS (as pcic_crosswalk08_periods.sql)
-$PSQL -v y1="${YEARS%/*}" -v y2="${YEARS#*/}" -f sql/pcic_crosswalk01_days.sql
+# by each calendar day's count in YEARS (as pcic_crosswalk08_periods.sql; the
+# counts are made here, not in the job's fwapg.pcic_day_bins, which a build may
+# be using)
 $PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_qa_outlet_daily"
 $PSQL -c "CREATE TABLE fwapg.pcic_qa_outlet_daily (subid integer, month integer, day integer, q_m3s double precision)"
 cat "$DAILY"/*.csv | $PSQL -c "\copy fwapg.pcic_qa_outlet_daily FROM STDIN WITH (FORMAT csv)"
 $PSQL -c "CREATE TABLE fwapg.pcic_qa_outlet_monthly AS
   SELECT q.subid, q.month, sum(q.q_m3s * b.n_days) / sum(b.n_days) AS q_m3s
   FROM fwapg.pcic_qa_outlet_daily q
-  INNER JOIN fwapg.pcic_day_bins b ON b.month = q.month AND b.day = q.day
+  INNER JOIN (
+    SELECT extract(month FROM d)::integer AS month, extract(day FROM d)::integer AS day, count(*) AS n_days
+    FROM generate_series(make_date(${YEARS%/*}, 1, 1), make_date(${YEARS#*/}, 12, 31), interval '1 day') AS d
+    GROUP BY 1, 2
+  ) b ON b.month = q.month AND b.day = q.day
   GROUP BY q.subid, q.month"
 $PSQL -c "CREATE TABLE fwapg.pcic_qa_stations (station text, name text, lon double precision, lat double precision, area_km2 double precision)"
 $PSQL -c "\copy fwapg.pcic_qa_stations FROM '$WSC/stations.csv' WITH (FORMAT csv)"
@@ -81,4 +86,4 @@ $PSQL -v model="$MODEL" -v scenario="$SCENARIO" -v period="$PERIOD" -f sql/qa_ga
 $PSQL -c "\copy (SELECT * FROM fwapg.pcic_qa_gauges ORDER BY station) TO 'data/qa_gauges.csv' WITH (FORMAT csv, HEADER)"
 $PSQL -f sql/qa_gauges_report.sql
 
-$PSQL -c "DROP TABLE fwapg.pcic_qa_rivers, fwapg.pcic_qa_outlet_daily, fwapg.pcic_qa_outlet_monthly, fwapg.pcic_day_bins, fwapg.pcic_qa_stations, fwapg.pcic_qa_wsc_monthly"
+$PSQL -c "DROP TABLE fwapg.pcic_qa_rivers, fwapg.pcic_qa_outlet_daily, fwapg.pcic_qa_outlet_monthly, fwapg.pcic_qa_stations, fwapg.pcic_qa_wsc_monthly"
