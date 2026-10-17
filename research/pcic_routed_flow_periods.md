@@ -1,6 +1,6 @@
 # PCIC routed flow on the FWA for any period: day bins, weights and the clamp
 
-**Verified:** 2026-10-17 · **Issues:** NewGraphEnvironment/fwapg#9 (the first, monthly build), #25 (runs, daily climatology, weights, weekly flow), #23 (the `pcic` schema); cited by #28 (whether to route on the FWA instead) · **Produced by:** `extras/pcic_crosswalk/pcic_crosswalk.sh` run for PNWNAmet historical 1981-2010 with `WEEKLY=1` and for 1951-2012; `sql/qa_report_clamped.sql`; the probes and builds recorded in `planning/archive/2026-10-issue-25-pcic-crosswalk-run-parameters/`
+**Verified:** 2026-10-17 · **Issues:** NewGraphEnvironment/fwapg#6 (the first, monthly build), #9 (its publication), #25 (runs, daily climatology, weights, weekly flow), #23 (the `pcic` schema); cited by #28 (whether to route on the FWA instead) · **Produced by:** `extras/pcic_crosswalk/pcic_crosswalk.sh` run for PNWNAmet historical 1981-2010 with `WEEKLY=1` and for 1951-2012; `sql/qa_report_clamped.sql`; the probes and builds recorded in `planning/archive/2026-10-issue-25-pcic-crosswalk-run-parameters/`
 
 ## One daily climatology gives every period
 
@@ -43,8 +43,8 @@ clamped per day and then averaged is a different, larger number.
 ## The crosswalk does not depend on the years
 
 The crosswalk (which FWA segment each PCIC outlet sits on, and the flags) comes out byte-identical:
-`md5 b1a710836df2cafea0ef514b7ed1c338` for both PNWNAmet periods and for the first 1951-2012 build of
-#9. It depends on which outlets have a series, and for PNWNAmet that set does not change with the years
+`md5 b1a710836df2cafea0ef514b7ed1c338` for both PNWNAmet periods and for the first 1951-2012 build
+(#6, published in #9). It depends on which outlets have a series, and for PNWNAmet that set does not change with the years
 (28 outlets of 48,716 have none). The export refuses a run whose crosswalk or weights differ from the
 runs already in `pcic.runs`, so they can stay shared.
 
