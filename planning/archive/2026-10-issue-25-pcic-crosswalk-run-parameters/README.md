@@ -57,4 +57,4 @@ Review: a Plan-agent review of the plan (18 findings, `review-plan.md`), then `/
   - `compare_monthly_vs_first_build.sql`;
   - `test_pcic_export_load.sh`, the synthetic proof that every export guard and load refusal fires.
 
-Closed by: PR PRLINK
+Closed by: PR #32
