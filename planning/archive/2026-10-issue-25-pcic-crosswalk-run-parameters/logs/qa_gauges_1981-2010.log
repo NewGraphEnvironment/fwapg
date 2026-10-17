@@ -1,0 +1,66 @@
+NOTICE:  table "pcic_qa_outlet_monthly" does not exist, skipping
+NOTICE:  table "pcic_qa_stations" does not exist, skipping
+NOTICE:  table "pcic_qa_wsc_monthly" does not exist, skipping
+DROP TABLE
+NOTICE:  table "pcic_qa_outlet_daily" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+COPY 17819808
+SELECT 584256
+CREATE TABLE
+COPY 2324
+CREATE TABLE
+COPY 154600
+CREATE INDEX
+CREATE INDEX
+ANALYZE
+psql:sql/qa_gauges.sql:10: NOTICE:  table "pcic_qa_gauges" does not exist, skipping
+DROP TABLE
+SELECT 475
+COPY 475
+ gauges | with_fwa_flow | with_pcic_flow | compared 
+--------+---------------+----------------+----------
+    475 |           439 |            435 |      431
+(1 row)
+
+     gauge_area      | compared | within_10pct | other_pcic_branch_matches | disagree | within_25pct | off_2x | median_ratio 
+---------------------+----------+--------------+---------------------------+----------+--------------+--------+--------------
+ 1: < 100 km2        |      104 |           83 |                         3 |       18 |           89 |      8 |        1.000
+ 2: 100-1,000 km2    |      169 |          168 |                         1 |        0 |          168 |      1 |        1.000
+ 3: 1,000-10,000 km2 |      122 |          118 |                         3 |        1 |          118 |      4 |        1.000
+ 4: > 10,000 km2     |       36 |           32 |                         2 |        2 |           32 |      4 |        1.000
+(4 rows)
+
+ area_within_10pct | area_10_50pct | area_off_50pct 
+-------------------+---------------+----------------
+               447 |            19 |              9
+(1 row)
+
+ gauges | median_pcic_over_obs | within_25pct 
+--------+----------------------+--------------
+    435 |                0.988 |          292
+(1 row)
+
+ station |                     name                      | gauge_area_km2 | fwa_area_km2 |   fwa_stream    | pcic_subid | pcic_snap_m | pcic_crosswalk_flag |  q_obs  | q_pcic  | q_fwa | fwa_over_pcic 
+---------+-----------------------------------------------+----------------+--------------+-----------------+------------+-------------+---------------------+---------+---------+-------+---------------
+ 08DB013 | ANSEDAGAN CREEK NEAR NEW AIYANSH              |             22 |         22.3 | Ansedagan Creek |   12001175 |        74.3 |                     |   1.009 |   1.514 | 0.002 |         0.001
+ 08JA015 | LAVENTIE CREEK NEAR THE MOUTH                 |             81 |         81.4 | Laventie Creek  |    1008701 |         2.9 | broken_chain        |   5.260 |   3.899 | 0.001 |         0.000
+ 08JA016 | MACIVOR CREEK NEAR THE MOUTH                  |             55 |         58.3 | MacIvor Creek   |    1008706 |        43.6 | broken_chain        |   0.863 |   0.683 | 0.001 |         0.001
+ 08JA028 | EUTSUK RIVER AT OUTLET OF EUTSUK LAKE         |           2553 |       2554.2 |                 |    1001917 |         7.0 | broken_chain        |  63.529 |  45.126 | 0.023 |         0.001
+ 08KH006 | QUESNEL RIVER NEAR QUESNEL                    |          11560 |      11570.7 |                 |    2010121 |        25.5 |                     | 239.576 | 221.371 | 0.276 |         0.001
+ 08NM022 | VERNON CREEK AT OUTLET OF SWALWELL LAKE       |             66 |         65.8 | Vernon Creek    |    6003658 |       165.2 | broken_chain        |   0.486 |   0.289 | 0.002 |         0.007
+ 08DB014 | KSEDIN TRIBUTARY NO. 2 CREEK NEAR NEW AIYANSH |             18 |         17.9 |                 |   12000114 |        28.9 |                     |   0.582 |   1.101 | 0.102 |         0.093
+ 08EE028 | STATION CREEK ABOVE DIVERSIONS                |             10 |          9.8 | Station Creek   |    8008668 |       297.6 |                     |   0.279 |   0.255 | 0.040 |         0.158
+ 08HE008 | ZEBALLOS RIVER AT MOOK PEAK                   |             13 |         13.1 | Zeballos River  |    9003765 |        27.5 |                     |   1.246 |   3.108 | 1.843 |         0.593
+ 08FF006 | RENEGADE CREEK NEAR KITIMAT                   |              5 |          5.8 |                 |    8005800 |        71.3 |                     |   0.396 |   0.810 | 0.497 |         0.613
+ 08HC006 | CREST LAKE NEAR HIGHWAY 28                    |             17 |         16.6 | Crest Creek     |    9002379 |        40.8 |                     |   1.793 |   1.588 | 0.975 |         0.614
+ 08HD030 | PIGGOTT CREEK AT MOUNT WASHINGTON             |              8 |          8.3 | Piggott Creek   |    9002809 |        45.7 |                     |   0.438 |   0.692 | 0.466 |         0.674
+ 08HE007 | CLANNINICK CREEK AT HEADWATERS                |              6 |          6.4 |                 |    9003502 |        35.8 |                     |   1.255 |   1.291 | 0.882 |         0.683
+ 08NM145 | BULMAN CREEK AT THE MOUTH                     |             14 |         14.2 | Bulman Creek    |    6003669 |        52.6 |                     |   0.071 |   0.072 | 0.055 |         0.766
+ 08MH098 | WEST CREEK NEAR FORT LANGLEY                  |             11 |         11.6 | West Creek      |    4000005 |        29.5 |                     |   0.393 |   0.519 | 0.404 |         0.778
+ 08HA069 | RENFREW CREEK NEAR PORT RENFREW               |             10 |         11.1 | Renfrew Creek   |    9000060 |        71.4 |                     |   1.611 |   1.518 | 1.207 |         0.795
+ 08KH029 | CAMP CREEK NEAR THE MOUTH                     |              6 |          5.9 |                 |    2001781 |        43.8 |                     |   0.104 |   0.172 | 0.144 |         0.837
+ 08MG025 | PEMBERTON CREEK NEAR PEMBERTON                |             31 |         30.8 | Pemberton Creek |    4001459 |        25.5 |                     |   1.677 |   1.439 | 1.264 |         0.878
+(18 rows)
+
+DROP TABLE

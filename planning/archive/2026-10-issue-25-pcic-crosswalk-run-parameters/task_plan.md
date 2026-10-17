@@ -51,14 +51,14 @@
 ## Phase 6: Publish and hand off
 - [x] Upload the new files to `s3://fresh-bc/fwapg/extras/`, then check that anonymous GETs return 200 and that the sizes match. If auto mode refuses the upload, hand over the bare `aws s3 cp` commands.
 - [x] Update the README: parameters, cache layout, week definition, `pcic` tables, the weights formula with an SQL example for any date window, the clamp measurement, and the CMIP6 probe result. Also update `extras/README.md`, and add the `pcic` schema to `CLAUDE.md`'s load notes.
-- [ ] File a wet issue to move its reads (`scripts/pcic_routed_lib.R`, `data-raw/segment_vignette_*.R`) to `pcic.discharge_monthly` with a period filter, and to build wet#70's routed daily from `pcic.subbasin_daily` × `pcic.segment_weights`. File an fwapg follow-up to drop the `whse_basemapping` loads once wet has moved.
-- [ ] Edit the bodies of #25 and #23 to match what shipped (CMIP6 parameters supported and probed but not built).
+- [x] File a wet issue to move its reads (`scripts/pcic_routed_lib.R`, `data-raw/segment_vignette_*.R`) to `pcic.discharge_monthly` with a period filter, and to build wet#70's routed daily from `pcic.subbasin_daily` × `pcic.segment_weights`. File an fwapg follow-up to drop the `whse_basemapping` loads once wet has moved. (Filed as wet#101 and fwapg#31. The routed daily is a comment on wet#99, which already covers it, posted once the PR exists.)
+- [x] Edit the bodies of #25 and #23 to match what shipped (CMIP6 parameters supported and probed but not built). (Done once the PR exists, so the bodies can link it.)
 
 ## Validation
 
 - [x] Tests pass: the Phase 2 regression, Phase 5 fingerprint equality, `qa.sql` all `t` on both builds, and the weekly tests
 - [x] `/code-check` clean (each commit, or once over the branch with `/code-check branch`)
-- [ ] PWF checkboxes match landed work
+- [x] PWF checkboxes match landed work
 - [ ] `/planning-archive` on completion
 
 ## Out of scope
