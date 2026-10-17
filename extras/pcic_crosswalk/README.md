@@ -250,8 +250,9 @@ Per run, keyed by `model`, `scenario` and `period` (e.g. `PNWNAmet`, `historical
   to year and has a week 53 in some years.
 
 A run replaces only its own rows, in one transaction. The crosswalk and weights are shared, so a run whose
-crosswalk differs from one another run in `pcic.runs` was built on is refused (rebuild that run as well,
-or delete it from `pcic.runs` and its tables first). Placement depends on the series only through which
+crosswalk or weights differ from those another run in `pcic.runs` was built on is refused (rebuild that
+run as well, or delete its rows from `pcic.runs`, `pcic.subbasin_daily` and `pcic.discharge_*` first), as
+are rows of a run `pcic.runs` does not list. Placement depends on the series only through which
 outlets have one, so PNWNAmet runs over any years share a crosswalk. The CMIP6 runs' outlets are
 unmeasured: 3 of PNWNAmet's 28 missing outlets were also missing for CNRM-ESM2-1.
 
@@ -266,7 +267,7 @@ WITH window_flow AS (
     sum(q_acc * n_days) / sum(n_days) AS q_acc
   FROM pcic.subbasin_daily
   WHERE (model, scenario, period) = ('PNWNAmet', 'historical', '1981-2010')
-  AND make_date(2001, month, least(day, 28)) BETWEEN '2001-07-15' AND '2001-09-07'
+  AND make_date(2001, month, least(day, CASE WHEN month = 2 THEN 28 ELSE 31 END)) BETWEEN '2001-07-15' AND '2001-09-07'
   GROUP BY subid
 )
 SELECT w.linear_feature_id,
@@ -277,7 +278,7 @@ INNER JOIN window_flow s ON s.subid = w.subid
 WHERE w.watershed_group_code = 'BULK';
 ```
 
-(`least(day, 28)` only matters for Feb 29, which a window that includes Feb 28 includes too.)
+(Feb 29 is put on Feb 28, so a window that includes Feb 28 includes it too.)
 
 Files are published to `https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/` as
 `pcic.<table>.csv.gz` for the shared tables and `pcic.<table>.<run>.csv.gz` for a run's rows. After a

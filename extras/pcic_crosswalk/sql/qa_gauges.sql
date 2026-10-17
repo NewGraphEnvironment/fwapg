@@ -96,7 +96,10 @@ SELECT
   round(avg(d.q_m3s)::numeric, 3) AS q_fwa,
   round((avg(d.q_m3s) / nullif(avg(q.q_m3s), 0))::numeric, 3) AS fwa_over_pcic,
   round((avg(q.q_m3s) / nullif(avg(o.q_obs), 0))::numeric, 3) AS pcic_over_obs,
-  round((f.fwa_area_km2 / s.area_km2)::numeric, 3) AS fwa_area_over_gauge
+  round((f.fwa_area_km2 / s.area_km2)::numeric, 3) AS fwa_area_over_gauge,
+  :'model'::text AS model,
+  :'scenario'::text AS scenario,
+  :'period'::text AS period
 FROM stations s
 INNER JOIN obs o ON o.station = s.station
 LEFT JOIN fwa f ON f.station = s.station

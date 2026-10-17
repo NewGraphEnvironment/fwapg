@@ -36,6 +36,12 @@ mkdir -p "$OUT" review
 # deterministic build, and so does its discharge
 present=$($PSQL -tXA -c "SELECT to_regclass('fwapg.pcic_qa_build') IS NOT NULL AND to_regclass('fwapg.pcic_qa_gauges') IS NOT NULL")
 [ "$present" = t ] || { echo "no fwapg.pcic_qa_build or fwapg.pcic_qa_gauges: run pcic_crosswalk.sh to the end, then qa_gauges.sh" >&2; exit 1; }
+# the gauges must be from the run the kept flows are from (qa_gauges.sh takes the run as the job does)
+samerun=$($PSQL -tXA -c "SELECT EXISTS (SELECT 1 FROM fwapg.pcic_qa_gauges g, fwapg.pcic_qa_build b
+  WHERE (g.model, g.scenario, g.period) = (b.model, b.scenario, b.period))
+  AND NOT EXISTS (SELECT 1 FROM fwapg.pcic_qa_gauges g, fwapg.pcic_qa_build b
+  WHERE (g.model, g.scenario, g.period) IS DISTINCT FROM (b.model, b.scenario, b.period))")
+[ "$samerun" = t ] || { echo "fwapg.pcic_qa_gauges is from another run than the job's last: rerun qa_gauges.sh with the job's MODEL, SCENARIO and YEARS" >&2; exit 1; }
 same=$($PSQL -tXA -c "SELECT (SELECT crosswalk_md5 FROM fwapg.pcic_qa_build)
   = (SELECT md5(string_agg(x::text, '|' ORDER BY x.subid)) FROM pcic.fwa_crosswalk x)")
 [ "$same" = t ] || { echo "the crosswalk is not the one the kept pcic_qa_* tables were built with: rerun pcic_crosswalk.sh and qa_gauges.sh" >&2; exit 1; }

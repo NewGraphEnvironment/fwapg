@@ -29,6 +29,7 @@ BEGIN;
     w_rows bigint := (SELECT count(*) FROM weights_in);
     w_sum numeric := (SELECT sum(round(share::numeric, 9)) FROM weights_in);
     other text;
+    orphan text;
   BEGIN
     IF NOT EXISTS (SELECT 1 FROM runs_in) THEN
       RAISE EXCEPTION 'pcic.runs.csv.gz lists no runs';
@@ -47,7 +48,19 @@ BEGIN;
     WHERE NOT EXISTS (SELECT 1 FROM runs_in i WHERE (i.model, i.scenario, i.period) = (r.model, r.scenario, r.period))
     AND (r.crosswalk_md5, r.weights_rows, r.weights_share_sum) IS DISTINCT FROM (cw_md5, w_rows, w_sum);
     IF other IS NOT NULL THEN
-      RAISE EXCEPTION 'runs % in this database were built on another crosswalk or weights: rebuild them, or remove them from pcic.runs, first', other;
+      RAISE EXCEPTION 'runs % in this database were built on another crosswalk or weights: rebuild them, or delete their rows from pcic.runs, pcic.subbasin_daily and pcic.discharge_*, first', other;
+    END IF;
+    -- rows of a run that pcic.runs does not list: nothing would check or replace them
+    SELECT string_agg(o.model || ' / ' || o.scenario || ' / ' || o.period, ', ') INTO orphan
+    FROM (
+      SELECT DISTINCT model, scenario, period FROM pcic.subbasin_daily
+      UNION SELECT DISTINCT model, scenario, period FROM pcic.discharge_monthly
+      UNION SELECT DISTINCT model, scenario, period FROM pcic.discharge_weekly
+    ) o
+    WHERE NOT EXISTS (SELECT 1 FROM pcic.runs r WHERE (r.model, r.scenario, r.period) = (o.model, o.scenario, o.period))
+    AND NOT EXISTS (SELECT 1 FROM runs_in n WHERE (n.model, n.scenario, n.period) = (o.model, o.scenario, o.period));
+    IF orphan IS NOT NULL THEN
+      RAISE EXCEPTION 'pcic.subbasin_daily or pcic.discharge_* hold rows of runs % that pcic.runs does not list: delete them first', orphan;
     END IF;
   END $$;
 

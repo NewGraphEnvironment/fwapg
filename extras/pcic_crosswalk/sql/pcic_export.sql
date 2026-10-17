@@ -9,7 +9,7 @@
 -- would replace them under runs built on the old ones, so the swap is refused when
 -- another run in pcic.runs has a different crosswalk md5 or weights fingerprint:
 -- rebuild those runs too, or delete their rows from pcic.runs and their tables
--- first.
+-- first. Rows of a run pcic.runs does not list are refused too.
 
 BEGIN;
 
@@ -25,6 +25,7 @@ SELECT
 DO $$
 DECLARE
   other text;
+  orphan text;
 BEGIN
   SELECT string_agg(r.model || ' / ' || r.scenario || ' / ' || r.period, ', ') INTO other
   FROM pcic.runs r, run n
@@ -32,8 +33,20 @@ BEGIN
   AND (r.crosswalk_md5, r.weights_rows, r.weights_share_sum)
     IS DISTINCT FROM (n.crosswalk_md5, n.weights_rows, n.weights_share_sum);
   IF other IS NOT NULL THEN
-    RAISE EXCEPTION 'this run''s crosswalk or weights differ from those % % built on: rebuild them, or remove them from pcic.runs, first',
+    RAISE EXCEPTION 'this run''s crosswalk or weights differ from those % % built on: rebuild them, or delete their rows from pcic.runs, pcic.subbasin_daily and pcic.discharge_*, first',
       other, CASE WHEN other LIKE '%,%' THEN 'were' ELSE 'was' END;
+  END IF;
+  -- rows of a run that pcic.runs does not list: nothing would check or replace them
+  SELECT string_agg(o.model || ' / ' || o.scenario || ' / ' || o.period, ', ') INTO orphan
+  FROM (
+    SELECT DISTINCT model, scenario, period FROM pcic.subbasin_daily
+    UNION SELECT DISTINCT model, scenario, period FROM pcic.discharge_monthly
+    UNION SELECT DISTINCT model, scenario, period FROM pcic.discharge_weekly
+  ) o
+  WHERE NOT EXISTS (SELECT 1 FROM pcic.runs r WHERE (r.model, r.scenario, r.period) = (o.model, o.scenario, o.period))
+  AND NOT EXISTS (SELECT 1 FROM run n WHERE (n.model, n.scenario, n.period) = (o.model, o.scenario, o.period));
+  IF orphan IS NOT NULL THEN
+    RAISE EXCEPTION 'pcic.subbasin_daily or pcic.discharge_* hold rows of runs % that pcic.runs does not list: delete them first', orphan;
   END IF;
 END $$;
 
