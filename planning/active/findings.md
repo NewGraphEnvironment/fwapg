@@ -95,6 +95,58 @@ decimals, and a first pass with it showed a spurious 4.8e-5.
   linear in the daily values, so this equals the old formula applied to the period-mean outlet flows. The
   clamp is applied per period, as before, never per day and then averaged.
 
+## Build: PNWNAmet 1981-2010, `WEEKLY=1` (2026-10-17, commit 7bccc64)
+
+Local Docker PostgreSQL 17.5, a 128 GB machine, run from a frozen worktree; log `extras/pcic_crosswalk/data/run25_1981-2010.log`.
+
+- **QA:** all 22 tests `t`: the 16 monthly tests in `qa.sql`, plus the 6 in `qa_weekly.sql`.
+- **Crosswalk:** md5 `b1a710836df2cafea0ef514b7ed1c338`, identical to the first build's. So the crosswalk does not depend on the years. 48,716 outlets; 28 have no series.
+- **Rows:**
+
+  | table | rows | `.csv.gz` |
+  |---|---|---|
+  | `segment_weights` | 3,377,037 | 37.8 MB |
+  | `fwa_crosswalk` | 48,716 | 1.7 MB |
+  | `subbasin_daily` | 13,786,122 (37,667 sub-basins × 366) | 280.1 MB |
+  | `discharge_monthly` | 40,524,444 (3,377,037 × 12) | 232.4 MB |
+  | `discharge_weekly` | 175,605,924 (× 52) | 987.8 MB |
+
+  The issue estimated 175M rows and about 950 MB for the weekly table.
+- **Fingerprints (`pcic.runs`):**
+  - monthly_q_sum 178918222.786650; the 1951-2012 first build has 178035348.248310, so this period is 0.5% wetter;
+  - weekly_q_sum 780551474.449990;
+  - daily_q_sum 636284197.301372;
+  - weights_share_sum 558010.174364980.
+- **Runtime (UTC):** 2 h 53 min in all, from file mtimes:
+
+  | step | from | to | time |
+  |---|---|---|---|
+  | network paging | 17:49:45 | 17:53 | 4 min |
+  | series fetch, 244 batch files | 17:53 | 18:20 | 27 min |
+  | paths, snapping, crosswalk, sub-basins, weights, monthly and weekly flow | 18:20 | 19:09 | 50 min |
+  | QA and reports | 19:09 | 19:13 | 4 min |
+  | export swap, one transaction | 19:13 | 20:32 | 79 min |
+  | `.csv.gz` writes | 20:32 | 20:43 | 10 min |
+
+  The swap time is mostly the 175.6M weekly rows going into a primary-keyed table. The weekly file alone took 9 min to write.
+
+### Clamped rows: monthly against weekly, 1981-2010
+
+A row is clamped when its flow before the clamp (`q_raw`) is below zero. Mid-network rows are on a segment with placed outlets above it that is not an outlet's own segment: 267,617 segments, about 7.9%.
+
+| step | rows | clamped | % | mid-network rows | mid-network clamped | % |
+|---|---|---|---|---|---|---|
+| month | 40,524,444 | 396,489 | 0.978 | 3,211,404 | 1,579 | 0.049 |
+| week | 175,605,924 | 1,715,490 | 0.977 | 13,916,084 | 6,742 | 0.048 |
+
+- **Months:** clamping concentrates in Apr-Jun:
+  - all segments: Apr 3.73%, May 4.12%, Jun 2.47%;
+  - mid-network: Apr 404, May 774, Jun 390;
+  - Nov-Feb: under 0.01%, and none mid-network.
+- **Weeks:** weeks 16-22 (Apr 16 to Jun 3) carry 3.8-4.3% of all segments and 620-805 mid-network segments. The worst is week 22 (May 28-Jun 3): 805 mid-network, 0.30%. Week 21 is the worst on all segments, at 4.30%.
+- **Reading:** a weekly step does not increase clamping. The overall share is unchanged (0.977% against 0.978%), and the worst week is only 4% above the worst month on mid-network segments (805 against 774). Clamping is a property of where the outlets sit in the network: negative local runoff on the rising freshet, which a month-long mean already contains. A shorter step does not create it.
+- **Size of the clamp:** almost every mid-network clamp is below -1 L/s: 1,577 of 1,579 monthly and 6,742 of 6,742 weekly. Across all segments the share is 81% for both steps: 321,937 of 396,489 monthly, 1,386,298 of 1,715,490 weekly.
+
 ## Errors Encountered
 
 | Error | Resolution |

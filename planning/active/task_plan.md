@@ -30,7 +30,7 @@
 
 ## Phase 4: `pcic` schema and per-run export (#23)
 - [x] Rename the build's crosswalk to the staging name `fwapg.pcic_fwa_crosswalk` in every job file (04–07, qa*, review_*, `qa_gauges.sql`), so a build no longer writes into `whse_basemapping`.
-- [ ] Export with a staged swap. Create `pcic` with these tables:
+- [x] Export with a staged swap. Create `pcic` with these tables:
   - `fwa_crosswalk`;
   - `segment_weights`;
   - `subbasin_daily`, with run columns;
@@ -38,7 +38,7 @@
   - `runs (model, scenario, period, weekly, crosswalk_md5, fingerprint, built_at)`.
 
   Write the run's rows to staging and fingerprint them (rows, segments, `sum(round(q_m3s::numeric, 6))`). Then, in one transaction, delete the run's rows and insert the new ones. Refuse the swap if the crosswalk's md5 differs from the md5 of a run already in `pcic.runs`: the weights and crosswalk are shared between runs. `fwapg.pcic_qa_build` keeps working for `review_build.sh`.
-- [ ] Write a `.csv.gz` per table and run, e.g. `pcic_discharge_monthly_pnwnamet_historical_1981-2010.csv.gz`. The crosswalk and weights are written once.
+- [x] Write a `.csv.gz` per table and run, e.g. `pcic_discharge_monthly_pnwnamet_historical_1981-2010.csv.gz`. The crosswalk and weights are written once. (Shipped as `pcic.<table>.csv.gz` for the shared tables and `pcic.<table>.<run>.csv.gz` per run, e.g. `pcic.discharge_monthly.pnwnamet_historical_1981-2010.csv.gz`.)
 - [ ] Add `load/pcic_*.sql`: create if missing, then for each run file delete that run's rows and `\copy ... HEADER MATCH`, in one transaction. `load.sh` loads the crosswalk, the weights, both PNWNAmet monthly runs and the sub-basin daily. Weekly is not loaded by default: at about 950 MB, the README gives the one-line `psql -f`. The two `whse_basemapping` loads stay as they are until wet moves.
 - [x] Give `qa_gauges.sh` and `qa_gauge.sh` the run (model, scenario, period). They read `pcic.discharge_monthly` and take `YEARS` from the period.
 
