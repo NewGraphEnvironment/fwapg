@@ -11,9 +11,9 @@
 
 
 ## Phase 1: Probes before code
-- [ ] Measure how `cdo` (2.6.0) `ydaymean` bins leap years. Run it on a synthetic daily file (value = month*100 + day, 1951–2012) and record whether its bins are month-day or day-of-year. If they are day-of-year, use `del29feb` + `ydaymean`, with Feb 29 taken separately by `selmonth,2 -selday,29 -timmean`. Record the result in findings.md.
-- [ ] Probe hydromosaic's bulk endpoint with a CMIP6 request for one small batch (`model: "CNRM-ESM2-1"`, `scenario: "historical, ssp245"`). Record the accepted strings, the file size and time per outlet, and whether that batch's missing outlets match PNWNAmet's.
-- [ ] Write the week bins and the weights formula into findings.md as the spec the code is tested against.
+- [x] Measure how `cdo` (2.6.0) `ydaymean` bins leap years. Run it on a synthetic daily file (value = month*100 + day, 1951–2012) and record whether its bins are month-day or day-of-year. If they are day-of-year, use `del29feb` + `ydaymean`, with Feb 29 taken separately by `selmonth,2 -selday,29 -timmean`. Record the result in findings.md.
+- [x] Probe hydromosaic's bulk endpoint with a CMIP6 request for one small batch (`model: "CNRM-ESM2-1"`, `scenario: "historical, ssp245"`). Record the accepted strings, the file size and time per outlet, and whether that batch's missing outlets match PNWNAmet's.
+- [x] Write the week bins and the weights formula into findings.md as the spec the code is tested against.
 
 ## Phase 2: Fetch keeps a daily climatology, with the run as parameters
 - [ ] Add the parameters `MODEL` (default `PNWNAmet`), `SCENARIO` (`historical`) and `YEARS` (`1951/2012`), as environment overrides at the top of `pcic_crosswalk.sh`. `PERIOD` (e.g. `1951-2012`) is derived from `YEARS`. Add `WEEKLY=1` to build the weekly table as well; the monthly table is always built.

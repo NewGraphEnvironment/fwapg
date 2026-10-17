@@ -48,7 +48,55 @@ Relates to #6, #23, NewGraphEnvironment/wet#57, NewGraphEnvironment/wet#4, NewGr
 - `whse_basemapping.pcic_fwa_crosswalk` is named in about 12 job files (04–07, qa*, review_*). The build moves to a staging name in `fwapg`, and only the export swaps into `pcic`.
 
 
+## Phase 1 probes (2026-10-17)
+
+### cdo `ydaymean` bins by calendar month-day (CDO 2.6.0)
+
+A synthetic daily file, 1951-01-01 to 2012-12-31 (22,646 steps, standard calendar), with each day's value
+`cmonth()*100 + cday()`. `cdo ydaymean` gives 366 steps, and every step's mean equals its own date's
+month*100 + day (0 mismatches). Feb 29 is a bin of its own (value 229), and Mar 1 stays 301. So the bins
+are month-day, not day-of-year, and no `del29feb` workaround is needed. The output's dates carry the
+last year (2012-..).
+
+A bin's count is not in the output. For a period y1..y2 it is `y2 - y1 + 1` for every bin but Feb 29,
+which holds the leap years in the period. On a non-trivial series (`sin(timestep*0.37)*50 + year*0.1`),
+over 1981/2010, the monthly means of the day bins weighted by those counts match `cdo ymonmean` to
+3.96e-8 relative, at all 12 months. That was compared with `ncdump -p 9,17`: `outputtab` prints 4
+decimals, and a first pass with it showed a spurious 4.8e-5.
+
+### hydromosaic CMIP6 bulk requests
+
+- The exact strings `GET /outlets/4008184/timeseries` lists are model `CNRM-ESM2-1` and scenario
+  `historical, ssp245` (with comma and space); likewise `historical, ssp585`. `BulkDownloadRequest` takes
+  `model` and `scenario` as free strings (1-128 chars).
+- Fifty outlets (the first 50 of `batch_004_0002`):
+  - PNWNAmet: 200, 11 s, 7.6 MB, 23,011 steps from 1950-01-01 to 2012-12-31;
+  - CNRM-ESM2-1 `historical, ssp245`: 200, 34 s, 18.1 MB, 55,152 steps from 1950-01-01 to 2100-12-31.
+
+  Both use the `gregorian` calendar and `double streamflow(time, outlet)`. The two files hold the same
+  50 `basin_name`s, every one requested.
+- Three outlets from PNWNAmet's `missing.txt` (11000130, 11000131, 11000175) also return 422 for CMIP6.
+  So the missing set looks shared, but that is measured on 3 of 28, not established.
+- At about 3x PNWNAmet's time per outlet, a full CMIP6 run's fetch is roughly 1.5 h (PNWNAmet's took
+  32 min). Not built here.
+
+### Spec the code is tested against
+
+- **Daily climatology key** `(month, day)`, 366 bins, with `n_days` = the number of days in the period
+  falling in the bin.
+- **Period mean** of any sub-basin quantity over a set of bins: `sum(q * n_days) / sum(n_days)`. For
+  months this equals `ymonmean` (above).
+- **Week** from `(month, day)`: `doy` = day of year of `(month, day)` in a 365-day year, with Feb 29 taking
+  Feb 28's (59). Then `week = least((doy - 1) / 7 + 1, 52)`. Week 1 is Jan 1-7, week 9 is Feb 26-Mar 4
+  (with Feb 29), and week 52 is Dec 24-31 (8 days, doy 358-365).
+- **Segment flow for a period p:**
+  `q(seg, p) = greatest(sum over u in upstream_subids of q_acc(u, p) + q_local(subid, p) * share, 0)`,
+  where `q_acc` and `q_local` are the period means of the sub-basin daily table. The per-period sum is
+  linear in the daily values, so this equals the old formula applied to the period-mean outlet flows. The
+  clamp is applied per period, as before, never per day and then averaged.
+
 ## Errors Encountered
 
 | Error | Resolution |
 |-------|------------|
+| `diff -q` failed: `unknown switch q` | `diff` is a shell function wrapping `git diff --no-index`; compare with `cmp` |
