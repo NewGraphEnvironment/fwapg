@@ -28,6 +28,15 @@ RUN=$(printf '%s_%s_%s' "$MODEL" "$SCENARIO" "$PERIOD" | tr 'A-Z' 'a-z' | tr -cs
 DAILY=data/daily/$RUN
 WSC=data/wsc/$PERIOD
 ls "$DAILY"/*.csv > /dev/null || { echo "no daily climatology for the run in $DAILY: run pcic_crosswalk.sh for it" >&2; exit 1; }
+[[ "$MODEL" =~ ^[A-Za-z0-9._-]+$ ]] && [[ "$SCENARIO" =~ ^[A-Za-z0-9._,\ -]+$ ]] \
+  || { echo "MODEL or SCENARIO has characters hydromosaic does not use" >&2; exit 1; }
+# the run's monthly flow must be in pcic.discharge_monthly, all of it, or every
+# gauge reads no FWA flow
+ok=$($PSQL -tXA -c "SELECT count(*) = max(r.monthly_rows) AND count(*) > 0
+  FROM pcic.runs r
+  LEFT JOIN pcic.discharge_monthly d ON (d.model, d.scenario, d.period) = (r.model, r.scenario, r.period)
+  WHERE (r.model, r.scenario, r.period) = ('$MODEL', '$SCENARIO', '$PERIOD')")
+[ "$ok" = t ] || { echo "pcic.discharge_monthly does not hold the run $MODEL / $SCENARIO / $PERIOD as pcic.runs lists it" >&2; exit 1; }
 
 mkdir -p "$WSC"
 

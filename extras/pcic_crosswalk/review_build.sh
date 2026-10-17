@@ -42,6 +42,12 @@ samerun=$($PSQL -tXA -c "SELECT EXISTS (SELECT 1 FROM fwapg.pcic_qa_gauges g, fw
   AND NOT EXISTS (SELECT 1 FROM fwapg.pcic_qa_gauges g, fwapg.pcic_qa_build b
   WHERE (g.model, g.scenario, g.period) IS DISTINCT FROM (b.model, b.scenario, b.period))")
 [ "$samerun" = t ] || { echo "fwapg.pcic_qa_gauges is from another run than the job's last: rerun qa_gauges.sh with the job's MODEL, SCENARIO and YEARS" >&2; exit 1; }
+# and that run's monthly flow must still be the one the job wrote (a load or another
+# build can replace it with the crosswalk unchanged)
+sameflow=$($PSQL -tXA -c "SELECT EXISTS (SELECT 1 FROM fwapg.pcic_qa_build b INNER JOIN pcic.runs r
+  ON (r.model, r.scenario, r.period) = (b.model, b.scenario, b.period)
+  AND (r.monthly_rows, r.monthly_q_sum) = (b.monthly_rows, b.monthly_q_sum))")
+[ "$sameflow" = t ] || { echo "pcic.runs no longer lists the job's run with the monthly flow it wrote: rerun pcic_crosswalk.sh and qa_gauges.sh" >&2; exit 1; }
 same=$($PSQL -tXA -c "SELECT (SELECT crosswalk_md5 FROM fwapg.pcic_qa_build)
   = (SELECT md5(string_agg(x::text, '|' ORDER BY x.subid)) FROM pcic.fwa_crosswalk x)")
 [ "$same" = t ] || { echo "the crosswalk is not the one the kept pcic_qa_* tables were built with: rerun pcic_crosswalk.sh and qa_gauges.sh" >&2; exit 1; }

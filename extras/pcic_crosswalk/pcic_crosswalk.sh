@@ -177,12 +177,6 @@ $PSQL -tXA -F ' ' -c "SELECT root_subid / 1000000, subid FROM fwapg.pcic_outlets
   | awk -v b=$BATCH -v dir="$SERIES" '{ if ($1 != g || ++n > b) { g = $1; n = 1; k++ } print $2 > sprintf("%s/batch_%03d_%04d.txt", dir, $1, k) }'
 ls "$SERIES"/batch_*.txt | grep -E '_[0-9]{4}\.txt$' | xargs -P 3 -I {} bash -c 'fetch_batch "$1"' _ {}
 
-# 28 of 48,716 outlets had no PNWNAmet series in 2026-10; many more is a run that
-# hydromosaic serves for only part of the network, or a fetch gone wrong
-n=0
-[ -e "$SERIES/missing.txt" ] && n=$(wc -l < "$SERIES/missing.txt")
-[ "$n" -le 100 ] || { echo "$n outlets have no series in this run, see $SERIES/missing.txt" >&2; exit 1; }
-
 # the days of YEARS by calendar day, with each day's count and week
 $PSQL -v y1="${YEARS%/*}" -v y2="${YEARS#*/}" -f sql/pcic_crosswalk01_days.sql
 $PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_outlet_daily"
@@ -191,6 +185,12 @@ cat "$DAILY"/*.csv | $PSQL -c "\copy fwapg.pcic_outlet_daily FROM STDIN WITH (FO
 # every outlet with a series has every calendar day of YEARS
 n=$($PSQL -tXA -c "SELECT count(*) FROM (SELECT subid FROM fwapg.pcic_outlet_daily GROUP BY subid HAVING count(*) != (SELECT count(*) FROM fwapg.pcic_day_bins WHERE n_days > 0)) s")
 [ "$n" -eq 0 ] || { echo "$n outlets lack calendar days of $YEARS" >&2; exit 1; }
+# outlets with no series, counted where placement reads them (no_series in
+# pcic_crosswalk04_select.sql). 28 of 48,716 had none for PNWNAmet in 2026-10; many
+# more is a run that hydromosaic serves for only part of the network, or a fetch
+# gone wrong
+n=$($PSQL -tXA -c "SELECT count(*) FROM fwapg.pcic_outlets o WHERE NOT EXISTS (SELECT 1 FROM fwapg.pcic_outlet_daily q WHERE q.subid = o.subid)")
+[ "$n" -le 100 ] || { echo "$n outlets have no series in this run, see $SERIES/missing.txt" >&2; exit 1; }
 
 # ----------
 # 3. Snap outlets to the FWA and place them so PCIC's routing chain holds
@@ -305,8 +305,10 @@ $PSQL -c "ALTER TABLE fwapg.pcic_candidates RENAME TO pcic_qa_candidates"
 # one placed by another run or loaded by load.sh
 $PSQL -c "CREATE TABLE fwapg.pcic_qa_build AS
   SELECT md5(string_agg(x::text, '|' ORDER BY x.subid)) AS crosswalk_md5, now() AS built_at,
-    '$MODEL'::text AS model, '$SCENARIO'::text AS scenario, '$PERIOD'::text AS period
-  FROM pcic.fwa_crosswalk x"
+    r.model, r.scenario, r.period, r.monthly_rows, r.monthly_q_sum
+  FROM pcic.fwa_crosswalk x, pcic.runs r
+  WHERE (r.model, r.scenario, r.period) = ('$MODEL', '$SCENARIO', '$PERIOD')
+  GROUP BY r.model, r.scenario, r.period, r.monthly_rows, r.monthly_q_sum"
 $PSQL -c "DROP TABLE fwapg.pcic_rivers, fwapg.pcic_lakes, fwapg.pcic_voters, fwapg.pcic_demoted, fwapg.pcic_fwa_crosswalk,
   fwapg.pcic_day_bins, fwapg.pcic_outlet_daily, fwapg.pcic_subbasins, fwapg.pcic_subbasins_daily, fwapg.pcic_segment_weights"
 for st in $STEPS; do
