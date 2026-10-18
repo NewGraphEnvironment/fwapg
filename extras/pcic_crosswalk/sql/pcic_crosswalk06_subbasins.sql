@@ -1,5 +1,6 @@
 -- Per placed PCIC outlet (a sub-basin on the FWA): its FWA parent, its local FWA
--- area and, per month, the flow generated inside it and the flow accumulated at it.
+-- area and, per calendar day of the run's climatology, the flow generated inside
+-- it and the flow accumulated at it.
 --
 -- PCIC's network and the FWA do not always join streams at the same place: a
 -- tributary can enter the mainstem below a PCIC outlet in PCIC's network and
@@ -7,8 +8,8 @@
 -- Instead:
 --
 -- 1. Each PCIC outlet's local runoff is its outflow minus its PCIC children's
---    outflow (not clamped: routing can lose water in a month, and clamping would
---    add flow at every losing step).
+--    outflow (not clamped: routing can lose water on a day or in a month, and
+--    clamping would add flow at every losing step).
 -- 2. That runoff belongs to the placed outlet's sub-basin: the outlet itself if
 --    placed, otherwise its anchor (its nearest placed PCIC ancestor). An unplaced
 --    outlet with no placed ancestor is downstream of everything placed, outside
@@ -38,7 +39,7 @@
 -- outlet at its line's mouth (no segment below), and one with another placed
 -- outlet on its line between where it is and where it would land, within 1 mm
 -- (moving it past that outlet would reverse their order on the FWA).
-UPDATE whse_basemapping.pcic_fwa_crosswalk x
+UPDATE fwapg.pcic_fwa_crosswalk x
 SET
   linear_feature_id = m.linear_feature_id,
   downstream_route_measure = m.downstream_route_measure,
@@ -56,10 +57,10 @@ FROM (
     b.localcode_ltree,
     b.watershed_group_code,
     ST_Distance(b.geom, o.probe_geom) AS distance_to_stream
-  FROM whse_basemapping.pcic_fwa_crosswalk x
+  FROM fwapg.pcic_fwa_crosswalk x
   INNER JOIN fwapg.pcic_outlets o ON o.subid = x.subid
   INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = x.linear_feature_id
-  INNER JOIN whse_basemapping.pcic_fwa_crosswalk c
+  INNER JOIN fwapg.pcic_fwa_crosswalk c
     ON c.anchor_subid = x.subid AND c.flag IS NULL AND c.blue_line_key != x.blue_line_key
   INNER JOIN fwapg.blk_paths bp ON bp.blue_line_key = c.blue_line_key
   CROSS JOIN LATERAL unnest(bp.path_blks, bp.path_measures) AS u(blk, measure)
@@ -92,7 +93,7 @@ FROM (
   AND u.blk = x.blue_line_key
   AND abs(u.measure - x.downstream_route_measure) < 0.001
   AND NOT EXISTS (
-    SELECT 1 FROM whse_basemapping.pcic_fwa_crosswalk y
+    SELECT 1 FROM fwapg.pcic_fwa_crosswalk y
     WHERE y.flag IS NULL
     AND y.subid != x.subid
     AND y.blue_line_key = x.blue_line_key
@@ -114,9 +115,9 @@ WHERE x.subid = m.subid;
 -- same point, the outlet nearer PCIC's root is below. This is the order pcic_crosswalk07_segments.sql
 -- assigns segments in.
 CREATE INDEX IF NOT EXISTS pcic_fwa_crosswalk_blk_idx
-  ON whse_basemapping.pcic_fwa_crosswalk (blue_line_key, downstream_route_measure);
+  ON fwapg.pcic_fwa_crosswalk (blue_line_key, downstream_route_measure);
 
-UPDATE whse_basemapping.pcic_fwa_crosswalk x
+UPDATE fwapg.pcic_fwa_crosswalk x
 SET fwa_parent_subid = p.parent
 FROM (
   WITH placed AS (
@@ -124,7 +125,7 @@ FROM (
     -- compared by segment, then by measure, so an outlet whose measure falls on a
     -- segment end is not put on the other side of the outlets on its segment.
     SELECT x.*, s.downstream_route_measure AS seg_measure
-    FROM whse_basemapping.pcic_fwa_crosswalk x
+    FROM fwapg.pcic_fwa_crosswalk x
     INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = x.linear_feature_id
     WHERE x.flag IS NULL
   ),
@@ -155,8 +156,8 @@ FROM (
 ) p
 WHERE x.subid = p.subid;
 
-CREATE INDEX IF NOT EXISTS pcic_fwa_crosswalk_fwa_parent_idx ON whse_basemapping.pcic_fwa_crosswalk (fwa_parent_subid);
-ANALYZE whse_basemapping.pcic_fwa_crosswalk;
+CREATE INDEX IF NOT EXISTS pcic_fwa_crosswalk_fwa_parent_idx ON fwapg.pcic_fwa_crosswalk (fwa_parent_subid);
+ANALYZE fwapg.pcic_fwa_crosswalk;
 
 -- local FWA area: upstream area at the outlet's segment minus that at the outlets
 -- directly above it on the FWA (which do not nest, being each other's siblings)
@@ -169,7 +170,7 @@ WITH area AS (
     x.fwa_parent_subid,
     x.linear_feature_id,
     ua.upstream_area_ha
-  FROM whse_basemapping.pcic_fwa_crosswalk x
+  FROM fwapg.pcic_fwa_crosswalk x
   INNER JOIN whse_basemapping.fwa_streams_watersheds_lut l ON x.linear_feature_id = l.linear_feature_id
   INNER JOIN whse_basemapping.fwa_watersheds_upstream_area ua ON l.watershed_feature_id = ua.watershed_feature_id
   WHERE x.flag IS NULL
@@ -186,32 +187,38 @@ GROUP BY s.subid, s.linear_feature_id, s.upstream_area_ha;
 
 ALTER TABLE fwapg.pcic_subbasins ADD PRIMARY KEY (subid);
 
--- flow generated inside each placed outlet's sub-basin, per month
-DROP TABLE IF EXISTS fwapg.pcic_subbasins_monthly;
+-- flow generated inside each placed outlet's sub-basin, per calendar day. Every
+-- step below is linear in the flows, so a period's mean of q_local or q_acc
+-- (pcic_crosswalk08_periods.sql) equals the same steps run on the period's mean
+-- outlet flows.
+DROP TABLE IF EXISTS fwapg.pcic_subbasins_daily;
 
-CREATE TABLE fwapg.pcic_subbasins_monthly AS
+CREATE TABLE fwapg.pcic_subbasins_daily AS
 WITH runoff AS (
   SELECT
     o.subid,
     q.month,
+    q.day,
     q.q_m3s - coalesce(sum(qc.q_m3s), 0) AS q_runoff
   FROM fwapg.pcic_outlets o
-  INNER JOIN fwapg.pcic_outlet_monthly q ON o.subid = q.subid
+  INNER JOIN fwapg.pcic_outlet_daily q ON o.subid = q.subid
   LEFT JOIN fwapg.pcic_outlets c ON c.dowsubid = o.subid
-  LEFT JOIN fwapg.pcic_outlet_monthly qc ON qc.subid = c.subid AND qc.month = q.month
-  GROUP BY o.subid, q.month, q.q_m3s
+  LEFT JOIN fwapg.pcic_outlet_daily qc ON qc.subid = c.subid AND qc.month = q.month AND qc.day = q.day
+  GROUP BY o.subid, q.month, q.day, q.q_m3s
 )
 SELECT
   sb.subid,
   r.month,
-  sum(r.q_runoff) AS q_local
+  r.day,
+  sum(r.q_runoff) AS q_local,
+  sum(r.q_runoff) AS q_acc
 FROM runoff r
-INNER JOIN whse_basemapping.pcic_fwa_crosswalk x ON r.subid = x.subid
+INNER JOIN fwapg.pcic_fwa_crosswalk x ON r.subid = x.subid
 INNER JOIN fwapg.pcic_subbasins sb
   ON sb.subid = CASE WHEN x.flag IS NULL THEN x.subid ELSE x.anchor_subid END
-GROUP BY sb.subid, r.month;
+GROUP BY sb.subid, r.month, r.day;
 
-ALTER TABLE fwapg.pcic_subbasins_monthly ADD PRIMARY KEY (subid, month);
+ALTER TABLE fwapg.pcic_subbasins_daily ADD PRIMARY KEY (subid, month, day);
 
 -- flow accumulated at each placed outlet: its own local flow plus the
 -- accumulated flow of the outlets directly above it, resolved from the top of the
@@ -221,13 +228,13 @@ ALTER TABLE fwapg.pcic_subbasins ADD COLUMN fwa_depth integer;
 
 WITH RECURSIVE tree AS (
   SELECT x.subid, 0 AS fwa_depth
-  FROM whse_basemapping.pcic_fwa_crosswalk x
+  FROM fwapg.pcic_fwa_crosswalk x
   INNER JOIN fwapg.pcic_subbasins sb ON sb.subid = x.subid
   WHERE x.fwa_parent_subid IS NULL
   UNION ALL
   SELECT x.subid, t.fwa_depth + 1
   FROM tree t
-  INNER JOIN whse_basemapping.pcic_fwa_crosswalk x ON x.fwa_parent_subid = t.subid
+  INNER JOIN fwapg.pcic_fwa_crosswalk x ON x.fwa_parent_subid = t.subid
   INNER JOIN fwapg.pcic_subbasins sb ON sb.subid = x.subid
 )
 UPDATE fwapg.pcic_subbasins sb
@@ -235,8 +242,12 @@ SET fwa_depth = t.fwa_depth
 FROM tree t
 WHERE sb.subid = t.subid;
 
-ALTER TABLE fwapg.pcic_subbasins_monthly ADD COLUMN q_acc double precision;
+ANALYZE fwapg.pcic_subbasins;
+ANALYZE fwapg.pcic_subbasins_daily;
 
+-- q_acc starts as q_local. The outlets directly above an outlet at FWA depth d
+-- are all at depth d + 1, so going up from the deepest level, each level adds its
+-- children's finished totals.
 DO $$
 DECLARE
   d integer;
@@ -249,19 +260,21 @@ BEGIN
   END IF;
 
   SELECT max(fwa_depth) INTO maxdepth FROM fwapg.pcic_subbasins;
-  FOR d IN REVERSE maxdepth..0 LOOP
-    UPDATE fwapg.pcic_subbasins_monthly m
-    SET q_acc = m.q_local + coalesce((
-      SELECT sum(cm.q_acc)
-      FROM whse_basemapping.pcic_fwa_crosswalk c
-      INNER JOIN fwapg.pcic_subbasins_monthly cm ON cm.subid = c.subid AND cm.month = m.month
-      WHERE c.fwa_parent_subid = m.subid
-    ), 0)
-    FROM fwapg.pcic_subbasins sb
-    WHERE sb.subid = m.subid
-    AND sb.fwa_depth = d;
+  FOR d IN REVERSE maxdepth - 1..0 LOOP
+    UPDATE fwapg.pcic_subbasins_daily m
+    SET q_acc = m.q_acc + c.q_acc
+    FROM (
+      SELECT x.fwa_parent_subid AS subid, cm.month, cm.day, sum(cm.q_acc) AS q_acc
+      FROM fwapg.pcic_subbasins sb
+      INNER JOIN fwapg.pcic_fwa_crosswalk x ON x.subid = sb.subid
+      INNER JOIN fwapg.pcic_subbasins_daily cm ON cm.subid = sb.subid
+      WHERE sb.fwa_depth = d + 1
+      GROUP BY x.fwa_parent_subid, cm.month, cm.day
+    ) c
+    WHERE m.subid = c.subid
+    AND m.month = c.month
+    AND m.day = c.day;
   END LOOP;
 END $$;
 
-ANALYZE fwapg.pcic_subbasins;
-ANALYZE fwapg.pcic_subbasins_monthly;
+ANALYZE fwapg.pcic_subbasins_daily;

@@ -2,7 +2,7 @@
 
 -- outlets by flag
 SELECT coalesce(flag, 'placed') AS flag, islake, count(*)
-FROM whse_basemapping.pcic_fwa_crosswalk
+FROM fwapg.pcic_fwa_crosswalk
 GROUP BY 1, 2
 ORDER BY 1, 2;
 
@@ -14,7 +14,7 @@ SELECT
   round(percentile_cont(0.99) WITHIN GROUP (ORDER BY distance_to_stream)::numeric, 1) AS p99_m,
   round(max(distance_to_stream)::numeric, 1) AS max_m,
   count(*) FILTER (WHERE candidate_rank > 1) AS not_nearest_candidate
-FROM whse_basemapping.pcic_fwa_crosswalk
+FROM fwapg.pcic_fwa_crosswalk
 WHERE flag IS NULL;
 
 -- PCIC segment ends that do not touch the downstream feature
@@ -58,7 +58,7 @@ SELECT
   count(d.linear_feature_id) AS with_flow,
   round(count(d.linear_feature_id)::numeric / count(*), 2) AS share
 FROM whse_basemapping.fwa_stream_networks_sp s
-LEFT JOIN whse_basemapping.fwa_stream_networks_discharge_monthly d
+LEFT JOIN fwapg.pcic_discharge_monthly d
   ON s.linear_feature_id = d.linear_feature_id AND d.month = 1
 WHERE s.edge_type != 6010
 GROUP BY s.watershed_group_code
@@ -84,7 +84,7 @@ SELECT a.subid, x.blue_line_key, x.watershed_group_code, x.candidate_rank,
   round(a.q_pcic::numeric, 3) AS q_pcic, round(a.q_acc::numeric, 3) AS q_fwa,
   round((a.q_acc / nullif(a.q_pcic, 0))::numeric, 1) AS ratio
 FROM annual a
-INNER JOIN whse_basemapping.pcic_fwa_crosswalk x ON x.subid = a.subid
+INNER JOIN fwapg.pcic_fwa_crosswalk x ON x.subid = a.subid
 WHERE (a.q_acc > 10 * a.q_pcic AND a.q_acc > 1)
 OR a.subid IN (5020143, 5020177)
 ORDER BY a.q_acc / nullif(a.q_pcic, 0) DESC;
@@ -92,6 +92,6 @@ ORDER BY a.q_acc / nullif(a.q_pcic, 0) DESC;
 SELECT 'Ansedagan Creek (360884999) max flow' AS known_case,
   round(max(d.q_m3s)::numeric, 3) AS q_m3s
 FROM whse_basemapping.fwa_stream_networks_sp s
-INNER JOIN whse_basemapping.fwa_stream_networks_discharge_monthly d ON d.linear_feature_id = s.linear_feature_id
+INNER JOIN fwapg.pcic_discharge_monthly d ON d.linear_feature_id = s.linear_feature_id
 WHERE s.blue_line_key = 360884999;
 

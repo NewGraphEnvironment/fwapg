@@ -49,7 +49,7 @@ WITH part AS (
       ST_Intersection(r.geom, ST_Buffer(o.geom, 1000)),
       ST_Buffer(o.geom, 100)
     ) AS geom
-  FROM whse_basemapping.pcic_fwa_crosswalk x
+  FROM fwapg.pcic_fwa_crosswalk x
   INNER JOIN fwapg.pcic_outlets o ON o.subid = x.subid
   INNER JOIN fwapg.pcic_rivers r ON r.subid = x.subid
   INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = x.linear_feature_id

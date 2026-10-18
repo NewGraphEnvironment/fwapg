@@ -1,14 +1,18 @@
--- Monthly flow for each FWA stream segment in watershed group :wsg.
+-- Flow weights for each FWA stream segment in watershed group :wsg, written to
+-- fwapg.pcic_segment_weights. They hold no flow: pcic_crosswalk09_discharge.sql
+-- applies them to the sub-basin flows of any period.
 --
 -- A segment belongs to the sub-basin of the nearest placed PCIC outlet on or
 -- below it: walking down its own blue line from the segment itself, then its path
 -- (fwapg.blk_paths), the first blue line with a placed outlet, and on it the
 -- highest one (the order fwa_parent_subid uses, see pcic_crosswalk06_subbasins.sql).
 -- Its flow is the accumulated flow of the outlets directly above that sub-basin
--- whose water passes the segment, plus the flow generated in the sub-basin scaled
--- by the share of the sub-basin's local FWA area that drains to the segment:
+-- whose water passes the segment (upstream_subids), plus the flow generated in the
+-- sub-basin scaled by the share of the sub-basin's local FWA area that drains to
+-- the segment:
 --
---   q = sum(q_acc of outlets above) + q_local * (A - sum(A of those outlets)) / A_local
+--   q = sum(q_acc of upstream_subids) + q_local * share
+--   share = (A - sum(A of upstream_subids)) / A_local
 --
 -- Water from another blue line passes a segment when it joins the segment's line
 -- above the segment's start. A tributary's junction is the start of the main-stem
@@ -26,7 +30,7 @@
 -- segment and the share is 1, so q is the outlet's accumulated flow there. The
 -- share is set to 1 on that segment outright, because A_local can be <= 0 where
 -- the outlets map to the same fundamental watershed. Local flow can be negative
--- (a losing month), so q is clamped at zero.
+-- (a losing month), so q is clamped at zero, per period, when it is applied.
 
 BEGIN;
 
@@ -37,7 +41,7 @@ SET LOCAL max_parallel_workers_per_gather = 0;
 -- so that an outlet whose measure falls on a segment end stays with its segment
 CREATE TEMPORARY TABLE outlets ON COMMIT DROP AS
 SELECT x.subid, x.blue_line_key, x.downstream_route_measure, x.depth, x.fwa_parent_subid, s.downstream_route_measure AS seg_measure
-FROM whse_basemapping.pcic_fwa_crosswalk x
+FROM fwapg.pcic_fwa_crosswalk x
 INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = x.linear_feature_id
 WHERE x.flag IS NULL;
 CREATE INDEX ON outlets (blue_line_key, seg_measure);
@@ -116,23 +120,10 @@ LEFT JOIN outlets c
 LEFT JOIN fwapg.pcic_subbasins cb ON c.subid = cb.subid
 GROUP BY s.linear_feature_id, s.subid, s.upstream_area_ha, sb.linear_feature_id, sb.local_area_ha;
 
-INSERT INTO whse_basemapping.fwa_stream_networks_discharge_monthly
-  (linear_feature_id, watershed_group_code, month, q_m3s)
-SELECT
-  s.linear_feature_id,
-  :'wsg',
-  m.month,
-  round(greatest(
-    coalesce((
-      SELECT sum(u.q_acc)
-      FROM fwapg.pcic_subbasins_monthly u
-      WHERE u.subid = ANY(s.upstream_subids)
-      AND u.month = m.month
-    ), 0)
-    + m.q_local * s.share,
-  0)::numeric, 5)
+INSERT INTO fwapg.pcic_segment_weights
+  (linear_feature_id, watershed_group_code, subid, share, upstream_subids)
+SELECT s.linear_feature_id, :'wsg', s.subid, s.share, s.upstream_subids
 FROM pcic_segment_shares s
-INNER JOIN fwapg.pcic_subbasins_monthly m ON s.subid = m.subid
 ON CONFLICT DO NOTHING;
 
 COMMIT;

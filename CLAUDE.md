@@ -18,6 +18,7 @@ PostgreSQL/PostGIS extension of BC's Freshwater Atlas (FWA): extra tables, index
 **Load:** `psql $DATABASE_URL -f db/schema.sql && (cd db && ./migrate.sh) && ./load.sh`, with `DATABASE_URL` exported (see `docker/loader/Dockerfile` for deps)
 - On `newgraph`, `load.sh` needs PostgreSQL 15+ (the PCIC loads use `COPY ... HEADER MATCH`) and refuses an older server up front.
 - The published loader image builds from `main` and tags only, so it never carries `newgraph`'s `load.sh`. To add one fork table to an existing DB, run its file alone: `psql $DATABASE_URL -v ON_ERROR_STOP=1 -f load/<table>.sql`.
+- The PCIC crosswalk's outputs live in the `pcic` schema (`load/pcic_schema.sql`), one set of rows per run (model, scenario, period). Load the shared tables with `psql $DATABASE_URL -v ON_ERROR_STOP=1 -f load/pcic_schema.sql -f load/pcic.sql`, then pipe each run's file into `load/pcic_run.sql` (`extras/pcic_crosswalk/README.md`). The two `whse_basemapping` PCIC tables are the frozen first build.
 
 <!-- BEGIN SOUL CONVENTIONS — DO NOT EDIT BELOW THIS LINE -->
 

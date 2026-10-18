@@ -1,0 +1,86 @@
+== mutate_rev3.py
+caught  exit 1  A run: fingerprint ignores the sum: FAIL load: a file unlike its run in sum alone is refused: exit 0, output:
+caught  exit 1  B run: fingerprint ignores keys: FAIL load: a file unlike its run in keys alone is refused: exit 0, output:
+caught  exit 1  B2 run: fingerprint ignores rows: FAIL load: a file unlike its run in rows alone is refused: exit 0, output:
+caught  exit 1  C load: weights check ignores rows: FAIL load: a weights file with an added row of share 0 is refused: exit 0, output:
+caught  exit 1  C2 load: weights check ignores sum: FAIL load: a weights file unlike the runs' is refused: exit 0, output:
+caught  exit 1  D export: other ignores weights_rows: FAIL export: weights with an added row of share 0 are refused: exit 0, output:
+caught  exit 1  E load: other ignores crosswalk: FAIL load: a run here unlike the published in its crosswalk alone is refused: exit 0, output:
+caught  exit 1  E2 load: other ignores weights: FAIL load: a run here unlike the published in its weights rows alone is refused: exit 0, output:
+caught  exit 1  F load: deletes every pcic.runs row: FAIL and stays listed: expected '1', got '0'
+caught  exit 1  G load: stale weekly DELETE keyed on model only: FAIL the reload drops only 1981-2010's pcic.discharge_weekly rows: expected '1951-2012|1464|84|364
+caught  exit 1  G2 load: stale daily DELETE keyed on model only: FAIL the reload drops only 1981-2010's pcic.subbasin_daily rows: expected '1951-2012|1464|84|364
+caught  exit 1  H README: window ignores the run: FAIL the README window query gives the clamped mean of every day in the window
+MISSED  exit 0  I export: weekly_segments 0, not NULL: 
+caught  exit 1  J load: stale monthly ignores rows and segments: FAIL the reload drops only 1951-2012's pcic.discharge_monthly rows: expected '1951-2012|1464|0|364
+caught  exit 1  K run: fingerprint lookup on model only: FAIL load subbasin_daily 1951-2012: exit 3, output:
+MISSED  exit 0  L 09: no wsg filter: 
+MISSED  exit 0  M README: no wsg filter: 
+MISSED  exit 0  N load: md5 check any-run not every-run: 
+MISSED  exit 0  O load: weights check any-run not every-run: 
+caught  exit 1  P export: other ignores share sum: FAIL export: weights unlike the other runs' are refused: exit 0, output:
+== mutate_rev3b.py
+caught  exit 1  Q1 export: daily DELETE keyed on model only: FAIL the README window query gives the clamped mean of every day in the window
+caught  exit 1  Q2 export: monthly DELETE keyed on model only: FAIL load discharge_monthly 1981-2010: exit 3, output:
+caught  exit 1  Q3 export: weekly DELETE keyed on model only: FAIL load discharge_weekly 1981-2010: exit 3, output:
+caught  exit 1  Q4 export: runs DELETE every row: FAIL export it again, without weekly flow: exit 3, output:
+caught  exit 1  Q5 export: daily fingerprint over every run: FAIL load subbasin_daily 1951-2012: exit 3, output:
+caught  exit 1  Q6 export: weekly n_rows 0 not NULL: FAIL a run exported again without weekly flow loses its weekly rows: expected '0|', got '0|0'
+caught  exit 1  Q7 run: DELETE keyed on model only: FAIL rows loaded: runs, daily, monthly, weekly, weights: expected '2|2928|168|728|7', got '2|1464|84|364|7'
+caught  exit 1  Q8 09: upstream sum over every step: FAIL segment monthly flow is the mean of every day's routed flow, clamped after averaging
+caught  exit 1  Q9 09: no coalesce: FAIL segment monthly flow is the mean of every day's routed flow, clamped after averaging
+caught  exit 1  Q10 01: last day short: FAIL a period with no leap year gives Feb 29 no days
+caught  exit 1  Q11 load: stale monthly DELETE keyed on model only: FAIL the reload drops only 1951-2012's pcic.discharge_monthly rows: expected '1951-2012|1464|0|364
+caught  exit 1  Q12 run: weekly checked against monthly: FAIL load discharge_weekly 1951-2012: exit 3, output:
+caught  exit 1  Q13 export: md5 ordered differently: FAIL load the shared tables: exit 3, output:
+caught  exit 1  Q14 README: window misses Feb 29: FAIL the README window query over a winter window, with Feb 29 and a negative mean
+MISSED  exit 0  Q15 08: outlet joined on month only: 
+== mutate_rev3c.py
+caught  exit 1  R1 README: q_acc unweighted: FAIL the README window query over a winter window, with Feb 29 and a negative mean
+caught  exit 1  R2 README: no coalesce: FAIL the README window query gives the clamped mean of every day in the window
+caught  exit 1  R3 run: daily sum over q_local: FAIL load subbasin_daily 1951-2012: exit 3, output:
+== mutate.py
+caught  exit 1  week cap 53: FAIL 52 weeks, each of 7 calendar days but week 9 (8 with Feb 29) and week 52 (8)
+caught  exit 3  Feb 29 not folded onto Feb 28: ABORTED: a setup step failed (above), so the tests did not all run
+caught  exit 1  no-day bins get 1: FAIL a period with no leap year gives Feb 29 no days
+caught  exit 1  unweighted sub-basin mean: FAIL segment monthly flow is the mean of every day's routed flow, clamped after averaging
+caught  exit 1  unweighted outlet mean: FAIL outlet monthly flow is the mean of every day of 1981-2010
+caught  exit 1  no clamp: FAIL segment monthly flow is the mean of every day's routed flow, clamped after averaging
+caught  exit 1  upstream ignored: FAIL segment monthly flow is the mean of every day's routed flow, clamped after averaging
+caught  exit 1  export: no crosswalk guard: FAIL export: a crosswalk unlike the other runs' is refused: exit 0, output:
+caught  exit 1  export: no orphan guard: FAIL export: rows in pcic.subbasin_daily of a run pcic.runs does not list are refused: exi
+caught  exit 1  export: weekly rows kept: FAIL a run exported again without weekly flow loses its weekly rows: expected '0|', got '3
+caught  exit 1  Feb 29 takes Mar 1's week (leap-year doy): FAIL 52 weeks, each of 7 calendar days but week 9 (8 with Feb 29) and week 52 (8)
+caught  exit 1  load_run: no fingerprint check: FAIL load: a truncated file is refused: exit 0, output:
+caught  exit 1  load_run: plain HEADER: FAIL load: a file with reordered columns is refused: exit 3, output:
+caught  exit 1  load_run: no run check: FAIL load: a run not in pcic.runs is refused: exit 3, output:
+caught  exit 1  load: no md5 check: FAIL load: a crosswalk file unlike the runs' is refused: exit 0, output:
+caught  exit 1  load: no orphan check: FAIL load: rows in pcic.subbasin_daily of a run pcic.runs does not list are refused: exit 
+caught  exit 1  load: stale monthly kept: FAIL the reload drops only 1951-2012's pcic.discharge_monthly rows: expected '1951-2012|14
+caught  exit 1  README: window unweighted: FAIL the README window query over a winter window, with Feb 29 and a negative mean
+caught  exit 1  README: window clamp dropped: FAIL the README window query over a winter window, with Feb 29 and a negative mean
+caught  exit 1  load: no weights check: FAIL load: a weights file unlike the runs' is refused: exit 0, output:
+caught  exit 1  load: no day-bins check: FAIL load: a day bins file short of 366 days is refused: exit 0, output:
+caught  exit 1  load: no empty-runs check: FAIL load: a runs file with no runs is refused: exit 0, output:
+caught  exit 1  load: no other-runs check: FAIL load: a run here unlike the published in its crosswalk alone is refused: exit 0, outp
+caught  exit 1  load_run: no one-run check: FAIL load: a file holding two runs is refused: exit 3, output:
+caught  exit 1  load_run: no crosswalk check: FAIL load: a run built on another crosswalk than pcic.fwa_crosswalk is refused: exit 0, ou
+caught  exit 1  09: upstream q_local for q_acc: FAIL segment monthly flow is the mean of every day's routed flow, clamped after averaging
+caught  exit 1  README: upstream q_local for q_acc: FAIL the README window query gives the clamped mean of every day in the window
+caught  exit 1  08: q_acc unweighted: FAIL segment monthly flow is the mean of every day's routed flow, clamped after averaging
+caught  exit 1  export: monthly q_raw: FAIL the export writes the monthly flow
+caught  exit 1  export: weekly q_raw: FAIL the export writes the weekly flow
+caught  exit 1  export: month reversed: FAIL the export writes the monthly flow
+caught  exit 1  export: week from month: FAIL the export writes the day bins
+caught  exit 1  export: q_acc from q_local: FAIL the export writes the sub-basin daily flow and n_days
+caught  exit 1  load: stale daily kept: FAIL the reload drops only 1981-2010's pcic.subbasin_daily rows: expected '1951-2012|1464|
+caught  exit 1  load: stale weekly kept: FAIL the reload drops only 1981-2010's pcic.discharge_weekly rows: expected '1951-2012|146
+== mutate_r3.py
+caught  exit 1  load: runs plain HEADER: FAIL load: a pcic.runs file with reordered columns is refused: exit 0, output:
+caught  exit 1  load: crosswalk plain HEADER: FAIL load: a pcic.fwa_crosswalk file with reordered columns is refused: exit 3, output:
+caught  exit 1  load: weights plain HEADER: FAIL load: a pcic.segment_weights file with reordered columns is refused: exit 3, output:
+caught  exit 1  load: day_bins plain HEADER: FAIL load: a pcic.day_bins file with reordered columns is refused: exit 0, output:
+caught  exit 1  export: orphan arm daily dropped: FAIL export: rows in pcic.subbasin_daily of a run pcic.runs does not list are refused: exi
+caught  exit 1  export: orphan arm weekly dropped: FAIL export: rows in pcic.discharge_weekly of a run pcic.runs does not list are refused: e
+caught  exit 1  load: orphan arm daily dropped: FAIL load: rows in pcic.subbasin_daily of a run pcic.runs does not list are refused: exit 
+caught  exit 1  load: orphan arm monthly dropped: FAIL load: rows in pcic.discharge_monthly of a run pcic.runs does not list are refused: ex

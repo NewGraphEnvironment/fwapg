@@ -74,7 +74,7 @@ placed AS (
     pf.q_m3s AS pcic_q_m3s,
     a.area_km2 AS fwa_area_km2,
     r1.area_km2 AS nearest_area_km2
-  FROM whse_basemapping.pcic_fwa_crosswalk x
+  FROM fwapg.pcic_fwa_crosswalk x
   INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = x.linear_feature_id
   INNER JOIN pcic_length pl ON pl.subid = x.subid
   INNER JOIN pcic_flow pf ON pf.subid = x.subid

@@ -5,8 +5,9 @@ routed by Raven (driven by VIC-GL runoff) for about 48,700 sub-basin outlets cov
 Columbia, Kettle, Okanagan and BC coast domains (no Liard). It is served through PCIC's hydromosaic API, on
 PCIC's own river network (`subid` / `dowsubid`), which shares no key with the FWA.
 
-This job crosswalks PCIC's outlets onto FWA streams and derives a monthly flow climatology for every FWA
-stream segment below or within PCIC's network. Unlike `extras/discharge` (annual, three basins, unrouted
+This job crosswalks PCIC's outlets onto FWA streams and derives a flow climatology (per calendar day,
+month and, optionally, week) for every FWA stream segment below or within PCIC's network, for one PCIC run
+at a time: a model, a scenario and the years averaged. Unlike `extras/discharge` (annual, three basins, unrouted
 gridded runoff accumulated on the FWA), flow here is PCIC's routed flow at placed outlets wherever PCIC's
 network and the FWA agree, with only the flow generated between outlets distributed by FWA drainage area.
 
@@ -21,20 +22,41 @@ network and the FWA agree, with only the flow generated between outlets distribu
 
 ## Processing
 
-    ./pcic_crosswalk.sh
+    ./pcic_crosswalk.sh                                   # PNWNAmet, historical, 1951-2012, monthly
+    YEARS=1981/2010 WEEKLY=1 ./pcic_crosswalk.sh          # 1981-2010, monthly and weekly
+    MODEL=CNRM-ESM2-1 SCENARIO="historical, ssp245" YEARS=2041/2070 ./pcic_crosswalk.sh
 
-With the downloads cached, the job took 28-33 min (2026-10-10, local Docker database on a 128 GB machine), about 16 min
-of it rebuilding the blue line paths and 6 min writing flow per segment. The job:
+The run is set by the environment:
+
+| variable   | default      | |
+|------------|--------------|---|
+| `MODEL`    | `PNWNAmet`   | hydromosaic model: `PNWNAmet` (observed weather, 1950-2012), or one of 9 CMIP6 GCMs (`CNRM-ESM2-1`, `FGOALS-g3`, `IPSL-CM6A-LR`, `MIROC-ES2L`, `MPI-ESM1-2-HR`, `MRI-ESM2-0`, `NorESM2-LM`, `TaiESM1`, `UKESM1-0-LL`; 1950-2100) |
+| `SCENARIO` | `historical` | `historical` for PNWNAmet; `historical, ssp245` or `historical, ssp585` for a GCM |
+| `YEARS`    | `1951/2012`  | the years averaged, first/last. Day 1 of a run is a model start-up artefact, so avoid 1950 |
+| `WEEKLY`   | `0`          | `1` also builds weekly flow. Monthly flow is always built, and is what the QA tests |
+
+The job checks that hydromosaic lists the model and scenario before fetching. Runs share the `fwapg.pcic_*`
+staging tables and `fwapg.blk_paths`: run them one at a time.
+
+A monthly run took 1 h 15 min (2026-10-17, local Docker PostgreSQL 17.5 on a 128 GB machine): 4 min paging the network,
+19 min fetching the series, 32 min from the blue line paths to monthly flow, and 21 min for QA, the swap into `pcic` and the
+`.csv.gz` files. `WEEKLY=1` took 2 h 53 min, most of the difference being the swap of 175.6M weekly rows (79 min) and the
+fetch (27 min, network-bound). The job:
 
 1. **Network.** Pages PCIC's `rivers` and `lakes` collections from `bbox-server` (BC Albers) into
    `data/`, and loads them. Each river segment's outlet is the end that touches its downstream feature
    (`dowsubid`); segments carry no direction otherwise. A lake's outlet is the upstream end of the river
    that drains it.
-2. **Series.** Downloads the PNWNAmet (observed weather) streamflow run for every outlet through the
-   hydromosaic bulk endpoint (NetCDF, 500 outlets per request, one domain per request; batches are halved
-   on a mixed-domain 422, or on repeated failure while above 50 outlets) and reduces each batch to a
-   1951-2012 monthly mean with `cdo` (1950 is dropped: day 1 of the run is a start-up artefact).
-   Downloads are cached and resumable; outlets with no series are listed in `data/series/missing.txt`.
+2. **Series.** Downloads the run's daily streamflow for every outlet through the hydromosaic bulk
+   endpoint (NetCDF, 500 outlets per request, one domain per request; batches are halved on a
+   mixed-domain 422, or on repeated failure while above 50 outlets). Each batch is reduced to the mean
+   flow of each calendar day over `YEARS` with `cdo ydaymean`, which bins by month and day (Feb 29 is a
+   bin of its own), and the NetCDF is deleted. The climatology is cached per run in `data/daily/<run>/`
+   (`<run>` is e.g. `pnwnamet_historical_1981-2010`) and the batch lists in `data/series/<run>/`, so a
+   run resumes where it stopped. A series with a missing day in `YEARS` stops the job, as do more than
+   100 outlets with no series (28 for PNWNAmet, listed in `data/series/<run>/missing.txt`). Months and
+   weeks are averages of the calendar days, each day weighted by how often it occurs in `YEARS`
+   (`sql/pcic_crosswalk01_days.sql`), which reproduces `cdo ymonmean` to float precision.
 3. **Snapping.** Up to 5 FWA candidates per outlet within 150 m, one per blue line: `FWA_IndexPoint`'s
    search, with unusable segments excluded *before* the nearest segment of each blue line is picked.
    About 1% of outlets sit on a vertex two segments of one blue line share; they take the segment starting
@@ -72,45 +94,66 @@ of it rebuilding the blue line paths and 6 min writing flow per segment. The job
    levels above whose near candidates lie on or upstream of it), then the nearest. An outlet with no series is not placed (`no_series`). An outlet with no valid candidate is
    left unplaced (`broken_chain`); where the outlet that broke carries most of its parent's network and
    fits once the parent is skipped, the parent is `demoted` instead and placement reruns, until stable.
-5. **Flow at outlets.** PCIC's network and the FWA do not always join streams at the same place, so
+5. **Flow at outlets.** Per calendar day. PCIC's network and the FWA do not always join streams at the same place, so
    PCIC's outflows are not used as they stand. Each PCIC outlet's local runoff (its outflow minus its PCIC
    children's) is given to the sub-basin of the outlet, or of its nearest placed PCIC ancestor if it is
    unplaced, and accumulated down the FWA tree of placed outlets (`fwa_parent_subid`, the nearest placed
    outlet downstream on the FWA). Where the networks agree, the accumulated flow at an outlet is PCIC's
    outflow; where they do not, flow follows the FWA.
 6. **Segments.** Each FWA segment belongs to the sub-basin of the nearest placed outlet on or below it.
-   Per month,
+   Its weights (`pcic.segment_weights`) are that sub-basin (`subid`), the outlets directly above the
+   sub-basin whose water passes the segment (`upstream_subids`) and the share of the sub-basin's local
+   runoff that passes it. For any period (a month, a week, a day or a window),
 
-       q = sum(q_acc of outlets directly above the segment's sub-basin and above the segment)
-           + q_local * (A - sum(A of those outlets)) / A_local
+       q = greatest(sum(q_acc of upstream_subids) + q_local(subid) * share, 0)
+       share = (A - sum(A of upstream_subids)) / A_local
 
    where `q_acc` is accumulated flow, `q_local` the runoff given to the sub-basin, `A` FWA upstream area
    and `A_local` the sub-basin's own FWA area. At the segment an outlet is placed on, `q` is the outlet's
    accumulated flow. Water from another blue line passes a segment only if it joins above the segment's
    start: a tributary's junction is the start of the main-stem segment above it, so its flow steps up on
    the segment below the junction. In the same way, a tributary's segments belong to the nearest placed
-   outlet whose segment starts below its junction. Local runoff can be negative in a month (routing
-   losses), so `q` is clamped at zero.
-7. **QA and export.** Runs the tests in `sql/qa.sql` and stops, keeping the staging tables, if any fails;
-   then prints `sql/qa_report.sql`, writes both output tables to `.csv.gz`, and drops the `fwapg.pcic_*`
-   staging tables. Kept for review: the QA tables `fwapg.pcic_qa_drainage` and `fwapg.pcic_qa_following`
+   outlet whose segment starts below its junction. Local runoff can be negative over a period (routing
+   losses, and water in transit between outlets), so `q` is clamped at zero, per period, after the
+   period's flows are averaged. The job builds monthly flow and, with `WEEKLY=1`, weekly flow this way
+   (`sql/pcic_crosswalk08_periods.sql`, `sql/pcic_crosswalk09_discharge.sql`).
+7. **QA and export.** Runs the tests in `sql/qa.sql` (and `sql/qa_weekly.sql` with `WEEKLY=1`) and
+   stops, keeping the staging tables, if any fails; then prints `sql/qa_report.sql` and the clamped rows
+   per period (`sql/qa_report_clamped.sql`), swaps the run into the `pcic` schema in one transaction
+   (`sql/pcic_export.sql`, below), writes each table to `.csv.gz`, and drops the `fwapg.pcic_*` staging
+   tables. Kept for review: the QA tables `fwapg.pcic_qa_drainage` and `fwapg.pcic_qa_following`
    (the drainage and line-following checks below), `fwapg.pcic_qa_flow` (mean annual flow at each placed
    outlet, PCIC's and accumulated on the FWA) and `fwapg.pcic_qa_gauges` (`qa_gauges.sh`), and the
    staging tables `fwapg.pcic_qa_outlets` and `fwapg.pcic_qa_candidates` (outlet and probe points, every
    FWA candidate), which `review_build.sh` reads. `fwapg.pcic_qa_build` holds the md5 of the crosswalk
-   they were built with; the job drops it and `pcic_qa_gauges` when it starts.
+   they were built with, and the run their flows are from; the job drops it and `pcic_qa_gauges` when it
+   starts. Build the reference run (the defaults) last before a review: the review's strata use flow.
 
-To check against every Water Survey of Canada gauge in BC with discharge in the PCIC years (needs the
-job's outputs and its `data/` cache; writes `data/qa_gauges.csv`):
+`./pcic_test.sh` tests the steps from the sub-basin daily flow and the weights on, on a fixture of four
+sub-basins and seven segments, in under 30 seconds and with no download: the day bins and weeks, monthly
+and weekly flow against the mean of every day's routed flow, the window query below, what the export
+writes, and the refusals in the export and the loads. The steps before it (placement, accumulation and
+the weights) are not tested here; `sql/qa.sql` checks them on a build. It needs a PostgreSQL 15+ server
+in `PGSERVER`, a URL with no database (e.g. `postgresql://postgres:postgres@localhost:5432`), and creates
+and drops the scratch databases `pcic_test` and `pcic_test_load` on it. Run it after changing
+`sql/pcic_crosswalk01_days.sql`, `08`, `09` or `sql/pcic_export.sql`, `../../load/pcic_schema.sql`,
+`pcic.sql` or `pcic_run.sql`, or the window query.
+
+To check against every Water Survey of Canada gauge in BC with discharge in the run's years (needs the
+run in `pcic.discharge_monthly` and the job's `data/` cache; writes `data/qa_gauges.csv`; the run is set
+as for the job, and gauge pages are cached per period in `data/wsc/<period>/`):
 
     ./qa_gauges.sh
+    YEARS=1981/2010 ./qa_gauges.sh
 
 At each gauge it compares PCIC's own flow at the nearest PCIC segment (no crosswalk involved) with
 the flow on the FWA segment at the gauge, which isolates crosswalk error from PCIC's model error, and
 both with the gauge. In the 2026-10 build, at 538 gauges: FWA flow within 10% of PCIC's at 494
 (207 of 210 gauges of 100-1,000 km², 134 of 139 of 1,000-10,000 km²); 11 more where another PCIC
 branch at the confluence matches; 33 disagree, 27 of them under 100 km². The FWA stream picked by
-drainage area matched the gauge's area within 10% at 559 of 603 gauges. One gauge in detail:
+drainage area matched the gauge's area within 10% at 559 of 603 gauges. Those are 1951-2012; over 1981-2010, at 431
+gauges: FWA within 10% of PCIC at 401, 9 more on another branch, 21 disagree (18 under 100 km²), and PCIC over observed
+has a median of 0.988 (0.949 over 1951-2012). One gauge in detail:
 
     ./qa_gauge.sh 08EE003
 
@@ -199,20 +242,73 @@ about ±25 points wide: a flagged stratum shows what kinds of error it holds, no
 
 ## Output tables
 
-Both are published to `https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/<table>.csv.gz`, and `load.sh`
-loads them from there (`load/<table>.sql`), so a database gets them without running this job. After a rerun,
-upload both files again (`../README.md`).
+The job writes to the `pcic` schema (`../../load/pcic_schema.sql`), not `whse_basemapping`: these are
+derived tables, rebuilt whenever placement changes (NewGraphEnvironment/fwapg#23). Tables every run
+shares:
 
-    Table "whse_basemapping.fwa_stream_networks_discharge_monthly"
-           Column        |       Type       | Nullable
-    ----------------------+------------------+----------
-     linear_feature_id    | bigint           | not null
-     watershed_group_code | text             |
-     month                | integer          | not null
-     q_m3s                | double precision |
-    Primary key: (linear_feature_id, month)
+- `pcic.fwa_crosswalk`: the placed outlets, below.
+- `pcic.segment_weights`: `linear_feature_id`, `watershed_group_code`, `subid`, `share`,
+  `upstream_subids` (step 6).
+- `pcic.day_bins`: `month`, `day`, `week` for each of the 366 calendar days.
+- `pcic.runs`: one row per run (`model`, `scenario`, `period`), with the md5 of the crosswalk it was built
+  on and the rows, keys and flow sum of each of its tables, which the loads check.
 
-    Table "whse_basemapping.pcic_fwa_crosswalk"
+Per run, keyed by `model`, `scenario` and `period` (e.g. `PNWNAmet`, `historical`, `1981-2010`):
+
+- `pcic.subbasin_daily`: `subid`, `month`, `day`, `n_days` (the days of the period on that calendar
+  day), `q_local`, `q_acc`. About 13.4M rows a run.
+- `pcic.discharge_monthly`: `linear_feature_id`, `watershed_group_code`, `month`, `q_m3s`.
+- `pcic.discharge_weekly`: the same with `week`. A week is a fixed run of calendar days, the same every
+  year: week 1 is Jan 1-7, then 7-day steps of a 365-day year, with week 52 taking Dec 24-31 (8 days) and
+  Feb 29 falling in week 9 (Feb 26 - Mar 4). It is not an ISO week, which shifts by up to 3 days from year
+  to year and has a week 53 in some years.
+
+A run replaces only its own rows, in one transaction. The crosswalk and weights are shared, so a run whose
+crosswalk or weights differ from those another run in `pcic.runs` was built on is refused (rebuild that
+run as well, or delete its rows from `pcic.runs`, `pcic.subbasin_daily` and `pcic.discharge_*` first), as
+are rows of a run `pcic.runs` does not list. Placement depends on the series only through which
+outlets have one, so PNWNAmet runs over any years share a crosswalk. The CMIP6 runs' outlets are
+unmeasured: 3 of PNWNAmet's 28 missing outlets were also missing for CNRM-ESM2-1.
+
+Flow for any window, from the weights and the daily climatology: average each sub-basin's flow over
+the window's days, weighted by `n_days`, then apply the weights. For Chinook fry migration (Jul 15 - Sep 7)
+on one watershed group:
+
+```sql
+WITH window_flow AS (
+  SELECT subid,
+    sum(q_local * n_days) / sum(n_days) AS q_local,
+    sum(q_acc * n_days) / sum(n_days) AS q_acc
+  FROM pcic.subbasin_daily
+  WHERE (model, scenario, period) = ('PNWNAmet', 'historical', '1981-2010')
+  AND make_date(2001, month, least(day, CASE WHEN month = 2 THEN 28 ELSE 31 END)) BETWEEN '2001-07-15' AND '2001-09-07'
+  GROUP BY subid
+)
+SELECT w.linear_feature_id,
+  greatest(coalesce((SELECT sum(u.q_acc) FROM window_flow u WHERE u.subid = ANY(w.upstream_subids)), 0)
+    + s.q_local * w.share, 0) AS q_m3s
+FROM pcic.segment_weights w
+INNER JOIN window_flow s ON s.subid = w.subid
+WHERE w.watershed_group_code = 'BULK';
+```
+
+(Feb 29 is put on Feb 28, so a window that includes Feb 28 includes it too.)
+
+Files are published to `https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/` as
+`pcic.<table>.csv.gz` for the shared tables and `pcic.<table>.<run>.csv.gz` for a run's rows. After a
+rerun, upload them again (`../README.md`). `load.sh` loads the shared tables (`../../load/pcic.sql`) and,
+for the PNWNAmet 1951-2012 and 1981-2010 runs, `subbasin_daily` and `discharge_monthly`
+(`../../load/pcic_run.sql`). Each file is checked against its run's row in `pcic.runs`. Weekly flow (about
+175M rows a run) is not loaded by default:
+
+    curl -sSf https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/pcic.discharge_weekly.pnwnamet_historical_1981-2010.csv.gz \
+      | gunzip | psql $DATABASE_URL -v ON_ERROR_STOP=1 -v table=discharge_weekly -f load/pcic_run.sql
+
+The first build (1951-2012, monthly), published before the `pcic` schema, is still loaded by `load.sh`
+as `whse_basemapping.fwa_stream_networks_discharge_monthly` and `whse_basemapping.pcic_fwa_crosswalk`.
+These are frozen: the job no longer writes them. They will be dropped once their readers move to `pcic`.
+
+    Table "pcic.fwa_crosswalk"
            Column             |       Type       |
     --------------------------+------------------+--------------------------------------------------
      subid                    | integer          | PCIC outlet id (primary key)
@@ -250,6 +346,12 @@ upload both files again (`../README.md`).
   22,184 m³/s (8%) of local runoff.
 - A side channel carries the flow of outlets placed on it and its share of local runoff, not the main
   channel's flow.
+- Flow is clamped at zero where the period's local runoff is negative. For 1981-2010 that applies to 0.98%
+  of rows, monthly or weekly alike. On mid-network segments (placed outlets above, and not an outlet's own
+  segment) it is 0.05%: 1,579 monthly rows and 6,742 weekly. Almost all fall on the freshet, April to
+  early June, and the worst week (May 28-Jun 3, 805 mid-network segments) is close to the worst month
+  (May, 774). A weekly step does not add clamping (`research/pcic_routed_flow_periods.md`). A window
+  built from the daily tables is clamped once, after averaging, as the job does.
 - Known cases, listed by `sql/qa_report.sql` and open in NewGraphEnvironment/fwapg#8: 85 placed
   outlets carry more than 10 times PCIC's flow (mostly PCIC siblings that sit one above the other on
   the FWA, where flow follows the FWA); the Spillimacheen reaches the Columbia through a side channel
@@ -271,11 +373,13 @@ upload both files again (`../README.md`).
 - Streams that leave BC before reaching their parent have no path, so their flow does not reach the
   parent in BC: the Okanagan, Kettle and Similkameen join the Columbia in the US, and their flow is not
   on the Columbia in BC (PCIC routes it through the US too).
-- Monthly means of daily flow, 1951-2012, from the run driven by observed weather (PNWNAmet). The CMIP6
-  runs, water temperature and dissolved-oxygen saturation are served the same way and are not processed.
+- Published runs are PNWNAmet (observed weather), 1951-2012 and 1981-2010. The CMIP6 runs are served on
+  the same outlets and the job takes them (all 18 are on the Gregorian calendar, 1950-2100); none is
+  built yet. A projected change is best taken within a run (future over the run's own 1981-2010). Water
+  temperature and dissolved-oxygen saturation are served the same way and are not processed.
 
 
 ### Data citation
 
 Pacific Climate Impacts Consortium, University of Victoria (2026). Hydromosaic: routed streamflow, Raven
-(VIC-GL), PNWNAmet historical run. https://beehive.pacificclimate.org/chyp/
+(VIC-GL), PNWNAmet historical run (and the CMIP6 runs, where used). https://beehive.pacificclimate.org/chyp/

@@ -9,11 +9,11 @@
 
 INSERT INTO fwapg.pcic_demoted (subid, round)
 SELECT DISTINCT a.subid, :round
-FROM whse_basemapping.pcic_fwa_crosswalk s
-INNER JOIN whse_basemapping.pcic_fwa_crosswalk a ON a.subid = s.dowsubid
+FROM fwapg.pcic_fwa_crosswalk s
+INNER JOIN fwapg.pcic_fwa_crosswalk a ON a.subid = s.dowsubid
 INNER JOIN fwapg.pcic_outlets os ON os.subid = s.subid
 INNER JOIN fwapg.pcic_outlets oa ON oa.subid = a.subid
-LEFT JOIN whse_basemapping.pcic_fwa_crosswalk g ON g.subid = a.anchor_subid
+LEFT JOIN fwapg.pcic_fwa_crosswalk g ON g.subid = a.anchor_subid
 WHERE s.flag = 'broken_chain'
 AND s.anchor_subid = a.subid
 AND os.subtree_size * 2 >= oa.subtree_size

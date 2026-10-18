@@ -18,13 +18,13 @@
 -- An outlet with no valid candidate is left unplaced and flagged, and the outlets
 -- above it are tested against its own anchor instead.
 --
--- Outlets listed in fwapg.pcic_demoted, and outlets with no PNWNAmet series, are
+-- Outlets listed in fwapg.pcic_demoted, and outlets with no series in the run, are
 -- treated as having no valid candidate: placing an outlet with no flow would
 -- carve its catchment out of the sub-basin below without carrying its flow.
 
-DROP TABLE IF EXISTS whse_basemapping.pcic_fwa_crosswalk;
+DROP TABLE IF EXISTS fwapg.pcic_fwa_crosswalk;
 
-CREATE TABLE whse_basemapping.pcic_fwa_crosswalk (
+CREATE TABLE fwapg.pcic_fwa_crosswalk (
   subid integer PRIMARY KEY,
   dowsubid integer,
   anchor_subid integer,          -- nearest placed outlet downstream in PCIC's tree (NULL for a root)
@@ -50,7 +50,7 @@ BEGIN
   SELECT max(depth) INTO maxdepth FROM fwapg.pcic_outlets;
   FOR d IN 0..maxdepth LOOP
 
-    INSERT INTO whse_basemapping.pcic_fwa_crosswalk
+    INSERT INTO fwapg.pcic_fwa_crosswalk
     WITH outlets AS (
       SELECT
         o.subid,
@@ -62,8 +62,8 @@ BEGIN
         a.blue_line_key AS a_blk,
         a.downstream_route_measure AS a_drm
       FROM fwapg.pcic_outlets o
-      LEFT JOIN whse_basemapping.pcic_fwa_crosswalk p ON o.dowsubid = p.subid
-      LEFT JOIN whse_basemapping.pcic_fwa_crosswalk a
+      LEFT JOIN fwapg.pcic_fwa_crosswalk p ON o.dowsubid = p.subid
+      LEFT JOIN fwapg.pcic_fwa_crosswalk a
         ON a.subid = CASE WHEN p.linear_feature_id IS NOT NULL THEN p.subid ELSE p.anchor_subid END
       WHERE o.depth = d
     ),
@@ -80,7 +80,7 @@ BEGIN
       FROM outlets o
       INNER JOIN fwapg.pcic_candidates x ON x.subid = o.subid
       WHERE NOT EXISTS (SELECT 1 FROM fwapg.pcic_demoted dm WHERE dm.subid = x.subid)
-      AND EXISTS (SELECT 1 FROM fwapg.pcic_outlet_monthly q WHERE q.subid = x.subid)
+      AND EXISTS (SELECT 1 FROM fwapg.pcic_outlet_daily q WHERE q.subid = x.subid)
       AND (
         o.a_subid IS NULL
         OR fwapg.blk_on_or_upstream(o.a_blk, o.a_drm, x.blue_line_key, x.downstream_route_measure)
@@ -110,7 +110,7 @@ BEGIN
       b.candidate_rank,
       CASE
         WHEN b.subid IS NOT NULL THEN NULL
-        WHEN NOT EXISTS (SELECT 1 FROM fwapg.pcic_outlet_monthly q WHERE q.subid = o.subid) THEN 'no_series'
+        WHEN NOT EXISTS (SELECT 1 FROM fwapg.pcic_outlet_daily q WHERE q.subid = o.subid) THEN 'no_series'
         WHEN EXISTS (SELECT 1 FROM fwapg.pcic_demoted dm WHERE dm.subid = o.subid) THEN 'demoted'
         WHEN EXISTS (SELECT 1 FROM fwapg.pcic_candidates x WHERE x.subid = o.subid) THEN 'broken_chain'
         ELSE 'no_candidate'
@@ -121,8 +121,8 @@ BEGIN
   END LOOP;
 END $$;
 
-CREATE INDEX ON whse_basemapping.pcic_fwa_crosswalk (anchor_subid);
-CREATE INDEX ON whse_basemapping.pcic_fwa_crosswalk (linear_feature_id);
-CREATE INDEX ON whse_basemapping.pcic_fwa_crosswalk USING gist (wscode_ltree);
-CREATE INDEX ON whse_basemapping.pcic_fwa_crosswalk USING btree (wscode_ltree);
-ANALYZE whse_basemapping.pcic_fwa_crosswalk;
+CREATE INDEX ON fwapg.pcic_fwa_crosswalk (anchor_subid);
+CREATE INDEX ON fwapg.pcic_fwa_crosswalk (linear_feature_id);
+CREATE INDEX ON fwapg.pcic_fwa_crosswalk USING gist (wscode_ltree);
+CREATE INDEX ON fwapg.pcic_fwa_crosswalk USING btree (wscode_ltree);
+ANALYZE fwapg.pcic_fwa_crosswalk;

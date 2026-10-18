@@ -1,0 +1,2041 @@
++ PSQL='psql $DATABASE_URL -v ON_ERROR_STOP=1'
++ PCIC=https://beehive.pacificclimate.org
++ PAGE=1000
++ BATCH=500
++ MODEL=PNWNAmet
++ SCENARIO=historical
++ YEARS=1951/2012
++ WEEKLY=0
++ [[ 1951/2012 =~ ^([0-9]{4})/([0-9]{4})$ ]]
++ '[' 1951 -le 2012 ']'
++ [[ PNWNAmet =~ ^[A-Za-z0-9._-]+$ ]]
++ [[ historical =~ ^[A-Za-z0-9._, -]+$ ]]
++ [[ 0 =~ ^[01]$ ]]
++ PERIOD=1951-2012
+++ printf %s_%s_%s PNWNAmet historical 1951-2012
+++ tr A-Z a-z
+++ tr -cs 'a-z0-9.\n-' _
++ RUN=pnwnamet_historical_1951-2012
+++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -tXA -c 'SELECT make_date(2012, 12, 31) - make_date(1951, 1, 1) + 1'
++ NDAYS=22646
++ SERIES=data/series/pnwnamet_historical_1951-2012
++ DAILY=data/daily/pnwnamet_historical_1951-2012
++ mkdir -p data/rivers data/lakes data/series/pnwnamet_historical_1951-2012 data/daily/pnwnamet_historical_1951-2012
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c 'DROP TABLE IF EXISTS fwapg.pcic_qa_build, fwapg.pcic_qa_gauges'
+NOTICE:  table "pcic_qa_gauges" does not exist, skipping
+DROP TABLE
++ fetch_collection rivers
++ local coll=rivers n offset f
+++ curl -sf --retry 5 'https://beehive.pacificclimate.org/bbox-server/collections/rivers/items.json?limit=1'
+++ jq .numberMatched
++ n=48261
++ (( offset = 0 ))
++ (( offset < n ))
+++ printf %06d 0
++ f=data/rivers/rivers_000000.geojson
++ '[' '!' -s data/rivers/rivers_000000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 1000
++ f=data/rivers/rivers_001000.geojson
++ '[' '!' -s data/rivers/rivers_001000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 2000
++ f=data/rivers/rivers_002000.geojson
++ '[' '!' -s data/rivers/rivers_002000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 3000
++ f=data/rivers/rivers_003000.geojson
++ '[' '!' -s data/rivers/rivers_003000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 4000
++ f=data/rivers/rivers_004000.geojson
++ '[' '!' -s data/rivers/rivers_004000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 5000
++ f=data/rivers/rivers_005000.geojson
++ '[' '!' -s data/rivers/rivers_005000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 6000
++ f=data/rivers/rivers_006000.geojson
++ '[' '!' -s data/rivers/rivers_006000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 7000
++ f=data/rivers/rivers_007000.geojson
++ '[' '!' -s data/rivers/rivers_007000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 8000
++ f=data/rivers/rivers_008000.geojson
++ '[' '!' -s data/rivers/rivers_008000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 9000
++ f=data/rivers/rivers_009000.geojson
++ '[' '!' -s data/rivers/rivers_009000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 10000
++ f=data/rivers/rivers_010000.geojson
++ '[' '!' -s data/rivers/rivers_010000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 11000
++ f=data/rivers/rivers_011000.geojson
++ '[' '!' -s data/rivers/rivers_011000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 12000
++ f=data/rivers/rivers_012000.geojson
++ '[' '!' -s data/rivers/rivers_012000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 13000
++ f=data/rivers/rivers_013000.geojson
++ '[' '!' -s data/rivers/rivers_013000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 14000
++ f=data/rivers/rivers_014000.geojson
++ '[' '!' -s data/rivers/rivers_014000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 15000
++ f=data/rivers/rivers_015000.geojson
++ '[' '!' -s data/rivers/rivers_015000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 16000
++ f=data/rivers/rivers_016000.geojson
++ '[' '!' -s data/rivers/rivers_016000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 17000
++ f=data/rivers/rivers_017000.geojson
++ '[' '!' -s data/rivers/rivers_017000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 18000
++ f=data/rivers/rivers_018000.geojson
++ '[' '!' -s data/rivers/rivers_018000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 19000
++ f=data/rivers/rivers_019000.geojson
++ '[' '!' -s data/rivers/rivers_019000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 20000
++ f=data/rivers/rivers_020000.geojson
++ '[' '!' -s data/rivers/rivers_020000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 21000
++ f=data/rivers/rivers_021000.geojson
++ '[' '!' -s data/rivers/rivers_021000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 22000
++ f=data/rivers/rivers_022000.geojson
++ '[' '!' -s data/rivers/rivers_022000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 23000
++ f=data/rivers/rivers_023000.geojson
++ '[' '!' -s data/rivers/rivers_023000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 24000
++ f=data/rivers/rivers_024000.geojson
++ '[' '!' -s data/rivers/rivers_024000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 25000
++ f=data/rivers/rivers_025000.geojson
++ '[' '!' -s data/rivers/rivers_025000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 26000
++ f=data/rivers/rivers_026000.geojson
++ '[' '!' -s data/rivers/rivers_026000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 27000
++ f=data/rivers/rivers_027000.geojson
++ '[' '!' -s data/rivers/rivers_027000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 28000
++ f=data/rivers/rivers_028000.geojson
++ '[' '!' -s data/rivers/rivers_028000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 29000
++ f=data/rivers/rivers_029000.geojson
++ '[' '!' -s data/rivers/rivers_029000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 30000
++ f=data/rivers/rivers_030000.geojson
++ '[' '!' -s data/rivers/rivers_030000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 31000
++ f=data/rivers/rivers_031000.geojson
++ '[' '!' -s data/rivers/rivers_031000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 32000
++ f=data/rivers/rivers_032000.geojson
++ '[' '!' -s data/rivers/rivers_032000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 33000
++ f=data/rivers/rivers_033000.geojson
++ '[' '!' -s data/rivers/rivers_033000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 34000
++ f=data/rivers/rivers_034000.geojson
++ '[' '!' -s data/rivers/rivers_034000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 35000
++ f=data/rivers/rivers_035000.geojson
++ '[' '!' -s data/rivers/rivers_035000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 36000
++ f=data/rivers/rivers_036000.geojson
++ '[' '!' -s data/rivers/rivers_036000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 37000
++ f=data/rivers/rivers_037000.geojson
++ '[' '!' -s data/rivers/rivers_037000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 38000
++ f=data/rivers/rivers_038000.geojson
++ '[' '!' -s data/rivers/rivers_038000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 39000
++ f=data/rivers/rivers_039000.geojson
++ '[' '!' -s data/rivers/rivers_039000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 40000
++ f=data/rivers/rivers_040000.geojson
++ '[' '!' -s data/rivers/rivers_040000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 41000
++ f=data/rivers/rivers_041000.geojson
++ '[' '!' -s data/rivers/rivers_041000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 42000
++ f=data/rivers/rivers_042000.geojson
++ '[' '!' -s data/rivers/rivers_042000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 43000
++ f=data/rivers/rivers_043000.geojson
++ '[' '!' -s data/rivers/rivers_043000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 44000
++ f=data/rivers/rivers_044000.geojson
++ '[' '!' -s data/rivers/rivers_044000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 45000
++ f=data/rivers/rivers_045000.geojson
++ '[' '!' -s data/rivers/rivers_045000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 46000
++ f=data/rivers/rivers_046000.geojson
++ '[' '!' -s data/rivers/rivers_046000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 47000
++ f=data/rivers/rivers_047000.geojson
++ '[' '!' -s data/rivers/rivers_047000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
+++ printf %06d 48000
++ f=data/rivers/rivers_048000.geojson
++ '[' '!' -s data/rivers/rivers_048000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
++ fetch_collection lakes
++ local coll=lakes n offset f
+++ curl -sf --retry 5 'https://beehive.pacificclimate.org/bbox-server/collections/lakes/items.json?limit=1'
+++ jq .numberMatched
++ n=455
++ (( offset = 0 ))
++ (( offset < n ))
+++ printf %06d 0
++ f=data/lakes/lakes_000000.geojson
++ '[' '!' -s data/lakes/lakes_000000.geojson ']'
++ (( offset += PAGE ))
++ (( offset < n ))
++ for coll in rivers lakes
++ jq -c -s '{type: "FeatureCollection", features: (map(.features) | add)}' data/rivers/rivers_000000.geojson data/rivers/rivers_001000.geojson data/rivers/rivers_002000.geojson data/rivers/rivers_003000.geojson data/rivers/rivers_004000.geojson data/rivers/rivers_005000.geojson data/rivers/rivers_006000.geojson data/rivers/rivers_007000.geojson data/rivers/rivers_008000.geojson data/rivers/rivers_009000.geojson data/rivers/rivers_010000.geojson data/rivers/rivers_011000.geojson data/rivers/rivers_012000.geojson data/rivers/rivers_013000.geojson data/rivers/rivers_014000.geojson data/rivers/rivers_015000.geojson data/rivers/rivers_016000.geojson data/rivers/rivers_017000.geojson data/rivers/rivers_018000.geojson data/rivers/rivers_019000.geojson data/rivers/rivers_020000.geojson data/rivers/rivers_021000.geojson data/rivers/rivers_022000.geojson data/rivers/rivers_023000.geojson data/rivers/rivers_024000.geojson data/rivers/rivers_025000.geojson data/rivers/rivers_026000.geojson data/rivers/rivers_027000.geojson data/rivers/rivers_028000.geojson data/rivers/rivers_029000.geojson data/rivers/rivers_030000.geojson data/rivers/rivers_031000.geojson data/rivers/rivers_032000.geojson data/rivers/rivers_033000.geojson data/rivers/rivers_034000.geojson data/rivers/rivers_035000.geojson data/rivers/rivers_036000.geojson data/rivers/rivers_037000.geojson data/rivers/rivers_038000.geojson data/rivers/rivers_039000.geojson data/rivers/rivers_040000.geojson data/rivers/rivers_041000.geojson data/rivers/rivers_042000.geojson data/rivers/rivers_043000.geojson data/rivers/rivers_044000.geojson data/rivers/rivers_045000.geojson data/rivers/rivers_046000.geojson data/rivers/rivers_047000.geojson data/rivers/rivers_048000.geojson
++ ogr2ogr -f PostgreSQL PG:$DATABASE_URL data/rivers.geojson -nln fwapg.pcic_rivers -overwrite -a_srs EPSG:3005 -nlt PROMOTE_TO_MULTI -lco GEOMETRY_NAME=geom -select subid,dowsubid
++ for coll in rivers lakes
++ jq -c -s '{type: "FeatureCollection", features: (map(.features) | add)}' data/lakes/lakes_000000.geojson
++ ogr2ogr -f PostgreSQL PG:$DATABASE_URL data/lakes.geojson -nln fwapg.pcic_lakes -overwrite -a_srs EPSG:3005 -nlt PROMOTE_TO_MULTI -lco GEOMETRY_NAME=geom -select subid,dowsubid
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -f sql/pcic_crosswalk00_outlets.sql
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ANALYZE
+ANALYZE
+psql:sql/pcic_crosswalk00_outlets.sql:19: NOTICE:  table "pcic_outlets" does not exist, skipping
+DROP TABLE
+SELECT 48716
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE INDEX
+CREATE INDEX
+UPDATE 48716
+ANALYZE
++ export -f fetch_batch
++ export PCIC MODEL SCENARIO YEARS NDAYS SERIES DAILY
++ jq -e --arg model PNWNAmet --arg scenario historical 'any(.[]; .model == $model and .scenario == $scenario and .variable == "streamflow")' /dev/fd/63
+++ curl -sf --retry 5 https://beehive.pacificclimate.org/hydromosaic/outlets/4008184/timeseries
++ rm -f 'data/series/pnwnamet_historical_1951-2012/batch_???_????.txt'
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -tXA -F ' ' -c 'SELECT root_subid / 1000000, subid FROM fwapg.pcic_outlets ORDER BY root_subid / 1000000, root_subid, subid'
++ awk -v b=500 -v dir=data/series/pnwnamet_historical_1951-2012 '{ if ($1 != g || ++n > b) { g = $1; n = 1; k++ } print $2 > sprintf("%s/batch_%03d_%04d.txt", dir, $1, k) }'
++ grep -E '_[0-9]{4}\.txt$'
++ ls data/series/pnwnamet_historical_1951-2012/batch_003_0001.txt data/series/pnwnamet_historical_1951-2012/batch_004_0002.txt data/series/pnwnamet_historical_1951-2012/batch_004_0003.txt data/series/pnwnamet_historical_1951-2012/batch_004_0004.txt data/series/pnwnamet_historical_1951-2012/batch_004_0005.txt data/series/pnwnamet_historical_1951-2012/batch_004_0006.txt data/series/pnwnamet_historical_1951-2012/batch_004_0007.txt data/series/pnwnamet_historical_1951-2012/batch_004_0008.txt data/series/pnwnamet_historical_1951-2012/batch_004_0009.txt data/series/pnwnamet_historical_1951-2012/batch_004_0010.txt data/series/pnwnamet_historical_1951-2012/batch_004_0011.txt data/series/pnwnamet_historical_1951-2012/batch_004_0012.txt data/series/pnwnamet_historical_1951-2012/batch_004_0013.txt data/series/pnwnamet_historical_1951-2012/batch_004_0014.txt data/series/pnwnamet_historical_1951-2012/batch_004_0015.txt data/series/pnwnamet_historical_1951-2012/batch_004_0016.txt data/series/pnwnamet_historical_1951-2012/batch_004_0017.txt data/series/pnwnamet_historical_1951-2012/batch_004_0018.txt data/series/pnwnamet_historical_1951-2012/batch_004_0019.txt data/series/pnwnamet_historical_1951-2012/batch_004_0020.txt data/series/pnwnamet_historical_1951-2012/batch_004_0021.txt data/series/pnwnamet_historical_1951-2012/batch_004_0022.txt data/series/pnwnamet_historical_1951-2012/batch_004_0023.txt data/series/pnwnamet_historical_1951-2012/batch_004_0024.txt data/series/pnwnamet_historical_1951-2012/batch_004_0025.txt data/series/pnwnamet_historical_1951-2012/batch_004_0026.txt data/series/pnwnamet_historical_1951-2012/batch_005_0027.txt data/series/pnwnamet_historical_1951-2012/batch_005_0028.txt data/series/pnwnamet_historical_1951-2012/batch_005_0029.txt data/series/pnwnamet_historical_1951-2012/batch_005_0030.txt data/series/pnwnamet_historical_1951-2012/batch_005_0031.txt data/series/pnwnamet_historical_1951-2012/batch_005_0032.txt data/series/pnwnamet_historical_1951-2012/batch_005_0033.txt data/series/pnwnamet_historical_1951-2012/batch_005_0034.txt data/series/pnwnamet_historical_1951-2012/batch_005_0035.txt data/series/pnwnamet_historical_1951-2012/batch_005_0036.txt data/series/pnwnamet_historical_1951-2012/batch_005_0037.txt data/series/pnwnamet_historical_1951-2012/batch_005_0038.txt data/series/pnwnamet_historical_1951-2012/batch_005_0039.txt data/series/pnwnamet_historical_1951-2012/batch_005_0040.txt data/series/pnwnamet_historical_1951-2012/batch_005_0041.txt data/series/pnwnamet_historical_1951-2012/batch_005_0042.txt data/series/pnwnamet_historical_1951-2012/batch_005_0043.txt data/series/pnwnamet_historical_1951-2012/batch_005_0044.txt data/series/pnwnamet_historical_1951-2012/batch_005_0045.txt data/series/pnwnamet_historical_1951-2012/batch_005_0046.txt data/series/pnwnamet_historical_1951-2012/batch_006_0047.txt data/series/pnwnamet_historical_1951-2012/batch_006_0048.txt data/series/pnwnamet_historical_1951-2012/batch_006_0049.txt data/series/pnwnamet_historical_1951-2012/batch_007_0050.txt data/series/pnwnamet_historical_1951-2012/batch_008_0051.txt data/series/pnwnamet_historical_1951-2012/batch_008_0052.txt data/series/pnwnamet_historical_1951-2012/batch_008_0053.txt data/series/pnwnamet_historical_1951-2012/batch_008_0054.txt data/series/pnwnamet_historical_1951-2012/batch_008_0055.txt data/series/pnwnamet_historical_1951-2012/batch_008_0056.txt data/series/pnwnamet_historical_1951-2012/batch_008_0057.txt data/series/pnwnamet_historical_1951-2012/batch_008_0058.txt data/series/pnwnamet_historical_1951-2012/batch_008_0059.txt data/series/pnwnamet_historical_1951-2012/batch_008_0060.txt data/series/pnwnamet_historical_1951-2012/batch_009_0061.txt data/series/pnwnamet_historical_1951-2012/batch_009_0062.txt data/series/pnwnamet_historical_1951-2012/batch_009_0063.txt data/series/pnwnamet_historical_1951-2012/batch_009_0064.txt data/series/pnwnamet_historical_1951-2012/batch_009_0065.txt data/series/pnwnamet_historical_1951-2012/batch_009_0066.txt data/series/pnwnamet_historical_1951-2012/batch_009_0067.txt data/series/pnwnamet_historical_1951-2012/batch_011_0068.txt data/series/pnwnamet_historical_1951-2012/batch_011_0069.txt data/series/pnwnamet_historical_1951-2012/batch_011_0070.txt data/series/pnwnamet_historical_1951-2012/batch_012_0071.txt data/series/pnwnamet_historical_1951-2012/batch_012_0072.txt data/series/pnwnamet_historical_1951-2012/batch_012_0073.txt data/series/pnwnamet_historical_1951-2012/batch_012_0074.txt data/series/pnwnamet_historical_1951-2012/batch_012_0075.txt data/series/pnwnamet_historical_1951-2012/batch_012_0076.txt data/series/pnwnamet_historical_1951-2012/batch_012_0077.txt data/series/pnwnamet_historical_1951-2012/batch_012_0078.txt data/series/pnwnamet_historical_1951-2012/batch_012_0079.txt data/series/pnwnamet_historical_1951-2012/batch_012_0080.txt data/series/pnwnamet_historical_1951-2012/batch_210_0081.txt data/series/pnwnamet_historical_1951-2012/batch_210_0082.txt data/series/pnwnamet_historical_1951-2012/batch_210_0083.txt data/series/pnwnamet_historical_1951-2012/batch_210_0084.txt data/series/pnwnamet_historical_1951-2012/batch_210_0085.txt data/series/pnwnamet_historical_1951-2012/batch_210_0086.txt data/series/pnwnamet_historical_1951-2012/batch_210_0087.txt data/series/pnwnamet_historical_1951-2012/batch_210_0088.txt data/series/pnwnamet_historical_1951-2012/batch_210_0089.txt data/series/pnwnamet_historical_1951-2012/batch_210_0090.txt data/series/pnwnamet_historical_1951-2012/batch_210_0091.txt data/series/pnwnamet_historical_1951-2012/batch_210_0092.txt data/series/pnwnamet_historical_1951-2012/batch_210_0093.txt data/series/pnwnamet_historical_1951-2012/batch_210_0094.txt data/series/pnwnamet_historical_1951-2012/batch_210_0095.txt data/series/pnwnamet_historical_1951-2012/batch_210_0096.txt data/series/pnwnamet_historical_1951-2012/batch_210_0097.txt data/series/pnwnamet_historical_1951-2012/batch_210_0098.txt data/series/pnwnamet_historical_1951-2012/batch_210_0099.txt data/series/pnwnamet_historical_1951-2012/batch_210_0100.txt data/series/pnwnamet_historical_1951-2012/batch_210_0101.txt data/series/pnwnamet_historical_1951-2012/batch_210_0102.txt
++ xargs -P 3 -I '{}' bash -c 'fetch_batch "$1"' _ '{}'
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
+cdi  warning (set_coordinates_varids): Coordinates variable basin_name can't be assigned!
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -v y1=1951 -v y2=2012 -f sql/pcic_crosswalk01_days.sql
+psql:sql/pcic_crosswalk01_days.sql:15: NOTICE:  table "pcic_day_bins" does not exist, skipping
+DROP TABLE
+SELECT 366
+ALTER TABLE
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c 'DROP TABLE IF EXISTS fwapg.pcic_outlet_daily'
+NOTICE:  table "pcic_outlet_daily" does not exist, skipping
+DROP TABLE
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c 'CREATE TABLE fwapg.pcic_outlet_daily (subid integer, month integer, day integer, q_m3s double precision, PRIMARY KEY (subid, month, day))'
+CREATE TABLE
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c '\copy fwapg.pcic_outlet_daily FROM STDIN WITH (FORMAT csv)'
++ cat data/daily/pnwnamet_historical_1951-2012/batch_003_0001.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0002.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0003.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0004.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0005.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0006.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0007.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0008.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0009.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0010.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0011.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0012.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0013.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0014.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0015.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0016.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0017.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0018.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0019.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0020.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0021.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0022.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0023.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0024.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0025.csv data/daily/pnwnamet_historical_1951-2012/batch_004_0026.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0027.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0028.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0029.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0030.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0031.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0032.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0033.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0034.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0035.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0036.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0037.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0038.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0039.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0040.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0041.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0042.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0043.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0044a.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0044ba.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0044bbaa.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0044bbabaa.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0044bbababa.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0044bbababba.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0044bbababbba.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0044bbababbbb.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0044bbabb.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0044bbb.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0045.csv data/daily/pnwnamet_historical_1951-2012/batch_005_0046.csv data/daily/pnwnamet_historical_1951-2012/batch_006_0047.csv data/daily/pnwnamet_historical_1951-2012/batch_006_0048.csv data/daily/pnwnamet_historical_1951-2012/batch_006_0049.csv data/daily/pnwnamet_historical_1951-2012/batch_007_0050.csv data/daily/pnwnamet_historical_1951-2012/batch_008_0051.csv data/daily/pnwnamet_historical_1951-2012/batch_008_0052.csv data/daily/pnwnamet_historical_1951-2012/batch_008_0053.csv data/daily/pnwnamet_historical_1951-2012/batch_008_0054.csv data/daily/pnwnamet_historical_1951-2012/batch_008_0055.csv data/daily/pnwnamet_historical_1951-2012/batch_008_0056.csv data/daily/pnwnamet_historical_1951-2012/batch_008_0057.csv data/daily/pnwnamet_historical_1951-2012/batch_008_0058.csv data/daily/pnwnamet_historical_1951-2012/batch_008_0059.csv data/daily/pnwnamet_historical_1951-2012/batch_008_0060.csv data/daily/pnwnamet_historical_1951-2012/batch_009_0061.csv data/daily/pnwnamet_historical_1951-2012/batch_009_0062.csv data/daily/pnwnamet_historical_1951-2012/batch_009_0063.csv data/daily/pnwnamet_historical_1951-2012/batch_009_0064.csv data/daily/pnwnamet_historical_1951-2012/batch_009_0065.csv data/daily/pnwnamet_historical_1951-2012/batch_009_0066.csv data/daily/pnwnamet_historical_1951-2012/batch_009_0067.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aaaaaaaa.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aaaaaaaba.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aaaaaaabb.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aaaaaabaa.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aaaaaabab.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aaaaaabb.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aaaaabaaa.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aaaaabaab.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aaaaababa.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aaaaababb.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aaaaabb.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aaaab.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aaab.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aabaa.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aababaa.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aabababaa.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aabababab.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aabababba.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aabababbb.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aababba.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aababbbaa.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aababbbab.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aababbbb.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aabbaaa.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aabbaaba.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aabbaabba.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aabbaabbb.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aabbab.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aabbb.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068aba.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068abba.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068abbba.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068abbbba.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068abbbbbaa.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068abbbbbaba.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068abbbbbabb.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068abbbbbb.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068baa.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068babaaa.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068babaabaaa.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068babaabaab.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068babaabab.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068babaabb.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068babab.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068babb.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0068bb.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0069.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0070a.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0070ba.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0070bba.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0070bbba.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0070bbbba.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0070bbbbbaaa.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0070bbbbbaab.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0070bbbbbab.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0070bbbbbbaa.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0070bbbbbbab.csv data/daily/pnwnamet_historical_1951-2012/batch_011_0070bbbbbbb.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0071aaa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0071aabaaa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0071aabaabaaa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0071aabaabaab.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0071aabaabab.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0071aabaabb.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0071aabab.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0071aabb.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0071ab.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0071b.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0072.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073a.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073ba.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbaa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbabaaa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbabaabaa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbabaabab.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbabaabb.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbabab.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbabba.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbabbba.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbabbbba.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbabbbbba.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbabbbbbb.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbbaaaa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbbaaabaa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbbaaabab.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbbaaabb.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbbaab.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbbabaa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbbababa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbbababba.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbbababbb.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbbabbaa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbbabbaba.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbbabbabb.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbbabbbaa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbbabbbab.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbbabbbb.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0073bbbb.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0074aaa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0074aabaaaa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0074aabaaabaa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0074aabaaabab.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0074aabaaabba.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0074aabaaabbb.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0074aabaaba.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0074aabaabba.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0074aabaabbba.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0074aabaabbbb.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0074aabab.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0074aabb.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0074ab.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0074b.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0075.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0076.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0077.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0078.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0079.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080aa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080aba.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080abba.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080abbba.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080abbbbaa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080abbbbaba.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080abbbbabba.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080abbbbabbb.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080abbbbb.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080ba.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080bbaaa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080bbaabaaa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080bbaabaab.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080bbaababa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080bbaababba.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080bbaababbb.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080bbaabb.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080bbab.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080bbbaa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080bbbabaa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080bbbababa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080bbbababba.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080bbbababbb.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080bbbabbaa.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080bbbabbab.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080bbbabbba.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080bbbabbbba.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080bbbabbbbb.csv data/daily/pnwnamet_historical_1951-2012/batch_012_0080bbbb.csv data/daily/pnwnamet_historical_1951-2012/batch_210_0081.csv data/daily/pnwnamet_historical_1951-2012/batch_210_0082.csv data/daily/pnwnamet_historical_1951-2012/batch_210_0083.csv data/daily/pnwnamet_historical_1951-2012/batch_210_0084.csv data/daily/pnwnamet_historical_1951-2012/batch_210_0085.csv data/daily/pnwnamet_historical_1951-2012/batch_210_0086.csv data/daily/pnwnamet_historical_1951-2012/batch_210_0087.csv data/daily/pnwnamet_historical_1951-2012/batch_210_0088.csv data/daily/pnwnamet_historical_1951-2012/batch_210_0089.csv data/daily/pnwnamet_historical_1951-2012/batch_210_0090.csv data/daily/pnwnamet_historical_1951-2012/batch_210_0091.csv data/daily/pnwnamet_historical_1951-2012/batch_210_0092.csv data/daily/pnwnamet_historical_1951-2012/batch_210_0093.csv data/daily/pnwnamet_historical_1951-2012/batch_210_0094.csv data/daily/pnwnamet_historical_1951-2012/batch_210_0095.csv data/daily/pnwnamet_historical_1951-2012/batch_210_0096.csv data/daily/pnwnamet_historical_1951-2012/batch_210_0097.csv data/daily/pnwnamet_historical_1951-2012/batch_210_0098.csv data/daily/pnwnamet_historical_1951-2012/batch_210_0099.csv data/daily/pnwnamet_historical_1951-2012/batch_210_0100.csv data/daily/pnwnamet_historical_1951-2012/batch_210_0101.csv data/daily/pnwnamet_historical_1951-2012/batch_210_0102.csv
+COPY 17819808
+++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -tXA -c 'SELECT count(*) FROM (SELECT subid FROM fwapg.pcic_outlet_daily GROUP BY subid HAVING count(*) != (SELECT count(*) FROM fwapg.pcic_day_bins WHERE n_days > 0)) s'
++ n=0
++ '[' 0 -eq 0 ']'
+++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -tXA -c 'SELECT count(*) FROM fwapg.pcic_outlets o WHERE NOT EXISTS (SELECT 1 FROM fwapg.pcic_outlet_daily q WHERE q.subid = o.subid)'
++ n=28
++ '[' 28 -le 100 ']'
++ ../blue_line_paths/blue_line_paths.sh
+++ dirname ../blue_line_paths/blue_line_paths.sh
++ cd ../blue_line_paths
++ PSQL='psql $DATABASE_URL -v ON_ERROR_STOP=1'
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -1 -f sql/blue_line_paths.sql
+SELECT 1597430
+ALTER TABLE
+SELECT 1568520
+CREATE INDEX
+CREATE INDEX
+SELECT 1482199
+SELECT 73069
+DROP TABLE
+CREATE TABLE
+INSERT 0 1467190
+INSERT 0 71331
+DO
+ANALYZE
+DROP TABLE
+SELECT 1570499
+ALTER TABLE
+ANALYZE
+DO
+CREATE FUNCTION
+++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -tXA -f sql/qa.sql
++ qa='the Okanagan, which leaves BC, has no path|t
+the Kitsumkalum, which joins the Skeena through a braid, has a path to the Skeena|t
+Cayoosh Creek, which joins the Seton through a side channel that touches nothing, has a path to the Fraser|t'
++ echo 'the Okanagan, which leaves BC, has no path|t
+the Kitsumkalum, which joins the Skeena through a braid, has a path to the Skeena|t
+Cayoosh Creek, which joins the Seton through a side channel that touches nothing, has a path to the Fraser|t'
+the Okanagan, which leaves BC, has no path|t
+the Kitsumkalum, which joins the Skeena through a braid, has a path to the Skeena|t
+Cayoosh Creek, which joins the Seton through a side channel that touches nothing, has a path to the Fraser|t
++ '[' -z 'the Okanagan, which leaves BC, has no path|t
+the Kitsumkalum, which joins the Skeena through a braid, has a path to the Skeena|t
+Cayoosh Creek, which joins the Seton through a side channel that touches nothing, has a path to the Fraser|t' ']'
++ grep -qv '|t$'
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -v tolerance=150 -v num_features=5 -f sql/pcic_crosswalk02_candidates.sql
+psql:sql/pcic_crosswalk02_candidates.sql:29: NOTICE:  table "pcic_candidates" does not exist, skipping
+DROP TABLE
+SELECT 92508
+SELECT 5352
+INSERT 0 5352
+UPDATE 97860
+DELETE 4870
+UPDATE 92990
+CREATE INDEX
+ANALYZE
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -f sql/pcic_crosswalk03_prepare.sql
+psql:sql/pcic_crosswalk03_prepare.sql:7: NOTICE:  column "subtree_size" of relation "pcic_outlets" does not exist, skipping
+ALTER TABLE
+ALTER TABLE
+UPDATE 48716
+psql:sql/pcic_crosswalk03_prepare.sql:25: NOTICE:  table "pcic_voters" does not exist, skipping
+DROP TABLE
+SELECT 125853
+CREATE INDEX
+ANALYZE
+psql:sql/pcic_crosswalk03_prepare.sql:47: NOTICE:  table "pcic_demoted" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+++ seq 1 10
++ for round in '$(seq 1 10)'
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -f sql/pcic_crosswalk04_select.sql
+psql:sql/pcic_crosswalk04_select.sql:25: NOTICE:  table "pcic_fwa_crosswalk" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+DO
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ANALYZE
+++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -q -tXA -v round=1 -f sql/pcic_crosswalk05_demote.sql
++ n=40
++ '[' 40 -eq 0 ']'
++ '[' 1 -lt 10 ']'
++ for round in '$(seq 1 10)'
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -f sql/pcic_crosswalk04_select.sql
+DROP TABLE
+CREATE TABLE
+DO
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ANALYZE
+++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -q -tXA -v round=2 -f sql/pcic_crosswalk05_demote.sql
++ n=3
++ '[' 3 -eq 0 ']'
++ '[' 2 -lt 10 ']'
++ for round in '$(seq 1 10)'
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -f sql/pcic_crosswalk04_select.sql
+DROP TABLE
+CREATE TABLE
+DO
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ANALYZE
+++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -q -tXA -v round=3 -f sql/pcic_crosswalk05_demote.sql
++ n=0
++ '[' 0 -eq 0 ']'
++ break
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -f sql/pcic_crosswalk06_subbasins.sql
+UPDATE 6
+CREATE INDEX
+UPDATE 36992
+CREATE INDEX
+ANALYZE
+psql:sql/pcic_crosswalk06_subbasins.sql:164: NOTICE:  table "pcic_subbasins" does not exist, skipping
+DROP TABLE
+SELECT 37667
+ALTER TABLE
+psql:sql/pcic_crosswalk06_subbasins.sql:194: NOTICE:  table "pcic_subbasins_daily" does not exist, skipping
+DROP TABLE
+SELECT 13786122
+ALTER TABLE
+ALTER TABLE
+UPDATE 37667
+ANALYZE
+ANALYZE
+DO
+ANALYZE
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c 'DROP TABLE IF EXISTS fwapg.pcic_segment_weights'
+NOTICE:  table "pcic_segment_weights" does not exist, skipping
+DROP TABLE
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c 'CREATE TABLE fwapg.pcic_segment_weights (
+  linear_feature_id bigint PRIMARY KEY,
+  watershed_group_code text,
+  subid integer,
+  share double precision,
+  upstream_subids integer[]
+)'
+CREATE TABLE
+++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -tXA -c 'SELECT watershed_group_code FROM whse_basemapping.fwa_watershed_groups_poly ORDER BY 1'
++ WSGS='ADMS
+ALBN
+ATLL
+ATNA
+BABL
+BABR
+BARR
+BBAR
+BEAV
+BELA
+BIGC
+BLAR
+BLUR
+BONP
+BOWR
+BRID
+BRKS
+BULK
+BULL
+CAMB
+CANO
+CARP
+CARR
+CHES
+CHIL
+CHIR
+CHUK
+CHWK
+CLAY
+CLRH
+CLWR
+COAL
+COLR
+COMX
+COTR
+COWN
+CRKD
+CRYL
+DEAD
+DEAL
+DEAR
+DOGC
+DRIR
+DUNC
+DUNE
+ELKR
+EUCH
+EUCL
+FINA
+FINL
+FIRE
+FONT
+FOXR
+FRAN
+FRCN
+FROG
+GATA
+GLAR
+GOLD
+GRAI
+GRNL
+GUIC
+HARR
+HAYR
+HERR
+HOLB
+HOMA
+HORS
+INGR
+INKR
+ISKR
+JENR
+JERV
+KAHN
+KAKC
+KCHL
+KEEC
+KETL
+KHOR
+KHTZ
+KINR
+KISK
+KISP
+KITL
+KITR
+KLAR
+KLIN
+KLUM
+KNIG
+KOTL
+KOTR
+KSHR
+KTSU
+KUMR
+KUSR
+LARL
+LBIR
+LBTN
+LCHL
+LCHR
+LDEN
+LEUT
+LFRA
+LFRT
+LHAF
+LIAR
+LILL
+LISR
+LKEC
+LKEL
+LMUS
+LNAR
+LNIC
+LNRS
+LNTH
+LOMI
+LPCE
+LPET
+LPRO
+LRAN
+LRDO
+LSAL
+LSIK
+LSKE
+LSTR
+LTRE
+MAHD
+MBNK
+MCGR
+MDEA
+MESC
+MESI
+MFRA
+MFRT
+MIDR
+MILL
+MMUS
+MORI
+MORK
+MORR
+MPRO
+MSKE
+MSTR
+MURR
+MURT
+MUSK
+NAHR
+NAKR
+NARC
+NASC
+NASR
+NATR
+NAZR
+NBNK
+NECL
+NECR
+NEVI
+NICL
+NIEL
+NIMP
+OKAN
+OSPK
+OWIK
+PARA
+PARK
+PARS
+PCEA
+PINE
+PITR
+PORI
+QUES
+REVL
+SAHD
+SAHT
+SAJR
+SALM
+SALR
+SANJ
+SETN
+SEYM
+SHEK
+SHER
+SHUL
+SIML
+SKGT
+SLOC
+SMAR
+SMOK
+SPAT
+SQAM
+STHM
+STIR
+STUL
+STUR
+SUST
+SWIR
+TABR
+TAHR
+TAHS
+TAKL
+TASR
+TATR
+TAYR
+TESR
+THOM
+TOAD
+TOBA
+TOOD
+TSAY
+TSEA
+TSIT
+TURN
+TUTR
+TUYR
+TWAC
+UARL
+UBIR
+UBTN
+UCHR
+UDEN
+UEUT
+UFRA
+UFRT
+UHAF
+UISR
+UJER
+UKEC
+ULRD
+UMUS
+UNAR
+UNRS
+UNTH
+UNUR
+UOMI
+UPCE
+UPET
+UPRO
+USHU
+USIK
+USKE
+USTK
+UTRE
+VICT
+WILL
+WORC
+ZYMO'
++ echo 'ADMS
+ALBN
+ATLL
+ATNA
+BABL
+BABR
+BARR
+BBAR
+BEAV
+BELA
+BIGC
+BLAR
+BLUR
+BONP
+BOWR
+BRID
+BRKS
+BULK
+BULL
+CAMB
+CANO
+CARP
+CARR
+CHES
+CHIL
+CHIR
+CHUK
+CHWK
+CLAY
+CLRH
+CLWR
+COAL
+COLR
+COMX
+COTR
+COWN
+CRKD
+CRYL
+DEAD
+DEAL
+DEAR
+DOGC
+DRIR
+DUNC
+DUNE
+ELKR
+EUCH
+EUCL
+FINA
+FINL
+FIRE
+FONT
+FOXR
+FRAN
+FRCN
+FROG
+GATA
+GLAR
+GOLD
+GRAI
+GRNL
+GUIC
+HARR
+HAYR
+HERR
+HOLB
+HOMA
+HORS
+INGR
+INKR
+ISKR
+JENR
+JERV
+KAHN
+KAKC
+KCHL
+KEEC
+KETL
+KHOR
+KHTZ
+KINR
+KISK
+KISP
+KITL
+KITR
+KLAR
+KLIN
+KLUM
+KNIG
+KOTL
+KOTR
+KSHR
+KTSU
+KUMR
+KUSR
+LARL
+LBIR
+LBTN
+LCHL
+LCHR
+LDEN
+LEUT
+LFRA
+LFRT
+LHAF
+LIAR
+LILL
+LISR
+LKEC
+LKEL
+LMUS
+LNAR
+LNIC
+LNRS
+LNTH
+LOMI
+LPCE
+LPET
+LPRO
+LRAN
+LRDO
+LSAL
+LSIK
+LSKE
+LSTR
+LTRE
+MAHD
+MBNK
+MCGR
+MDEA
+MESC
+MESI
+MFRA
+MFRT
+MIDR
+MILL
+MMUS
+MORI
+MORK
+MORR
+MPRO
+MSKE
+MSTR
+MURR
+MURT
+MUSK
+NAHR
+NAKR
+NARC
+NASC
+NASR
+NATR
+NAZR
+NBNK
+NECL
+NECR
+NEVI
+NICL
+NIEL
+NIMP
+OKAN
+OSPK
+OWIK
+PARA
+PARK
+PARS
+PCEA
+PINE
+PITR
+PORI
+QUES
+REVL
+SAHD
+SAHT
+SAJR
+SALM
+SALR
+SANJ
+SETN
+SEYM
+SHEK
+SHER
+SHUL
+SIML
+SKGT
+SLOC
+SMAR
+SMOK
+SPAT
+SQAM
+STHM
+STIR
+STUL
+STUR
+SUST
+SWIR
+TABR
+TAHR
+TAHS
+TAKL
+TASR
+TATR
+TAYR
+TESR
+THOM
+TOAD
+TOBA
+TOOD
+TSAY
+TSEA
+TSIT
+TURN
+TUTR
+TUYR
+TWAC
+UARL
+UBIR
+UBTN
+UCHR
+UDEN
+UEUT
+UFRA
+UFRT
+UHAF
+UISR
+UJER
+UKEC
+ULRD
+UMUS
+UNAR
++ xargs -P 4 -I '{}' psql $DATABASE_URL -v ON_ERROR_STOP=1 -q -v 'wsg={}' -f sql/pcic_crosswalk07_segments.sql
+UNRS
+UNTH
+UNUR
+UOMI
+UPCE
+UPET
+UPRO
+USHU
+USIK
+USKE
+USTK
+UTRE
+VICT
+WILL
+WORC
+ZYMO'
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c 'ANALYZE fwapg.pcic_segment_weights'
+ANALYZE
++ STEPS=month:monthly
++ '[' 0 = 1 ']'
++ for st in '$STEPS'
++ step=month
++ table=monthly
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -v step=month -v table=monthly -f sql/pcic_crosswalk08_periods.sql
+psql:sql/pcic_crosswalk08_periods.sql:7: NOTICE:  table "pcic_outlet_monthly" does not exist, skipping
+psql:sql/pcic_crosswalk08_periods.sql:7: NOTICE:  table "pcic_subbasins_monthly" does not exist, skipping
+DROP TABLE
+SELECT 584256
+ALTER TABLE
+SELECT 452004
+ALTER TABLE
+ANALYZE
+ANALYZE
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c 'DROP TABLE IF EXISTS fwapg.pcic_discharge_monthly'
+NOTICE:  table "pcic_discharge_monthly" does not exist, skipping
+DROP TABLE
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c 'CREATE TABLE fwapg.pcic_discharge_monthly (
+    linear_feature_id bigint,
+    watershed_group_code text,
+    month integer,
+    q_raw double precision,
+    q_m3s double precision,
+    PRIMARY KEY (linear_feature_id, month)
+  )'
+CREATE TABLE
++ echo 'ADMS
+ALBN
+ATLL
+ATNA
+BABL
+BABR
+BARR
+BBAR
+BEAV
+BELA
+BIGC
+BLAR
+BLUR
+BONP
+BOWR
+BRID
+BRKS
+BULK
+BULL
+CAMB
+CANO
+CARP
+CARR
+CHES
+CHIL
+CHIR
+CHUK
+CHWK
+CLAY
+CLRH
+CLWR
+COAL
+COLR
+COMX
+COTR
+COWN
+CRKD
+CRYL
+DEAD
+DEAL
+DEAR
+DOGC
+DRIR
+DUNC
+DUNE
+ELKR
+EUCH
+EUCL
+FINA
+FINL
+FIRE
+FONT
+FOXR
+FRAN
+FRCN
+FROG
+GATA
+GLAR
+GOLD
+GRAI
+GRNL
+GUIC
+HARR
+HAYR
+HERR
+HOLB
+HOMA
+HORS
+INGR
+INKR
+ISKR
+JENR
+JERV
+KAHN
+KAKC
+KCHL
+KEEC
+KETL
+KHOR
+KHTZ
+KINR
+KISK
+KISP
+KITL
+KITR
+KLAR
+KLIN
+KLUM
+KNIG
+KOTL
+KOTR
+KSHR
+KTSU
+KUMR
+KUSR
+LARL
+LBIR
+LBTN
+LCHL
+LCHR
+LDEN
+LEUT
+LFRA
+LFRT
+LHAF
+LIAR
+LILL
+LISR
+LKEC
+LKEL
+LMUS
+LNAR
+LNIC
+LNRS
+LNTH
+LOMI
+LPCE
+LPET
+LPRO
+LRAN
+LRDO
+LSAL
+LSIK
+LSKE
+LSTR
+LTRE
+MAHD
+MBNK
+MCGR
+MDEA
+MESC
+MESI
+MFRA
+MFRT
+MIDR
+MILL
+MMUS
+MORI
+MORK
+MORR
+MPRO
+MSKE
+MSTR
+MURR
+MURT
+MUSK
+NAHR
+NAKR
+NARC
+NASC
+NASR
+NATR
+NAZR
+NBNK
+NECL
+NECR
+NEVI
+NICL
+NIEL
+NIMP
+OKAN
+OSPK
+OWIK
+PARA
+PARK
+PARS
+PCEA
+PINE
+PITR
+PORI
+QUES
+REVL
+SAHD
+SAHT
+SAJR
+SALM
+SALR
+SANJ
+SETN
+SEYM
+SHEK
+SHER
+SHUL
+SIML
+SKGT
+SLOC
+SMAR
+SMOK
+SPAT
+SQAM
+STHM
+STIR
+STUL
+STUR
+SUST
+SWIR
+TABR
+TAHR
+TAHS
+TAKL
+TASR
+TATR
+TAYR
+TESR
+THOM
+TOAD
+TOBA
+TOOD
+TSAY
+TSEA
+TSIT
+TURN
+TUTR
+TUYR
+TWAC
+UARL
+UBIR
+UBTN
+UCHR
+UDEN
+UEUT
+UFRA
+UFRT
+UHAF
+UISR
+UJER
+UKEC
+ULRD
+UMUS
+UNAR
+UNRS
+UNTH
+UNUR
+UOMI
+UPCE
+UPET
++ xargs -P 4 -I '{}' psql $DATABASE_URL -v ON_ERROR_STOP=1 -q -v 'wsg={}' -v step=month -v table=monthly -f sql/pcic_crosswalk09_discharge.sql
+UPRO
+USHU
+USIK
+USKE
+USTK
+UTRE
+VICT
+WILL
+WORC
+ZYMO'
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c 'ANALYZE fwapg.pcic_discharge_monthly'
+ANALYZE
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -f sql/qa_drainage.sql
+DROP TABLE
+SELECT 37667
+ALTER TABLE
+ANALYZE
+          drainage          | count | runoff_only | not_nearest_candidate | pcic_subtree_under_5km 
+----------------------------+-------+-------------+-----------------------+------------------------
+ big                        |   126 |           2 |                     4 |                     41
+ not checked (side channel) |   627 |           0 |                     3 |                    146
+ ok                         | 36696 |          79 |                   570 |                   6062
+ small                      |   218 |           2 |                    31 |                    111
+(4 rows)
+
+ flag  | edge_type | count 
+-------+-----------+-------
+ big   |      1000 |    61
+ big   |      1250 |    24
+ big   |      1450 |    24
+ big   |      1410 |    12
+ big   |      1200 |     4
+ big   |      1050 |     1
+ small |      1250 |   100
+ small |      1410 |    44
+ small |      1000 |    41
+ small |      1050 |    15
+ small |      1450 |    12
+ small |      1200 |     6
+(12 rows)
+
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c '\copy (SELECT * FROM fwapg.pcic_qa_drainage ORDER BY subid) TO '\''data/qa_drainage.csv'\'' WITH (FORMAT csv, HEADER)'
+COPY 37667
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -f sql/qa_following.sql
+DROP TABLE
+SELECT 37293
+ALTER TABLE
+ANALYZE
+   following   | count | no_placed_share 
+---------------+-------+-----------------
+ follows_none  |   186 |               0
+ follows_other |   248 |               0
+ ok            | 36098 |               0
+ unmeasured    |   761 |               0
+(4 rows)
+
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c '\copy (SELECT * FROM fwapg.pcic_qa_following ORDER BY subid) TO '\''data/qa_following.csv'\'' WITH (FORMAT csv, HEADER)'
+COPY 37293
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c 'DROP TABLE IF EXISTS fwapg.pcic_qa_flow'
+DROP TABLE
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c 'CREATE TABLE fwapg.pcic_qa_flow AS
+  SELECT m.subid, avg(q.q_m3s) AS q_pcic, avg(m.q_acc) AS q_fwa
+  FROM fwapg.pcic_subbasins_monthly m
+  INNER JOIN fwapg.pcic_outlet_monthly q ON q.subid = m.subid AND q.month = m.month
+  GROUP BY m.subid'
+SELECT 37667
+++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -tXA -f sql/qa.sql
++ qa='outlet segments carry accumulated flow|t
+accumulated flow within 5% of PCIC at >= 90% of placed outlets|t
+accumulated flow within 5% of PCIC at >= 95% of placed outlets over 100 m3/s|t
+placed >= 90% of outlets with a candidate|t
+twelve months per segment|t
+no negative flow|t
+flow drops > 10% downstream on <= 0.1% of segment pairs over 10 m3/s|t
+at most 100 placed outlets carry more than 10 times PCIC'\''s flow|t
+Kitsumkalum outlet 8007998 is placed and within 5% of PCIC|t
+no placed outlet sits above a confluence its PCIC child joins at|t
+tributary 356567538 carries flow|t
+every FWA child on another blue line joins above the start of its parent'\''s segment|t
+tributary 356359224 steps up flow below its junction, not above it|t
+flow steps up on the segment above the junction at <= 1,000 junctions over 1 m3/s|t
+at most 300 main-stem outlets flagged small and 200 big by the drainage check, none unmeasured|t
+at most 400 placed outlets follow another river and 300 none, every measured outlet has a placed share|t'
++ '[' 0 = 1 ']'
++ echo 'outlet segments carry accumulated flow|t
+accumulated flow within 5% of PCIC at >= 90% of placed outlets|t
+accumulated flow within 5% of PCIC at >= 95% of placed outlets over 100 m3/s|t
+placed >= 90% of outlets with a candidate|t
+twelve months per segment|t
+no negative flow|t
+flow drops > 10% downstream on <= 0.1% of segment pairs over 10 m3/s|t
+at most 100 placed outlets carry more than 10 times PCIC'\''s flow|t
+Kitsumkalum outlet 8007998 is placed and within 5% of PCIC|t
+no placed outlet sits above a confluence its PCIC child joins at|t
+tributary 356567538 carries flow|t
+every FWA child on another blue line joins above the start of its parent'\''s segment|t
+tributary 356359224 steps up flow below its junction, not above it|t
+flow steps up on the segment above the junction at <= 1,000 junctions over 1 m3/s|t
+at most 300 main-stem outlets flagged small and 200 big by the drainage check, none unmeasured|t
+at most 400 placed outlets follow another river and 300 none, every measured outlet has a placed share|t'
+outlet segments carry accumulated flow|t
+accumulated flow within 5% of PCIC at >= 90% of placed outlets|t
+accumulated flow within 5% of PCIC at >= 95% of placed outlets over 100 m3/s|t
+placed >= 90% of outlets with a candidate|t
+twelve months per segment|t
+no negative flow|t
+flow drops > 10% downstream on <= 0.1% of segment pairs over 10 m3/s|t
+at most 100 placed outlets carry more than 10 times PCIC's flow|t
+Kitsumkalum outlet 8007998 is placed and within 5% of PCIC|t
+no placed outlet sits above a confluence its PCIC child joins at|t
+tributary 356567538 carries flow|t
+every FWA child on another blue line joins above the start of its parent's segment|t
+tributary 356359224 steps up flow below its junction, not above it|t
+flow steps up on the segment above the junction at <= 1,000 junctions over 1 m3/s|t
+at most 300 main-stem outlets flagged small and 200 big by the drainage check, none unmeasured|t
+at most 400 placed outlets follow another river and 300 none, every measured outlet has a placed share|t
++ '[' -z 'outlet segments carry accumulated flow|t
+accumulated flow within 5% of PCIC at >= 90% of placed outlets|t
+accumulated flow within 5% of PCIC at >= 95% of placed outlets over 100 m3/s|t
+placed >= 90% of outlets with a candidate|t
+twelve months per segment|t
+no negative flow|t
+flow drops > 10% downstream on <= 0.1% of segment pairs over 10 m3/s|t
+at most 100 placed outlets carry more than 10 times PCIC'\''s flow|t
+Kitsumkalum outlet 8007998 is placed and within 5% of PCIC|t
+no placed outlet sits above a confluence its PCIC child joins at|t
+tributary 356567538 carries flow|t
+every FWA child on another blue line joins above the start of its parent'\''s segment|t
+tributary 356359224 steps up flow below its junction, not above it|t
+flow steps up on the segment above the junction at <= 1,000 junctions over 1 m3/s|t
+at most 300 main-stem outlets flagged small and 200 big by the drainage check, none unmeasured|t
+at most 400 placed outlets follow another river and 300 none, every measured outlet has a placed share|t' ']'
++ grep -qv '|t$'
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -f sql/qa_report.sql
+     flag     | islake | count 
+--------------+--------+-------
+ broken_chain | f      |   960
+ broken_chain | t      |    25
+ demoted      | f      |    43
+ no_candidate | f      |  9937
+ no_candidate | t      |    56
+ no_series    | f      |    28
+ placed       | f      | 37293
+ placed       | t      |   374
+(8 rows)
+
+ placed | p50_m | p90_m | p99_m | max_m | not_nearest_candidate 
+--------+-------+-------+-------+-------+-----------------------
+  37667 |   5.8 |  12.8 |  77.7 | 965.5 |                   608
+(1 row)
+
+   direction_method    | count | gap_gt_1m | gap_gt_100m 
+-----------------------+-------+-----------+-------------
+ downstream            | 47555 |      1126 |          63
+ lake_downstream_river |   450 |         0 |           0
+ lake_point_on_surface |     5 |         0 |           0
+ none                  |   239 |         0 |           0
+ upstream              |   467 |         0 |           0
+(5 rows)
+
+ outlets_without_series | subbasin_months_losing | subbasin_months 
+------------------------+------------------------+-----------------
+                     28 |                   7749 |          452004
+(1 row)
+
+ agreement  | count | over_100_m3s 
+------------+-------+--------------
+ FWA higher |   376 |            2
+ within 5%  | 37291 |         2436
+(2 rows)
+
+ watershed_group_code | segments | with_flow | share 
+----------------------+----------+-----------+-------
+ SKGT                 |     6934 |         1 |  0.00
+ PORI                 |     5203 |       561 |  0.11
+ KTSU                 |    15672 |      2147 |  0.14
+ NBNK                 |     5016 |       927 |  0.18
+ MORI                 |    19257 |      4368 |  0.23
+ KEEC                 |    14523 |      3770 |  0.26
+ NECL                 |    24150 |      7228 |  0.30
+ KUMR                 |    22952 |      8676 |  0.38
+ MBNK                 |     8170 |      3108 |  0.38
+ LRDO                 |    17904 |      6954 |  0.39
+ NASC                 |    28788 |     13045 |  0.45
+ VICT                 |     2147 |       983 |  0.46
+ WORC                 |    20208 |      9799 |  0.48
+ SEYM                 |    20707 |     11106 |  0.54
+ MILL                 |     8947 |      4956 |  0.55
+ GRAI                 |    36937 |     20787 |  0.56
+ KHTZ                 |    21737 |     12772 |  0.59
+ HOLB                 |     6818 |      4071 |  0.60
+ NEVI                 |     8335 |      5019 |  0.60
+ NIEL                 |    24570 |     15085 |  0.61
+ TAHS                 |     7570 |      4777 |  0.63
+ SAJR                 |    11098 |      7363 |  0.66
+ KNIG                 |    32849 |     22810 |  0.69
+ BIGC                 |    10294 |      7288 |  0.71
+ GRNL                 |    10658 |      7616 |  0.71
+ LSTR                 |    24438 |     17576 |  0.72
+ UDEN                 |    25681 |     18541 |  0.72
+ ELKR                 |    24727 |     18006 |  0.73
+ JERV                 |    17766 |     12981 |  0.73
+ LPCE                 |    11288 |      8187 |  0.73
+ KSHR                 |    23201 |     17213 |  0.74
+ BRKS                 |    12692 |      9529 |  0.75
+ TOBA                 |    34194 |     25595 |  0.75
+ CLAY                 |    17112 |     12934 |  0.76
+ PARK                 |     4649 |      3548 |  0.76
+ KOTL                 |    25574 |     19667 |  0.77
+ LCHR                 |    20988 |     16430 |  0.78
+ COMX                 |     8901 |      7058 |  0.79
+ EUCL                 |    15074 |     11974 |  0.79
+ GOLD                 |    13665 |     10853 |  0.79
+ SALM                 |     8687 |      6831 |  0.79
+ LFRA                 |    19989 |     15989 |  0.80
+ TSAY                 |    21767 |     17393 |  0.80
+ ALBN                 |    17119 |     13833 |  0.81
+ LEUT                 |     8536 |      6955 |  0.81
+ MFRA                 |     8663 |      7042 |  0.81
+ BLAR                 |    16823 |     13741 |  0.82
+ BRID                 |     7373 |      6067 |  0.82
+ LBTN                 |    27413 |     22359 |  0.82
+ UCHR                 |    18387 |     15285 |  0.83
+ MCGR                 |    22995 |     19201 |  0.84
+ NAZR                 |    21671 |     18202 |  0.84
+ SQAM                 |    25543 |     21420 |  0.84
+ KISK                 |    14904 |     12727 |  0.85
+ KITR                 |    26353 |     22292 |  0.85
+ LISR                 |    20126 |     17030 |  0.85
+ TSIT                 |    10293 |      8727 |  0.85
+ UPCE                 |    20979 |     17884 |  0.85
+ EUCH                 |     7469 |      6457 |  0.86
+ KITL                 |    32027 |     27387 |  0.86
+ MESC                 |    15732 |     13595 |  0.86
+ TASR                 |    15315 |     13171 |  0.86
+ UEUT                 |    23523 |     20317 |  0.86
+ BARR                 |    17181 |     14920 |  0.87
+ CHIL                 |     9000 |      7815 |  0.87
+ INKR                 |    39819 |     34695 |  0.87
+ BELA                 |    14600 |     12867 |  0.88
+ CHIR                 |    15080 |     13210 |  0.88
+ HERR                 |    16186 |     14189 |  0.88
+ LCHL                 |    16572 |     14622 |  0.88
+ LDEN                 |    24863 |     21843 |  0.88
+ NAHR                 |    23342 |     20561 |  0.88
+ OWIK                 |    49093 |     43112 |  0.88
+ UNUR                 |    13653 |     12028 |  0.88
+ HORS                 |    12423 |     11043 |  0.89
+ KLIN                 |    37091 |     32905 |  0.89
+ MORR                 |    24899 |     22218 |  0.89
+ NARC                 |    16228 |     14470 |  0.89
+ TWAC                 |    10504 |      9372 |  0.89
+ COWN                 |    10447 |      9360 |  0.90
+ LSKE                 |    32389 |     29234 |  0.90
+ NIMP                 |    12251 |     10981 |  0.90
+ SHER                 |    26230 |     23644 |  0.90
+ SPAT                 |    20379 |     18404 |  0.90
+ TAHR                 |    10354 |      9282 |  0.90
+ USTK                 |    22389 |     20078 |  0.90
+ ADMS                 |    11520 |     10434 |  0.91
+ ATNA                 |    18684 |     16919 |  0.91
+ FIRE                 |    29951 |     27161 |  0.91
+ INGR                 |    25043 |     22709 |  0.91
+ KAKC                 |    11118 |     10138 |  0.91
+ MESI                 |    15517 |     14067 |  0.91
+ SANJ                 |    15945 |     14480 |  0.91
+ BABR                 |    26417 |     24180 |  0.92
+ BOWR                 |    15795 |     14453 |  0.92
+ CHES                 |     8324 |      7677 |  0.92
+ DOGC                 |    11163 |     10221 |  0.92
+ GUIC                 |     6815 |      6262 |  0.92
+ ISKR                 |    23674 |     21808 |  0.92
+ KINR                 |    14986 |     13821 |  0.92
+ KLUM                 |    26763 |     24718 |  0.92
+ LBIR                 |    21480 |     19725 |  0.92
+ LHAF                 |    26305 |     24146 |  0.92
+ LOMI                 |    17177 |     15717 |  0.92
+ LSAL                 |    10141 |      9286 |  0.92
+ NICL                 |    11553 |     10630 |  0.92
+ OKAN                 |    20120 |     18572 |  0.92
+ SMOK                 |    31379 |     28742 |  0.92
+ UBIR                 |    15136 |     13888 |  0.92
+ UBTN                 |    20898 |     19149 |  0.92
+ USKE                 |    23458 |     21649 |  0.92
+ BULK                 |    32472 |     30037 |  0.93
+ CHUK                 |    13323 |     12437 |  0.93
+ DRIR                 |    10174 |      9442 |  0.93
+ FINL                 |    36792 |     34052 |  0.93
+ FOXR                 |    27744 |     25686 |  0.93
+ HARR                 |    11846 |     11064 |  0.93
+ LKEL                 |     2382 |      2213 |  0.93
+ LNRS                 |    10341 |      9610 |  0.93
+ MSTR                 |    33690 |     31257 |  0.93
+ NECR                 |    22849 |     21198 |  0.93
+ PINE                 |    39683 |     36728 |  0.93
+ PITR                 |    14219 |     13201 |  0.93
+ SHUL                 |    13075 |     12123 |  0.93
+ STUR                 |    12097 |     11212 |  0.93
+ UISR                 |    27716 |     25872 |  0.93
+ UNAR                 |    27109 |     25290 |  0.93
+ DEAD                 |    10172 |      9558 |  0.94
+ FRAN                 |    31911 |     30117 |  0.94
+ KLAR                 |    23809 |     22297 |  0.94
+ LNIC                 |    15967 |     14991 |  0.94
+ LNTH                 |    24261 |     22747 |  0.94
+ MORK                 |    43086 |     40509 |  0.94
+ MURR                 |    29140 |     27459 |  0.94
+ OSPK                 |    22138 |     20919 |  0.94
+ PARA                 |    14388 |     13470 |  0.94
+ UFRA                 |    32621 |     30522 |  0.94
+ UNRS                 |    25514 |     23978 |  0.94
+ UNTH                 |    24263 |     22810 |  0.94
+ USHU                 |    14287 |     13438 |  0.94
+ WILL                 |    14152 |     13279 |  0.94
+ ZYMO                 |    19928 |     18799 |  0.94
+ BABL                 |    25366 |     24172 |  0.95
+ BONP                 |    18734 |     17765 |  0.95
+ BULL                 |    13086 |     12410 |  0.95
+ CAMB                 |     8889 |      8478 |  0.95
+ CARR                 |    14054 |     13389 |  0.95
+ CLRH                 |    25669 |     24268 |  0.95
+ CLWR                 |    22436 |     21313 |  0.95
+ CRKD                 |    17626 |     16791 |  0.95
+ FINA                 |    23833 |     22626 |  0.95
+ KISP                 |    24654 |     23470 |  0.95
+ MAHD                 |    19784 |     18703 |  0.95
+ MURT                 |    15143 |     14372 |  0.95
+ NAKR                 |    25294 |     24143 |  0.95
+ NATR                 |    29298 |     27777 |  0.95
+ PARS                 |    37215 |     35290 |  0.95
+ STHM                 |    14147 |     13494 |  0.95
+ TAKL                 |    13172 |     12546 |  0.95
+ TAYR                 |    10962 |     10417 |  0.95
+ TOOD                 |    38868 |     36949 |  0.95
+ BBAR                 |    19094 |     18374 |  0.96
+ KETL                 |    27407 |     26226 |  0.96
+ LNAR                 |    29090 |     28018 |  0.96
+ LTRE                 |     8651 |      8311 |  0.96
+ NASR                 |    18885 |     18129 |  0.96
+ SALR                 |     9384 |      9000 |  0.96
+ THOM                 |    16927 |     16188 |  0.96
+ TUYR                 |    23093 |     22261 |  0.96
+ UOMI                 |    15474 |     14914 |  0.96
+ CARP                 |    14274 |     13877 |  0.97
+ CHWK                 |     5760 |      5584 |  0.97
+ COTR                 |    21147 |     20480 |  0.97
+ DUNC                 |    22627 |     21975 |  0.97
+ KOTR                 |    29535 |     28730 |  0.97
+ MIDR                 |     7726 |      7523 |  0.97
+ MUSK                 |     6858 |      6659 |  0.97
+ QUES                 |    24407 |     23643 |  0.97
+ SIML                 |    29778 |     28860 |  0.97
+ STUL                 |    13446 |     13079 |  0.97
+ TABR                 |     9504 |      9219 |  0.97
+ UTRE                 |     5706 |      5532 |  0.97
+ FRCN                 |    20453 |     19973 |  0.98
+ HOMA                 |    37800 |     36990 |  0.98
+ KHOR                 |    25971 |     25496 |  0.98
+ LARL                 |    22786 |     22238 |  0.98
+ LILL                 |    27399 |     26959 |  0.98
+ MSKE                 |    26072 |     25491 |  0.98
+ PCEA                 |    31774 |     31249 |  0.98
+ SLOC                 |    15468 |     15184 |  0.98
+ SMAR                 |    24525 |     24116 |  0.98
+ CANO                 |     9429 |      9352 |  0.99
+ COLR                 |    27266 |     26888 |  0.99
+ REVL                 |    22146 |     22024 |  0.99
+ SETN                 |    66083 |     65282 |  0.99
+ STIR                 |    15044 |     14955 |  0.99
+ SUST                 |    17164 |     16908 |  0.99
+ UARL                 |    23847 |     23603 |  0.99
+ UHAF                 |    28614 |     28391 |  0.99
+(199 rows)
+
+   subid   | blue_line_key | watershed_group_code | candidate_rank | distance_to_stream | q_pcic |  q_fwa   |  ratio  
+-----------+---------------+----------------------+----------------+--------------------+--------+----------+---------
+   4005077 |     356363411 | LCHR                 |              1 |               68.6 |  0.004 |   96.336 | 26107.3
+   5013265 |     356570045 | KETL                 |              1 |              104.0 |  0.006 |   75.722 | 13707.6
+   4000218 |     356364114 | HARR                 |              1 |               96.0 |  0.318 | 3062.494 |  9638.7
+   4006233 |     356363411 | LCHR                 |              1 |               36.7 |  0.002 |    7.292 |  3652.9
+   4000193 |     356364114 | HARR                 |              2 |               64.4 |  1.516 | 2616.816 |  1726.6
+   4005246 |     356360939 | BIGC                 |              1 |              113.5 |  0.012 |   13.266 |  1127.8
+   5011563 |     356570348 | KOTL                 |              1 |               92.7 |  0.453 |  449.640 |   992.8
+   5020190 |     356570372 | KHOR                 |              4 |              204.3 |  0.109 |   91.291 |   839.0
+   1002284 |     356362759 | CHES                 |              2 |               87.6 |  0.261 |  162.479 |   622.1
+   5020191 |     356570372 | KHOR                 |              4 |              119.5 |  0.154 |   91.182 |   594.0
+   8004630 |     360885316 | MORR                 |              1 |               66.6 |  0.148 |   86.507 |   586.2
+   5020032 |     356570372 | KHOR                 |              1 |               92.8 |  0.232 |   93.111 |   401.9
+  12008365 |     360884719 | KLAR                 |              1 |                2.6 |  0.168 |   65.021 |   387.5
+   5018772 |     356570372 | COLR                 |              1 |                6.3 |  0.068 |   24.927 |   366.7
+   5020179 |     356570372 | KHOR                 |              4 |              761.5 |  0.263 |   91.292 |   346.8
+   2006929 |     356364485 | LSAL                 |              1 |               65.6 |  0.085 |   25.141 |   295.6
+   2007062 |     356360570 | WILL                 |              1 |               73.9 |  0.134 |   38.496 |   287.1
+ 207009027 |     359572301 | UPCE                 |              1 |               85.6 |  0.066 |   14.213 |   216.9
+   5020176 |     356570372 | KHOR                 |              4 |              524.8 |  0.433 |   91.506 |   211.5
+   1002279 |     356362759 | CHES                 |              1 |               83.6 |  0.813 |  164.720 |   202.6
+   5021187 |     356570372 | KHOR                 |              2 |               82.6 |  0.862 |  146.425 |   169.9
+  11000851 |     360879671 | SHER                 |              1 |               75.1 |  0.587 |   89.274 |   152.0
+   4004529 |     356361447 | LCHR                 |              1 |                1.6 |  0.016 |    2.447 |   151.6
+   8001804 |     360879335 | ATNA                 |              1 |               88.6 |  0.190 |   27.228 |   143.1
+   5021367 |     356566349 | REVL                 |              2 |               87.9 |  0.300 |   39.965 |   133.4
+  12001228 |     360885942 | NASR                 |              4 |               87.4 |  4.134 |  548.376 |   132.6
+   3003875 |     356363833 | LNTH                 |              1 |               79.9 |  3.189 |  381.277 |   119.5
+   1001070 |     356363121 | LCHL                 |              1 |                7.0 |  0.088 |    9.435 |   107.2
+  12010178 |     360887117 | MSTR                 |              1 |                0.5 |  0.041 |    4.336 |   106.3
+   4002922 |     356364114 | SETN                 |              1 |               84.4 | 17.096 | 1676.273 |    98.1
+  12005744 |     360887017 | SPAT                 |              1 |               66.4 |  0.407 |   38.622 |    94.9
+   9006878 |     360886896 | KLIN                 |              1 |              109.3 |  1.575 |  120.595 |    76.6
+   2002068 |     356361153 | UFRA                 |              1 |              105.5 |  0.573 |   43.224 |    75.5
+  12010171 |     360887117 | MSTR                 |              1 |                1.7 |  0.058 |    4.352 |    75.4
+ 206001758 |     359551762 | PARA                 |              1 |              101.9 |  0.055 |    4.050 |    74.3
+  12010192 |     360887117 | MSTR                 |              1 |              104.2 |  0.058 |    4.294 |    73.6
+   5018781 |     356570372 | COLR                 |              3 |               85.2 |  0.365 |   24.691 |    67.7
+   5017473 |     356570562 | ELKR                 |              1 |                0.7 |  0.253 |   16.502 |    65.1
+   5013120 |     356567722 | KETL                 |              3 |              101.9 |  0.414 |   26.830 |    64.8
+ 206006772 |     359572999 | TOOD                 |              1 |                9.5 |  0.382 |   23.740 |    62.1
+  12007135 |     360886273 | LSTR                 |              1 |              103.5 | 15.027 |  887.246 |    59.0
+   3000932 |     356363194 | USHU                 |              1 |               52.8 |  0.925 |   52.456 |    56.7
+   8004694 |     360887063 | MORR                 |              1 |                5.4 |  0.534 |   28.833 |    54.0
+  12009365 |     360879992 | BARR                 |              1 |               92.6 |  1.678 |   90.242 |    53.8
+ 206006859 |     359569942 | FIRE                 |              1 |                6.7 |  1.200 |   63.490 |    52.9
+ 206006856 |     359569942 | FIRE                 |              1 |                4.1 |  1.351 |   63.641 |    47.1
+  12001369 |     360885423 | LNAR                 |              1 |                0.8 |  0.345 |   15.706 |    45.5
+ 207006405 |     359569841 | PINE                 |              1 |              106.1 |  0.357 |   15.103 |    42.3
+   4000204 |     356364114 | HARR                 |              1 |               99.0 | 74.554 | 3137.476 |    42.1
+   6002371 |     356570548 | OKAN                 |              1 |                6.5 |  0.578 |   22.318 |    38.6
+ 206008401 |     359571339 | FOXR                 |              2 |               77.2 |  0.479 |   17.474 |    36.5
+  12001366 |     360885423 | LNAR                 |              1 |               10.7 |  0.449 |   15.810 |    35.2
+  12003434 |     360880525 | LBIR                 |              1 |               66.7 |  3.164 |  105.177 |    33.2
+  12002365 |     360885942 | NASR                 |              3 |               84.1 |  4.201 |  132.812 |    31.6
+   3005576 |     356363833 | UNTH                 |              3 |               84.3 |  3.755 |  117.836 |    31.4
+  12004489 |     360886273 | LSTR                 |              5 |              688.5 | 48.193 | 1490.723 |    30.9
+   2002090 |     356361153 | UFRA                 |              1 |               65.5 |  1.449 |   42.341 |    29.2
+  12005326 |     360884719 | KLAR                 |              1 |               76.8 |  1.080 |   28.712 |    26.6
+   8007903 |     360882477 | LSKE                 |              1 |               84.1 |  1.335 |   30.697 |    23.0
+  12007450 |     360884979 | MESC                 |              4 |              678.8 |  0.411 |    8.953 |    21.8
+   5016169 |     356564083 | SLOC                 |              1 |               91.4 |  2.390 |   51.246 |    21.4
+   3000914 |     356363194 | USHU                 |              1 |               71.7 |  1.021 |   21.364 |    20.9
+   8010355 |     360884947 | MSKE                 |              2 |                6.9 |  1.316 |   25.169 |    19.1
+   5014584 |     356569222 | SMAR                 |              2 |               76.0 |  1.787 |   34.148 |    19.1
+   8002518 |     360887414 | KITL                 |              1 |               79.3 |  2.223 |   40.641 |    18.3
+   4007017 |     356357101 | UCHR                 |              1 |                5.2 |  0.099 |    1.712 |    17.3
+   2006603 |     356363393 | MCGR                 |              1 |               13.2 |  3.669 |   62.209 |    17.0
+ 207006993 |     359568776 | MURR                 |              1 |               64.4 |  0.312 |    4.926 |    15.8
+  12006604 |     360886710 | CHUK                 |              1 |               77.2 |  0.433 |    6.271 |    14.5
+   2000501 |     356361573 | UFRA                 |              1 |                9.6 |  0.831 |   11.673 |    14.0
+  11001736 |     360860768 | INKR                 |              2 |               94.8 |  5.114 |   71.476 |    14.0
+   5020099 |     356566041 | KHOR                 |              1 |                6.4 |  0.184 |    2.440 |    13.2
+   8010109 |     360885864 | KISP                 |              1 |                7.2 |  0.576 |    7.618 |    13.2
+   8001900 |     360879335 | ATNA                 |              3 |               87.3 |  1.546 |   20.421 |    13.2
+   8001087 |     360858825 | NIEL                 |              1 |               99.5 |  3.254 |   41.851 |    12.9
+   9006781 |     360886896 | KLIN                 |              2 |               78.3 |  7.738 |   96.814 |    12.5
+   5019878 |     356569187 | KHOR                 |              2 |               89.9 |  1.695 |   20.489 |    12.1
+  12003308 |     360878595 | LBIR                 |              1 |               80.0 |  1.535 |   18.133 |    11.8
+   9005552 |     360861331 | KLIN                 |              1 |              103.4 |  8.696 |  101.738 |    11.7
+   2003412 |     356363814 | COTR                 |              3 |               71.9 |  0.275 |    3.052 |    11.1
+  11000376 |     360879671 | SHER                 |              1 |               83.7 |  1.473 |   16.355 |    11.1
+   5017229 |     356568095 | KOTR                 |              1 |                4.9 |  0.330 |    3.643 |    11.0
+   4007152 |     356363411 | UCHR                 |              1 |               69.8 |  0.453 |    5.007 |    11.0
+  12001322 |     360885423 | LNAR                 |              3 |               52.9 |  1.922 |   21.024 |    10.9
+  12001835 |     360868849 | KSHR                 |              1 |               71.6 |  6.036 |   65.086 |    10.8
+   5020177 |     356570372 | KHOR                 |              4 |              404.1 | 59.039 |   91.337 |     1.5
+   5020143 |     356570372 | KHOR                 |              1 |                7.9 | 59.768 |   91.802 |     1.5
+(87 rows)
+
+              known_case              | q_m3s 
+--------------------------------------+-------
+ Ansedagan Creek (360884999) max flow | 0.005
+(1 row)
+
++ '[' 0 = 1 ']'
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -v step=month -v table=monthly -f sql/qa_report_clamped.sql
+ period | segment_rows | clamped | clamped_pct | clamped_1l | mid_network_rows | mid_network_clamped | mid_network_clamped_pct | mid_network_clamped_1l 
+--------+--------------+---------+-------------+------------+------------------+---------------------+-------------------------+------------------------
+ 1      |      3377037 |      18 |       0.001 |         15 |           267617 |                   0 |                   0.000 |                      0
+ 2      |      3377037 |     189 |       0.006 |          9 |           267617 |                   0 |                   0.000 |                      0
+ 3      |      3377037 |   27019 |       0.800 |      12646 |           267617 |                   0 |                   0.000 |                      0
+ 4      |      3377037 |  123899 |       3.669 |      92292 |           267617 |                 404 |                   0.151 |                    404
+ 5      |      3377037 |  137569 |       4.074 |     122465 |           267617 |                 766 |                   0.286 |                    766
+ 6      |      3377037 |   80390 |       2.380 |      74151 |           267617 |                 387 |                   0.145 |                    387
+ 7      |      3377037 |    5690 |       0.168 |       3834 |           267617 |                   7 |                   0.003 |                      7
+ 8      |      3377037 |      22 |       0.001 |          7 |           267617 |                   0 |                   0.000 |                      0
+ 9      |      3377037 |     944 |       0.028 |        219 |           267617 |                   2 |                   0.001 |                      0
+ 10     |      3377037 |    6205 |       0.184 |       2816 |           267617 |                   2 |                   0.001 |                      2
+ 11     |      3377037 |       2 |       0.000 |          0 |           267617 |                   0 |                   0.000 |                      0
+ 12     |      3377037 |       0 |       0.000 |          0 |           267617 |                   0 |                   0.000 |                      0
+ all    |     40524444 |  381947 |       0.943 |     308454 |          3211404 |                1568 |                   0.049 |                   1566
+(13 rows)
+
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -f ../../load/pcic_schema.sql
+psql:../../load/pcic_schema.sql:14: NOTICE:  schema "pcic" already exists, skipping
+CREATE SCHEMA
+psql:../../load/pcic_schema.sql:34: NOTICE:  relation "runs" already exists, skipping
+CREATE TABLE
+psql:../../load/pcic_schema.sql:41: NOTICE:  relation "day_bins" already exists, skipping
+CREATE TABLE
+psql:../../load/pcic_schema.sql:59: NOTICE:  relation "fwa_crosswalk" already exists, skipping
+CREATE TABLE
+psql:../../load/pcic_schema.sql:60: NOTICE:  relation "fwa_crosswalk_anchor_subid_idx" already exists, skipping
+CREATE INDEX
+psql:../../load/pcic_schema.sql:61: NOTICE:  relation "fwa_crosswalk_fwa_parent_subid_idx" already exists, skipping
+CREATE INDEX
+psql:../../load/pcic_schema.sql:62: NOTICE:  relation "fwa_crosswalk_linear_feature_id_idx" already exists, skipping
+CREATE INDEX
+psql:../../load/pcic_schema.sql:63: NOTICE:  relation "fwa_crosswalk_blk_idx" already exists, skipping
+CREATE INDEX
+psql:../../load/pcic_schema.sql:73: NOTICE:  relation "segment_weights" already exists, skipping
+CREATE TABLE
+psql:../../load/pcic_schema.sql:74: NOTICE:  relation "segment_weights_watershed_group_code_idx" already exists, skipping
+CREATE INDEX
+psql:../../load/pcic_schema.sql:75: NOTICE:  relation "segment_weights_subid_idx" already exists, skipping
+CREATE INDEX
+psql:../../load/pcic_schema.sql:88: NOTICE:  relation "subbasin_daily" already exists, skipping
+CREATE TABLE
+psql:../../load/pcic_schema.sql:99: NOTICE:  relation "discharge_monthly" already exists, skipping
+CREATE TABLE
+psql:../../load/pcic_schema.sql:110: NOTICE:  relation "discharge_weekly" already exists, skipping
+CREATE TABLE
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -v model=PNWNAmet -v scenario=historical -v period=1951-2012 -v weekly=0 -f sql/pcic_export.sql
+BEGIN
+SELECT 1
+DO
+TRUNCATE TABLE
+INSERT 0 48716
+INSERT 0 3377037
+INSERT 0 366
+DELETE 0
+INSERT 0 13786122
+DELETE 0
+INSERT 0 40524444
+DELETE 0
+DELETE 0
+INSERT 0 1
+COMMIT
+ANALYZE
+ANALYZE
+ANALYZE
+ANALYZE
+ANALYZE
++ RUNSQL='model = '\''PNWNAmet'\'' AND scenario = '\''historical'\'' AND period = '\''1951-2012'\'''
++ export_table pcic.runs 'SELECT * FROM pcic.runs ORDER BY model, scenario, period'
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c '\copy (SELECT * FROM pcic.runs ORDER BY model, scenario, period) TO STDOUT WITH (FORMAT csv, HEADER)'
++ gzip
++ mv pcic.runs.csv.gz.tmp pcic.runs.csv.gz
++ export_table pcic.day_bins 'SELECT * FROM pcic.day_bins ORDER BY month, day'
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c '\copy (SELECT * FROM pcic.day_bins ORDER BY month, day) TO STDOUT WITH (FORMAT csv, HEADER)'
++ gzip
++ mv pcic.day_bins.csv.gz.tmp pcic.day_bins.csv.gz
++ export_table pcic.fwa_crosswalk 'SELECT * FROM pcic.fwa_crosswalk ORDER BY subid'
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c '\copy (SELECT * FROM pcic.fwa_crosswalk ORDER BY subid) TO STDOUT WITH (FORMAT csv, HEADER)'
++ gzip
++ mv pcic.fwa_crosswalk.csv.gz.tmp pcic.fwa_crosswalk.csv.gz
++ export_table pcic.segment_weights 'SELECT * FROM pcic.segment_weights ORDER BY linear_feature_id'
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c '\copy (SELECT * FROM pcic.segment_weights ORDER BY linear_feature_id) TO STDOUT WITH (FORMAT csv, HEADER)'
++ gzip
++ mv pcic.segment_weights.csv.gz.tmp pcic.segment_weights.csv.gz
++ export_table pcic.subbasin_daily.pnwnamet_historical_1951-2012 'SELECT * FROM pcic.subbasin_daily WHERE model = '\''PNWNAmet'\'' AND scenario = '\''historical'\'' AND period = '\''1951-2012'\'' ORDER BY subid, month, day'
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c '\copy (SELECT * FROM pcic.subbasin_daily WHERE model = '\''PNWNAmet'\'' AND scenario = '\''historical'\'' AND period = '\''1951-2012'\'' ORDER BY subid, month, day) TO STDOUT WITH (FORMAT csv, HEADER)'
++ gzip
++ mv pcic.subbasin_daily.pnwnamet_historical_1951-2012.csv.gz.tmp pcic.subbasin_daily.pnwnamet_historical_1951-2012.csv.gz
++ export_table pcic.discharge_monthly.pnwnamet_historical_1951-2012 'SELECT * FROM pcic.discharge_monthly WHERE model = '\''PNWNAmet'\'' AND scenario = '\''historical'\'' AND period = '\''1951-2012'\'' ORDER BY linear_feature_id, month'
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c '\copy (SELECT * FROM pcic.discharge_monthly WHERE model = '\''PNWNAmet'\'' AND scenario = '\''historical'\'' AND period = '\''1951-2012'\'' ORDER BY linear_feature_id, month) TO STDOUT WITH (FORMAT csv, HEADER)'
++ gzip
++ mv pcic.discharge_monthly.pnwnamet_historical_1951-2012.csv.gz.tmp pcic.discharge_monthly.pnwnamet_historical_1951-2012.csv.gz
++ '[' 0 = 1 ']'
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c 'DROP TABLE IF EXISTS fwapg.pcic_qa_outlets, fwapg.pcic_qa_candidates'
+DROP TABLE
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c 'ALTER TABLE fwapg.pcic_outlets RENAME TO pcic_qa_outlets'
+ALTER TABLE
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c 'ALTER TABLE fwapg.pcic_candidates RENAME TO pcic_qa_candidates'
+ALTER TABLE
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c 'CREATE TABLE fwapg.pcic_qa_build AS
+  SELECT md5(string_agg(x::text, '\''|'\'' ORDER BY x.subid)) AS crosswalk_md5, now() AS built_at,
+    r.model, r.scenario, r.period, r.monthly_rows, r.monthly_q_sum
+  FROM pcic.fwa_crosswalk x, pcic.runs r
+  WHERE (r.model, r.scenario, r.period) = ('\''PNWNAmet'\'', '\''historical'\'', '\''1951-2012'\'')
+  GROUP BY r.model, r.scenario, r.period, r.monthly_rows, r.monthly_q_sum'
+SELECT 1
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c 'DROP TABLE fwapg.pcic_rivers, fwapg.pcic_lakes, fwapg.pcic_voters, fwapg.pcic_demoted, fwapg.pcic_fwa_crosswalk,
+  fwapg.pcic_day_bins, fwapg.pcic_outlet_daily, fwapg.pcic_subbasins, fwapg.pcic_subbasins_daily, fwapg.pcic_segment_weights'
+DROP TABLE
++ for st in '$STEPS'
++ psql $DATABASE_URL -v ON_ERROR_STOP=1 -c 'DROP TABLE fwapg.pcic_outlet_monthly, fwapg.pcic_subbasins_monthly, fwapg.pcic_discharge_monthly'
+DROP TABLE
++ echo 'PCIC crosswalk complete for PNWNAmet / historical / 1951-2012, see pcic.runs'
+PCIC crosswalk complete for PNWNAmet / historical / 1951-2012, see pcic.runs
+exit 0

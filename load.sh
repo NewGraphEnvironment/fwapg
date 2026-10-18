@@ -171,7 +171,8 @@ done
 $PSQL -f load/fwa_streams.sql
 
 # ---------------------
-# NewGraph fork only: PCIC monthly flow and crosswalk (extras/pcic_crosswalk), cached to NewGraph's fresh-bc bucket
+# NewGraph fork only: PCIC routed flow and crosswalk (extras/pcic_crosswalk), cached to NewGraph's fresh-bc bucket.
+# The two whse_basemapping tables are the first (1951-2012) build, kept until wet reads pcic
 # ---------------------
 tables=(
   pcic_fwa_crosswalk
@@ -180,6 +181,25 @@ tables=(
 for table in "${tables[@]}"; do
   echo $table
   $PSQL -f load/$table.sql
+done
+# the pcic schema (NewGraphEnvironment/fwapg#23, #25): the tables every run shares,
+# then each run's sub-basin daily and segment monthly flow. Weekly flow (about 175M
+# rows a run) is not loaded here; see extras/pcic_crosswalk/README.md.
+$PSQL -f load/pcic_schema.sql
+$PSQL -f load/pcic.sql
+PCIC_RUNS="pnwnamet_historical_1951-2012 pnwnamet_historical_1981-2010"
+# each run named here must be published (named as pcic_crosswalk.sh names its files)
+for run in $PCIC_RUNS; do
+  [ "$($PSQL -tXA -c "SELECT count(*) FROM pcic.runs
+    WHERE regexp_replace(lower(model || '_' || scenario || '_' || period), '[^a-z0-9.-]+', '_', 'g') = '$run'")" = 1 ] \
+    || { echo "pcic.runs on fresh-bc does not list $run: update load.sh's run list" >&2; exit 1; }
+done
+for run in $PCIC_RUNS; do
+  for table in subbasin_daily discharge_monthly; do
+    echo "pcic.$table $run"
+    curl -sSf "https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/pcic.$table.$run.csv.gz" \
+      | gunzip | $PSQL -v table=$table -f load/pcic_run.sql
+  done
 done
 
 # clean up

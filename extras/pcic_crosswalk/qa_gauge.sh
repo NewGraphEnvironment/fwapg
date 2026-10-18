@@ -4,13 +4,21 @@ set -euo pipefail
 # Compare monthly flow on the FWA segment at a Water Survey of Canada gauge with
 # the gauge's observed monthly means over the same years as the PCIC run.
 #
-#   ./qa_gauge.sh 08EE003          # Bulkley River near Houston
+#   ./qa_gauge.sh 08EE003                    # Bulkley River near Houston
+#   YEARS=1981/2010 ./qa_gauge.sh 08EE003    # another run, set as for pcic_crosswalk.sh
 #
-# Needs whse_basemapping.fwa_stream_networks_discharge_monthly.
+# Needs the run in pcic.discharge_monthly.
 
 STATION=$1
-YEAR_MIN=1951
-YEAR_MAX=2012
+MODEL=${MODEL:-PNWNAmet}
+SCENARIO=${SCENARIO:-historical}
+YEARS=${YEARS:-1951/2012}
+[[ "$YEARS" =~ ^([0-9]{4})/([0-9]{4})$ ]] || { echo "YEARS must be first/last, e.g. 1981/2010" >&2; exit 1; }
+[[ "$MODEL" =~ ^[A-Za-z0-9._-]+$ ]] && [[ "$SCENARIO" =~ ^[A-Za-z0-9._,\ -]+$ ]] \
+  || { echo "MODEL or SCENARIO has characters hydromosaic does not use" >&2; exit 1; }
+YEAR_MIN=${YEARS%/*}
+YEAR_MAX=${YEARS#*/}
+PERIOD=$YEAR_MIN-$YEAR_MAX
 PSQL="psql $DATABASE_URL -v ON_ERROR_STOP=1"
 API=https://api.weather.gc.ca/collections
 
@@ -63,7 +71,8 @@ SELECT
   round((d.q_m3s / nullif(o.q_obs, 0))::numeric, 2) AS ratio
 FROM gauge g
 CROSS JOIN obs o
-LEFT JOIN whse_basemapping.fwa_stream_networks_discharge_monthly d
+LEFT JOIN pcic.discharge_monthly d
   ON d.linear_feature_id = g.linear_feature_id AND d.month = o.month
+  AND (d.model, d.scenario, d.period) = ('$MODEL', '$SCENARIO', '$PERIOD')
 ORDER BY o.month;
 SQL

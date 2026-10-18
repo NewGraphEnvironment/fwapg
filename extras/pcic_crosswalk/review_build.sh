@@ -36,8 +36,20 @@ mkdir -p "$OUT" review
 # deterministic build, and so does its discharge
 present=$($PSQL -tXA -c "SELECT to_regclass('fwapg.pcic_qa_build') IS NOT NULL AND to_regclass('fwapg.pcic_qa_gauges') IS NOT NULL")
 [ "$present" = t ] || { echo "no fwapg.pcic_qa_build or fwapg.pcic_qa_gauges: run pcic_crosswalk.sh to the end, then qa_gauges.sh" >&2; exit 1; }
+# the gauges must be from the run the kept flows are from (qa_gauges.sh takes the run as the job does)
+samerun=$($PSQL -tXA -c "SELECT EXISTS (SELECT 1 FROM fwapg.pcic_qa_gauges g, fwapg.pcic_qa_build b
+  WHERE (g.model, g.scenario, g.period) = (b.model, b.scenario, b.period))
+  AND NOT EXISTS (SELECT 1 FROM fwapg.pcic_qa_gauges g, fwapg.pcic_qa_build b
+  WHERE (g.model, g.scenario, g.period) IS DISTINCT FROM (b.model, b.scenario, b.period))")
+[ "$samerun" = t ] || { echo "fwapg.pcic_qa_gauges is from another run than the job's last: rerun qa_gauges.sh with the job's MODEL, SCENARIO and YEARS" >&2; exit 1; }
+# and that run's monthly flow must still be the one the job wrote (a load or another
+# build can replace it with the crosswalk unchanged)
+sameflow=$($PSQL -tXA -c "SELECT EXISTS (SELECT 1 FROM fwapg.pcic_qa_build b INNER JOIN pcic.runs r
+  ON (r.model, r.scenario, r.period) = (b.model, b.scenario, b.period)
+  AND (r.monthly_rows, r.monthly_q_sum) = (b.monthly_rows, b.monthly_q_sum))")
+[ "$sameflow" = t ] || { echo "pcic.runs no longer lists the job's run with the monthly flow it wrote: rerun pcic_crosswalk.sh and qa_gauges.sh" >&2; exit 1; }
 same=$($PSQL -tXA -c "SELECT (SELECT crosswalk_md5 FROM fwapg.pcic_qa_build)
-  = (SELECT md5(string_agg(x::text, '|' ORDER BY x.subid)) FROM whse_basemapping.pcic_fwa_crosswalk x)")
+  = (SELECT md5(string_agg(x::text, '|' ORDER BY x.subid)) FROM pcic.fwa_crosswalk x)")
 [ "$same" = t ] || { echo "the crosswalk is not the one the kept pcic_qa_* tables were built with: rerun pcic_crosswalk.sh and qa_gauges.sh" >&2; exit 1; }
 
 # the GeoPackage is filled in place, so a rebuild (the same draw rebuilds it) must
@@ -120,7 +132,7 @@ layer fwa_candidates "SELECT DISTINCT s.review_id, c.blue_line_key, f.gnis_name,
   ORDER BY s.review_id"
 layer fwa_placed "SELECT s.review_id,
     ST_Force2D(whse_basemapping.FWA_LocateAlong(x.blue_line_key, x.downstream_route_measure)) AS geom
-  FROM $SAMPLE s INNER JOIN whse_basemapping.pcic_fwa_crosswalk x ON x.subid = s.subid
+  FROM $SAMPLE s INNER JOIN pcic.fwa_crosswalk x ON x.subid = s.subid
   WHERE x.flag IS NULL ORDER BY s.review_id"
 layer fwa_streams "SELECT f.blue_line_key, f.gnis_name, f.stream_order, f.edge_type, ST_Force2D(f.geom) AS geom
   FROM whse_basemapping.fwa_stream_networks_sp f, $AREA a WHERE ST_Intersects(f.geom, a.geom)"
@@ -137,7 +149,7 @@ $PSQL -c "\copy (
     (SELECT string_agg(g.station, ' ' ORDER BY g.station) FROM fwapg.pcic_qa_gauges g
      WHERE g.pcic_subid = d.subid AND g.fwa_over_pcic NOT BETWEEN 0.9 AND 1.1 AND NOT g.any_pcic_matches_fwa) AS gauges
   FROM fwapg.pcic_review_design d
-  INNER JOIN whse_basemapping.pcic_fwa_crosswalk x ON x.subid = d.subid
+  INNER JOIN pcic.fwa_crosswalk x ON x.subid = d.subid
   LEFT JOIN fwapg.pcic_qa_drainage dr ON dr.subid = d.subid
   LEFT JOIN fwapg.pcic_qa_following fo ON fo.subid = d.subid
   LEFT JOIN fwapg.pcic_qa_flow fl ON fl.subid = d.subid

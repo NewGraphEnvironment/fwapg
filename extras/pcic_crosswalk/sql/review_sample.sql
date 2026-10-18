@@ -30,7 +30,7 @@ DROP TABLE IF EXISTS fwapg.pcic_review_strata;
 CREATE TABLE fwapg.pcic_review_strata AS
 WITH placed AS (
   SELECT x.*, s.stream_order
-  FROM whse_basemapping.pcic_fwa_crosswalk x
+  FROM pcic.fwa_crosswalk x
   INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = x.linear_feature_id
   WHERE x.flag IS NULL
 ),
@@ -70,7 +70,7 @@ SELECT subid, 'following' FROM fwapg.pcic_qa_following WHERE flag IN ('follows_o
 UNION ALL
 SELECT subid, 'rank_gt1' FROM placed WHERE candidate_rank > 1
 UNION ALL
-SELECT subid, 'unplaced' FROM whse_basemapping.pcic_fwa_crosswalk WHERE flag IN ('broken_chain', 'demoted')
+SELECT subid, 'unplaced' FROM pcic.fwa_crosswalk WHERE flag IN ('broken_chain', 'demoted')
 UNION ALL
 SELECT subid, 'confluence' FROM confluence
 UNION ALL
