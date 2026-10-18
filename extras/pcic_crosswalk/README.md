@@ -129,6 +129,16 @@ fetch (27 min, network-bound). The job:
    they were built with, and the run their flows are from; the job drops it and `pcic_qa_gauges` when it
    starts. Build the reference run (the defaults) last before a review: the review's strata use flow.
 
+`./pcic_test.sh` tests the steps from the sub-basin daily flow and the weights on, on a fixture of four
+sub-basins and seven segments, in under 30 seconds and with no download: the day bins and weeks, monthly
+and weekly flow against the mean of every day's routed flow, the window query below, what the export
+writes, and the refusals in the export and the loads. The steps before it (placement, accumulation and
+the weights) are not tested here; `sql/qa.sql` checks them on a build. It needs a PostgreSQL 15+ server
+in `PGSERVER`, a URL with no database (e.g. `postgresql://postgres:postgres@localhost:5432`), and creates
+and drops the scratch databases `pcic_test` and `pcic_test_load` on it. Run it after changing
+`sql/pcic_crosswalk01_days.sql`, `08`, `09` or `sql/pcic_export.sql`, `../../load/pcic_schema.sql`,
+`pcic.sql` or `pcic_run.sql`, or the window query.
+
 To check against every Water Survey of Canada gauge in BC with discharge in the run's years (needs the
 run in `pcic.discharge_monthly` and the job's `data/` cache; writes `data/qa_gauges.csv`; the run is set
 as for the job, and gauge pages are cached per period in `data/wsc/<period>/`):

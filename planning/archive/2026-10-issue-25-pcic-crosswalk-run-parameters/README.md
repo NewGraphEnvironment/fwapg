@@ -16,6 +16,8 @@ What was learned is in `research/pcic_routed_flow_periods.md`:
 
 Review: a Plan-agent review of the plan (18 findings, `review-plan.md`), then `/code-check` over the branch in 3 rounds (6, 5 and 3 findings, all fixed). The loop ended by enumeration (`review-enumeration.md`), because rounds 2 and 3 each found a defect inside the previous round's fix.
 
+After the PR opened, the export and load proof became a self-checking test, `extras/pcic_crosswalk/pcic_test.sh` (107 checks, about 25 s on a fixture). It was reviewed in 3 rounds (`review-tests-round*.md`), each of which found checks that passed against broken code. Round 3 named the cause: each guard was tested with one input that broke every part of it at once, and the second run copied the first, so no single part of a condition or run key was shown to matter. It then walked all 95 guards, branches and keys. The fixes give each part an input that differs in that part alone. The final sweep ran 81 mutations: 75 are caught, and the 6 that pass are the ones round 3 judged harmless or equivalent (`tests/mutations/`).
+
 ## Measurement
 
 - **The rebuild is exact.** The 1951-2012 run rebuilt through the daily path equals the first build (#9) row for row:
@@ -55,6 +57,7 @@ Review: a Plan-agent review of the plan (18 findings, `review-plan.md`), then `/
 - `tests/`:
   - `regress_daily_vs_ymonmean.sh`;
   - `compare_monthly_vs_first_build.sql`;
-  - `test_pcic_export_load.sh`, the synthetic proof that every export guard and load refusal fires.
+  - `test_pcic_export_load.sh`, the synthetic proof that every export guard and load refusal fires. It printed the refusals for a reader to check; it became `extras/pcic_crosswalk/pcic_test.sh`, which counts failures and also tests the day bins, the period flow and the README's window query;
+  - `mutations/`: the mutation scripts run against `pcic_test.sh` (repo root and a scratch directory as arguments) and the final sweep's log.
 
 Closed by: PR #32
