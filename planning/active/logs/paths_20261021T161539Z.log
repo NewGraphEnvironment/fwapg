@@ -1,0 +1,40 @@
+NOTICE:  table "bench_blk_parents_before" does not exist, skipping
+NOTICE:  table "bench_blk_paths_before" does not exist, skipping
+before:
+blk_parents|1570499|5153b43b719febf8b82c8111862e441f
+blk_paths|1570499|06a9b844c59f728413467e3751f28731
+build start 2026-10-21T16:15:51Z
+++ dirname /Users/airvine/Projects/repo/fwapg/extras/blue_line_paths/blue_line_paths.sh
+SELECT 1597430
+ALTER TABLE
+SELECT 1568520
+CREATE INDEX
+CREATE INDEX
+SELECT 1482199
+SELECT 73069
+DROP TABLE
+CREATE TABLE
+INSERT 0 1467190
+INSERT 0 71331
+DO
+ANALYZE
+DROP TABLE
+SELECT 1570499
+ALTER TABLE
+ANALYZE
+DO
+CREATE FUNCTION
+++ psql <DATABASE_URL> -v ON_ERROR_STOP=1 -tXA -f sql/qa.sql
+the Kitsumkalum, which joins the Skeena through a braid, has a path to the Skeena|t
+Cayoosh Creek, which joins the Seton through a side channel that touches nothing, has a path to the Fraser|t'
+the Kitsumkalum, which joins the Skeena through a braid, has a path to the Skeena|t
+Cayoosh Creek, which joins the Seton through a side channel that touches nothing, has a path to the Fraser|t'
+the Okanagan, which leaves BC, has no path|t
+the Kitsumkalum, which joins the Skeena through a braid, has a path to the Skeena|t
+Cayoosh Creek, which joins the Seton through a side channel that touches nothing, has a path to the Fraser|t
+the Kitsumkalum, which joins the Skeena through a braid, has a path to the Skeena|t
+Cayoosh Creek, which joins the Seton through a side channel that touches nothing, has a path to the Fraser|t' ']'
+build end 2026-10-21T16:32:23Z, wall 992 s
+after:
+blk_parents|1570499|5153b43b719febf8b82c8111862e441f
+blk_paths|1570499|06a9b844c59f728413467e3751f28731

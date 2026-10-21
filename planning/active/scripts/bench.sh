@@ -14,7 +14,8 @@
 #   setup               timing tables and the cell matrix (sql/06_timings.sql)
 #   timings             every cell in fwapg.bench_cells, at defaults then noparallel
 #   explain             EXPLAIN (ANALYZE, BUFFERS) at 1 and 1,000 origins
-#   compare             correctness: results tables, then fwapg.bench_diffs
+#   results             each method's rows for the comparison samples (fwapg.bench_res)
+#   compare             correctness: set, order and distance into fwapg.bench_diffs
 #
 # One psql call per step and per cell, so a statement timeout ends that cell
 # only: it is recorded in fwapg.bench_timings and the run continues. No set -x:
@@ -32,7 +33,7 @@ mkdir -p "$logs"
 stamp() { date -u +%Y%m%dT%H%M%SZ; }
 
 # the URL (and so any password in it) never reaches a log
-redact() { perl -pe 'BEGIN { $u = $ENV{DATABASE_URL} } s/\Q$u\E/<DATABASE_URL>/g'; }
+redact() { perl -pe 'BEGIN { $| = 1; $u = $ENV{DATABASE_URL} } s/\Q$u\E/<DATABASE_URL>/g'; }
 
 # psql with the URL from the environment; -X ignores ~/.psqlrc
 run_psql() { psql -X -q "$DATABASE_URL" "$@"; }
@@ -48,6 +49,19 @@ logged() {
   local rc=${PIPESTATUS[0]}
   set -e
   return "$rc"
+}
+
+# timed steps wait until no other client query is active: an orphaned 26 h
+# query holding 7 cores ran through the first Hope measurement
+wait_idle() {
+  local busy
+  while :; do
+    busy=$(run_psql -At -c "SELECT count(*) FROM pg_stat_activity
+      WHERE backend_type = 'client backend' AND pid != pg_backend_pid() AND state != 'idle'")
+    [ "$busy" = 0 ] && return 0
+    echo "waiting: $busy other active client queries ($(date -u +%H:%M:%SZ))" >&2
+    sleep 60
+  done
 }
 
 # a QA file whose every line must end in |t (a NULL result prints "name|" and fails)
@@ -140,60 +154,82 @@ run_cell() {
   return $rc
 }
 
-step="${1:-}"
-shift || true
+# the whole run is one function, called on the last line: bash reads a script
+# as it runs, and an edit to this file during a long run would otherwise be read
+# mid-flight
+main() {
+  step="${1:-}"
+  shift || true
 
-case "$step" in
-  env)
-    logged env run_psql -At -v ON_ERROR_STOP=1 -f "$sql/00_env.sql"
-    ;;
-  origins)
-    logged origins run_psql -At -v ON_ERROR_STOP=1 -f "$sql/00_origins.sql"
-    ;;
-  hope)
-    logged hope run_psql -At -v ON_ERROR_STOP=1 -f "$sql/00_hope.sql"
-    ;;
-  paths)
-    logged paths bash -c '
-      set -euo pipefail
-      md5() { psql -X -q "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -f "$1/00_paths_md5.sql"; }
-      echo "before:"; md5 "$1"
-      t0=$(date +%s)
-      echo "build start $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-      "$(git -C "$1" rev-parse --show-toplevel)/extras/blue_line_paths/blue_line_paths.sh" 2>&1 | sed "/^+ /d"
-      echo "build end $(date -u +%Y-%m-%dT%H:%M:%SZ), wall $(( $(date +%s) - t0 )) s"
-      echo "after:"; md5 "$1"
-    ' _ "$sql"
-    ;;
-  ids)
-    logged ids run_psql -At -v ON_ERROR_STOP=1 -f "$sql/01_downstream_ids.sql"
-    out=$(logged ids_qa run_psql -At -v ON_ERROR_STOP=1 -f "$sql/01_qa.sql" | grep '|')
-    qa_check "$out"
-    ;;
-  setup)
-    logged setup run_psql -At -v ON_ERROR_STOP=1 -f "$sql/06_timings.sql"
-    ;;
-  cell)
-    [ $# -eq 4 ] || { echo "usage: bench.sh cell METHOD WALK CELL SETTINGS" >&2; exit 2; }
-    logged "cell_${1}_${2}_${3}_${4}" run_cell "$@"
-    ;;
-  timings)
-    # every cell in fwapg.bench_cells, at defaults first
-    for settings in default noparallel; do
-      run_psql -At -v ON_ERROR_STOP=1 -c "SELECT method, walk, cell FROM fwapg.bench_cells ORDER BY run_order" |
-      while IFS='|' read -r m w c; do
-        logged "cell_${m}_${w}_${c}_${settings}" run_cell "$m" "$w" "$c" "$settings" || true
+  case "$step" in
+    env)
+      logged env run_psql -At -v ON_ERROR_STOP=1 -f "$sql/00_env.sql"
+      ;;
+    origins)
+      logged origins run_psql -At -v ON_ERROR_STOP=1 -f "$sql/00_origins.sql"
+      ;;
+    hope)
+      wait_idle
+      logged hope run_psql -At -v ON_ERROR_STOP=1 -f "$sql/00_hope.sql"
+      ;;
+    paths)
+      wait_idle
+      logged paths bash -c '
+        set -euo pipefail
+        md5() { psql -X -q "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -f "$1/00_paths_md5.sql"; }
+        # the tables as they were, for a row diff if the md5s differ
+        psql -X -q "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "
+          DROP TABLE IF EXISTS fwapg.bench_blk_parents_before, fwapg.bench_blk_paths_before;
+          CREATE TABLE fwapg.bench_blk_parents_before AS SELECT * FROM fwapg.blk_parents;
+          CREATE TABLE fwapg.bench_blk_paths_before AS SELECT * FROM fwapg.blk_paths;"
+        echo "before:"; md5 "$1"
+        t0=$(date +%s)
+        echo "build start $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        "$(git -C "$1" rev-parse --show-toplevel)/extras/blue_line_paths/blue_line_paths.sh" 2>&1 | sed "/^+ /d"
+        echo "build end $(date -u +%Y-%m-%dT%H:%M:%SZ), wall $(( $(date +%s) - t0 )) s"
+        echo "after:"; md5 "$1"
+      ' _ "$sql"
+      ;;
+    ids)
+      wait_idle
+      logged ids run_psql -At -v ON_ERROR_STOP=1 -f "$sql/01_downstream_ids.sql"
+      out=$(logged ids_qa run_psql -At -v ON_ERROR_STOP=1 -f "$sql/01_qa.sql" | grep '^assert:')
+      qa_check "$out"
+      ;;
+    setup)
+      logged setup run_psql -At -v ON_ERROR_STOP=1 -f "$sql/06_timings.sql"
+      ;;
+    cell)
+      wait_idle
+      [ $# -eq 4 ] || { echo "usage: bench.sh cell METHOD WALK CELL SETTINGS" >&2; exit 2; }
+      logged "cell_${1}_${2}_${3}_${4}" run_cell "$@"
+      ;;
+    timings)
+      # every cell in fwapg.bench_cells, at defaults first
+      for settings in default noparallel; do
+        run_psql -At -v ON_ERROR_STOP=1 -c "SELECT method, walk, cell FROM fwapg.bench_cells ORDER BY run_order" |
+        while IFS='|' read -r m w c; do
+          wait_idle
+          logged "cell_${m}_${w}_${c}_${settings}" run_cell "$m" "$w" "$c" "$settings" || true
+        done
       done
-    done
-    ;;
-  explain)
-    logged explain bash -c 'cd "$1" && psql -X -q "$DATABASE_URL" -v ON_ERROR_STOP=1 -f 05_explain.sql' _ "$sql"
-    ;;
-  compare)
-    logged compare bash -c 'cd "$1" && psql -X -q "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -f 07_compare.sql' _ "$sql"
-    ;;
-  *)
-    sed -n '2,20p' "$0" >&2
-    exit 2
-    ;;
-esac
+      ;;
+    explain)
+      wait_idle
+      logged explain bash -c 'cd "$1" && psql -X -q "$DATABASE_URL" -v ON_ERROR_STOP=1 -f 05_explain.sql' _ "$sql"
+      ;;
+    results)
+      wait_idle
+      logged results bash -c 'cd "$1" && psql -X -q "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -f 07_results.sql' _ "$sql"
+      ;;
+    compare)
+      logged compare bash -c 'cd "$1" && psql -X -q "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -f 07_compare.sql' _ "$sql"
+      ;;
+    *)
+      sed -n '2,20p' "$0" >&2
+      exit 2
+      ;;
+  esac
+}
+
+main "$@"; exit $?

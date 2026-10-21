@@ -1,0 +1,17 @@
+Time: 1.567 ms
+Time: 22345.791 ms (00:22.346)
+Time: 24569.585 ms (00:24.570)
+Time: 17152.604 ms (00:17.153)
+Time: 9090.105 ms (00:09.090)
+Time: 15402.395 ms (00:15.402)
+Time: 23254.965 ms (00:23.255)
+Time: 5654.584 ms (00:05.655)
+psql:/Users/airvine/Projects/repo/fwapg/planning/active/scripts/sql/01_downstream_ids.sql:98: NOTICE:  table "downstream_ids" does not exist, skipping
+Time: 0.482 ms
+Time: 17763.856 ms (00:17.764)
+Time: 6616.205 ms (00:06.616)
+Time: 84.412 ms
+build wall|141.9 s
+size fwapg.downstream_ids|4907441 rows, heap 280 MB, primary key 105 MB, total 385 MB
+junction steps past the parent (path step > 1)|249
+psql:/Users/airvine/Projects/repo/fwapg/planning/active/scripts/sql/01_downstream_ids.sql:146: NOTICE:  table "bench_junction_steps" does not exist, skipping

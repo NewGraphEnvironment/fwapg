@@ -16,9 +16,9 @@ The method, the contract the three methods share, the pointer rules, the cells a
 - [x] The Hope trace re-run under the harness, warm, beside the 6.8 s probe
 
 ## Phase 2: paths and `downstream_id`
-- [ ] Re-time `blue_line_paths.sh` with sorted-row md5s of both tables before and after; on a mismatch, diff and attribute
-- [ ] `sql/01_downstream_ids.sql`: the table with `step_m`, rules 1–4, timed and sized
-- [ ] `sql/01_qa.sql`: the assertions; the 8 cut-offs, the override, and node pointers that leave a continuing line, listed
+- [x] Re-time `blue_line_paths.sh` with sorted-row md5s of both tables before and after; on a mismatch, diff and attribute
+- [x] `sql/01_downstream_ids.sql`: the table with `step_m`, rules 1–4, timed and sized
+- [x] `sql/01_qa.sql`: the assertions; the 8 cut-offs, the override, and node pointers that leave a continuing line, listed
 
 ## Phase 3: queries and timings
 - [ ] `sql/02_walk_ltree.sql`, `03_walk_arrays.sql`, `04_walk_pointer.sql`: L1, L2, A-pred, A, P as inline statements with psql variables, both walks

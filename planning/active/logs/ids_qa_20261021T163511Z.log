@@ -1,0 +1,30 @@
+assert: one row per network segment|t
+assert: no segment points to itself|t
+assert: every downstream_id is a segment|t
+assert: method and step_m are set exactly when downstream_id is|t
+assert: step_m is positive|t
+assert: the walk up from the roots reaches every segment once (acyclic, complete)|t
+assert: a tree segment points off the tree only where the tree QA logs it|t
+roots (null downstream_id)|213227; in tree 27096
+method junction, in tree|90
+method junction, not in tree|9710
+method line, in tree|8
+method line, not in tree|136778
+method node, in tree|4483174
+method node, not in tree|64454
+method null, in tree|27096
+method null, not in tree|186131
+node pointers that leave the blue line while the line continues|1
+of those, by source in tree|not in tree 1
+tree QA cut_off by pointer|line off tree 8
+tree QA dead_end by pointer|junction to tree 90, null 383
+tree QA no_parent by pointer|null 23
+cut_off 6046001|BARR side blk 360226346 -> 6046054 (line, blk 360226346, not in tree), step 477.992 m
+cut_off 84008361|KITR side blk 360222251 -> 84008662 (line, blk 360222251, not in tree), step 316.413 m
+cut_off 94053683|KUSR side blk 360214844 -> 94053751 (line, blk 360214844, not in tree), step 83.265 m
+cut_off 131038586|MESI side blk 359004909 -> 131038585 (line, blk 359004909, not in tree), step 21.234 m
+cut_off 162070818|OWIK side blk 360226879 -> 162072848 (line, blk 360226879, not in tree), step 1514.861 m
+cut_off 201006476|TATR side blk 360221119 -> 201006823 (line, blk 360221119, not in tree), step 340.336 m
+cut_off 701637992|LFRA side blk 355993394 -> 701637989 (line, blk 355993394, not in tree), step 402.402 m
+cut_off 710296019|GOLD side blk 354087807 -> 710296134 (line, blk 354087807, not in tree), step 164.850 m
+beaver override 868144443|excluded connector: in tree f, -> 868144441 (node)

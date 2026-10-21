@@ -18,4 +18,6 @@
 - Phase 1: `scripts/bench.sh` (one psql call per step and cell, URL redacted, timeouts recorded per cell), `sql/00_env.sql`, `sql/00_origins.sql`, `sql/00_hope.sql`, `sql/06_timings.sql` (timing tables and the cell matrix as `fwapg.bench_cells`)
 - Env: assertions hold; new fact, 158,188 on-network segments with a null local code (findings)
 - Origins: 100,000 random and every eligible segment of ADMS, BULK, LFRA (2 min)
-- Hope trace warm: median 1,085 ms (the 6.8 s probe was cold)
+- Hope trace warm: median 953 ms on the idle server (the 6.8 s probe was cold). A first run gave 1,085 ms under an orphaned 26 h `pcic` QA query holding 7 cores; that query (no client left) was cancelled, and bench.sh now waits for an idle server before each timed step
+- Phase 2: paths re-timed (992 s, md5s identical before and after); `fwapg.downstream_ids` built in 142 s, 385 MB, QA all `t`; rule 3 steps past a parent that starts at the junction (249 segments)
+- bench.sh: body wrapped in `main` after an edit landed while a run of it was in flight (bash reads scripts as it runs)

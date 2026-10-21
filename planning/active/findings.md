@@ -86,7 +86,35 @@ Origins (`fwapg.bench_origins`, seeded rank `md5('fwapg#34:' || linear_feature_i
 | BULK | 30,046 | 30,046 | 30,046 | 30,037 | 2,426 |
 | LFRA | 18,180 | 18,175 | 17,790 | 18,154 | 1,811 |
 
-Hope trace (`fwa_downstreamtrace(356364114, 160400)`, 536 rows): warm-up 2,667 ms, then 1,084, 1,085 and 1,093 ms; **median 1,085 ms warm**. The 6.8 s planning number was a cold probe.
+Hope trace (`fwa_downstreamtrace(356364114, 160400)`, 536 rows), idle server (`logs/hope_20261021T161512Z.log`): warm-up 1,889 ms, then 953, 954 and 926 ms; **median 953 ms warm**. The 6.8 s planning number was a cold probe.
+
+**A concurrent query was running through the first measurements.** An orphaned psql query (a QA check on the `pcic` tables, started 2026-10-20 13:37 UTC, no client process left on the machine, 6 parallel workers, the container at about 700 % CPU) had run for 26 h. It read only and its result had no receiver, so it was cancelled (`pg_cancel_backend`) at 16:15 UTC; the container then idled at 0 % CPU. The env and origins steps ran under it (they measure nothing time-sensitive). The first Hope run (`logs/hope_20261021T161337Z.log`: median 1,085 ms) did too, and is superseded by the idle one. Every later step checks `pg_stat_activity` for other client backends first.
+
+## Phase 2: paths re-timed, `downstream_ids` built (2026-10-21, `logs/paths_*`, `logs/ids_*`)
+
+**Blue line paths, re-timed unchanged** (`extras/blue_line_paths/blue_line_paths.sh`, idle server): 992 s wall (16.5 min), QA all `t`. Sorted-row md5s are identical before and after, so the build is deterministic on this data despite the `DISTINCT ON`s with no id tie-break:
+
+| table | rows | md5 before = after |
+|---|---|---|
+| `fwapg.blk_parents` | 1,570,499 | `5153b43b719febf8b82c8111862e441f` |
+| `fwapg.blk_paths` | 1,570,499 | `06a9b844c59f728413467e3751f28731` |
+
+Size, from `00_env.sql`: `blk_paths` 228 MB with its key, `blk_parents` 136 MB; the walk reads only `blk_paths` (and `fwa_stream_networks_sp` through `blkey_measure_idx`).
+
+**`fwapg.downstream_ids`**: 142 s wall (temp node table 22 s, tree up-node key 25 s, line window 17 s + 9 s key, junctions 15 s, the table 23 s, key 18 s), 4,907,441 rows, heap 280 MB, primary key 105 MB, **385 MB total**. The walk needs only the key. Every QA assertion is `t` (`logs/ids_qa_*`): one row per segment, no self pointer, every target a segment, `method` and `step_m` set exactly when `downstream_id` is, `step_m` positive, the walk up from the 213,227 roots reaches every segment once (acyclic and complete), and a tree segment points off the tree only where the tree QA logs it.
+
+| method | in tree | not in tree |
+|---|---|---|
+| node | 4,483,174 | 64,454 |
+| line | 8 | 136,778 |
+| junction | 90 | 9,710 |
+| null | 27,096 | 186,131 |
+
+- **One refinement to rule 3, made at build time:** where a line's junction is at or below its parent's lowest segment (the parent starts there), the step goes to the next line on the path with a segment below its junction, as the array walk does. 249 lowest segments took a step past their parent.
+- **Null in tree, 27,096:** 26,690 outlets, the 23 `no_parent` mouths, and 383 of the 473 dead ends. Those 383 join a parent exactly at the parent's lowest segment start (the parent begins there: its bottom is the junction measure), and every later line on their path does the same, so there is no segment below any junction: the network ends. The array walk ends at the same place (no segment more than 1 mm below the junction). The other 90 dead ends take a junction step onto the tree.
+- **The 8 cut-offs** all take a `line` step to the next segment of their own side channel, off the tree (BARR, KITR, KUSR, MESI, OWIK, TATR, LFRA, GOLD; 21 m to 1,515 m), and so continue down the channel the tree dropped.
+- **The Beaver River override** (868144443, an excluded 6010 connector): not in the tree, a `node` pointer onto the tree; no segment points to it.
+- **Node pointers that leave the blue line while the line continues: 1** (a side channel, not in the tree). The A–P difference by design is therefore almost entirely at line ends, not mid-line.
 
 ## Plan review
 
