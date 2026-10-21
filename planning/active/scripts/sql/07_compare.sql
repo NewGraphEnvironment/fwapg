@@ -196,11 +196,21 @@ AND EXISTS (
   )
 );
 
--- the tree and the paths send the water down different lines: the origin has a
--- difference on a line the other method never visits; every difference of the
--- origin follows from it
+-- the tree and the paths send the water down different lines and rejoin: the
+-- origin has a difference on a line the other method never visits, and both
+-- walks end at the same segment, so every difference between follows from the
+-- choice of line (a walk cut short would end elsewhere)
 UPDATE fwapg.bench_diffs d SET class = 'route_differs'
-WHERE d.pair IN ('A-P', 'A-P 1km') AND d.kind = 'set' AND d.class IS NULL
+WHERE d.pair = 'A-P' AND d.kind = 'set' AND d.class IS NULL
+AND (
+  SELECT r.linear_feature_id FROM fwapg.bench_res r
+  WHERE r.method = 'A' AND r.walk = 'full' AND r.origin_id = d.origin_id
+  ORDER BY r.ord DESC LIMIT 1
+) = (
+  SELECT r.linear_feature_id FROM fwapg.bench_res r
+  WHERE r.method = 'P' AND r.walk = 'full' AND r.origin_id = d.origin_id
+  ORDER BY r.ord DESC LIMIT 1
+)
 AND EXISTS (
   SELECT 1
   FROM fwapg.bench_diffs e
@@ -212,17 +222,35 @@ AND EXISTS (
     INNER JOIN cmp_seg y ON y.linear_feature_id = r.linear_feature_id
     WHERE r.origin_id = e.origin_id
     AND r.method = CASE WHEN e.in_a THEN 'P' ELSE 'A' END
-    AND r.walk = CASE WHEN d.pair = 'A-P' THEN 'full' ELSE '1km' END
+    AND r.walk = 'full'
     AND y.blue_line_key = x.blue_line_key
   )
 );
 
--- 1 km: a difference in where the walk stops, from a difference before it
-UPDATE fwapg.bench_diffs d SET class = 'route_differs'
+-- 1 km: the same difference as in the full walk (the segment, on the same side)
+UPDATE fwapg.bench_diffs d SET class = e.class
+FROM fwapg.bench_diffs e
 WHERE d.pair = 'A-P 1km' AND d.kind = 'set' AND d.class IS NULL
-AND EXISTS (
+AND e.pair = 'A-P' AND e.kind = 'set' AND e.class IS NOT NULL
+AND e.origin_id = d.origin_id AND e.linear_feature_id = d.linear_feature_id
+AND e.in_a = d.in_a AND e.in_b = d.in_b;
+
+-- 1 km: a segment both full walks return, inside one walk's 1 km and not the
+-- other's, because a full-walk difference within the first 1 km shifted the
+-- distances: that difference's class
+UPDATE fwapg.bench_diffs d SET class = (
+  SELECT e.class FROM fwapg.bench_diffs e
+  WHERE e.pair = 'A-P' AND e.kind = 'set' AND e.origin_id = d.origin_id AND e.class IS NOT NULL
+  AND EXISTS (
+    SELECT 1 FROM fwapg.bench_res r
+    WHERE r.walk = '1km' AND r.origin_id = e.origin_id AND r.linear_feature_id = e.linear_feature_id
+  )
+  ORDER BY e.linear_feature_id LIMIT 1
+)
+WHERE d.pair = 'A-P 1km' AND d.kind = 'set' AND d.class IS NULL
+AND NOT EXISTS (
   SELECT 1 FROM fwapg.bench_diffs e
-  WHERE e.pair = 'A-P' AND e.origin_id = d.origin_id AND e.class IS NOT NULL
+  WHERE e.pair = 'A-P' AND e.kind = 'set' AND e.origin_id = d.origin_id AND e.linear_feature_id = d.linear_feature_id
 );
 
 UPDATE fwapg.bench_diffs d SET class = 'float_accumulation'
@@ -253,6 +281,7 @@ FROM cmp_seg x
 WHERE d.pair = 'L2-A' AND d.kind = 'set' AND d.class IS NULL
 AND d.in_a
 AND x.linear_feature_id = d.linear_feature_id
+AND NOT x.is_main
 AND NOT EXISTS (SELECT 1 FROM cmp_lines c WHERE c.origin_id = d.origin_id AND c.blk = x.blue_line_key);
 
 -- the path takes the water through a side channel (a braid it touches), which
@@ -305,10 +334,16 @@ UPDATE fwapg.bench_diffs d SET class = 'localcode_anomaly'
 WHERE d.pair = 'L2-A' AND d.kind = 'set' AND d.class IS NULL
 AND (
   d.linear_feature_id IN (SELECT linear_feature_id FROM cmp_lc_anomaly)
-  OR EXISTS (
-    SELECT 1 FROM fwapg.bench_origins o
-    WHERE o.origin_id = d.origin_id
-    AND (NOT o.localcode_ltree <@ o.wscode_ltree OR nlevel(o.localcode_ltree) > nlevel(o.wscode_ltree) + 1)
+  OR (
+    EXISTS (
+      SELECT 1 FROM fwapg.bench_origins o
+      WHERE o.origin_id = d.origin_id
+      AND (NOT o.localcode_ltree <@ o.wscode_ltree OR nlevel(o.localcode_ltree) > nlevel(o.wscode_ltree) + 1)
+    )
+    AND EXISTS (
+      SELECT 1 FROM cmp_lines c INNER JOIN cmp_seg x ON x.blue_line_key = c.blk
+      WHERE c.origin_id = d.origin_id AND x.linear_feature_id = d.linear_feature_id
+    )
   )
 );
 
@@ -374,7 +409,7 @@ AND EXISTS (
 -- which across two lines says nothing about flow
 UPDATE fwapg.bench_diffs d SET class = 'code_tie_across_lines'
 FROM cmp_seg x, cmp_seg p
-WHERE d.kind = 'order' AND d.class IS NULL
+WHERE d.kind = 'order' AND d.class IS NULL AND d.pair IN ('L2-A', 'L2-P', 'L1-L2')
 AND x.linear_feature_id = d.linear_feature_id
 AND p.linear_feature_id = d.prev_linear_feature_id
 AND x.blue_line_key != p.blue_line_key
@@ -385,7 +420,7 @@ AND x.localcode_ltree = p.localcode_ltree;
 -- one before it on the same blue line, and its local code is greater
 UPDATE fwapg.bench_diffs d SET class = 'localcode_anomaly'
 FROM cmp_seg x, cmp_seg p
-WHERE d.kind = 'order' AND d.class IS NULL AND d.pair != 'L1-L2'
+WHERE d.kind = 'order' AND d.class IS NULL AND d.pair IN ('L2-A', 'L2-P')
 AND x.linear_feature_id = d.linear_feature_id
 AND p.linear_feature_id = d.prev_linear_feature_id
 AND x.blue_line_key = p.blue_line_key
@@ -393,7 +428,7 @@ AND x.localcode_ltree > p.localcode_ltree;
 
 UPDATE fwapg.bench_diffs d SET class = 'path_through_side_channel'
 FROM cmp_seg x, cmp_seg p
-WHERE d.kind = 'order' AND d.class IS NULL AND d.pair != 'L1-L2'
+WHERE d.kind = 'order' AND d.class IS NULL AND d.pair IN ('L2-A', 'L2-P')
 AND x.linear_feature_id = d.linear_feature_id
 AND p.linear_feature_id = d.prev_linear_feature_id
 AND (NOT x.is_main OR NOT p.is_main);
@@ -451,6 +486,23 @@ SELECT 'origins with a difference ' || pair, count(DISTINCT origin_id)
 FROM fwapg.bench_diffs
 GROUP BY pair
 ORDER BY pair;
+
+SELECT 'largest A-P distance difference where the sets agree (m) ' || a.walk, max(abs(a.cum_m - b.cum_m))
+FROM fwapg.bench_res a
+INNER JOIN fwapg.bench_res b ON b.method = 'P' AND b.walk = a.walk
+  AND b.origin_id = a.origin_id AND b.linear_feature_id = a.linear_feature_id
+WHERE a.method = 'A'
+AND NOT EXISTS (
+  SELECT 1 FROM fwapg.bench_diffs d
+  WHERE d.pair = 'A-P' || CASE WHEN a.walk = '1km' THEN ' 1km' ELSE '' END
+  AND d.kind = 'set' AND d.origin_id = a.origin_id
+)
+GROUP BY a.walk
+ORDER BY a.walk;
+
+SELECT 'side_channel segments on a main line (expected 0)', count(*)
+FROM fwapg.bench_diffs d INNER JOIN cmp_seg x ON x.linear_feature_id = d.linear_feature_id
+WHERE d.class = 'side_channel' AND x.is_main;
 
 SELECT 'assert: no unattributed difference',
   NOT EXISTS (SELECT 1 FROM fwapg.bench_diffs WHERE class = 'unattributed');

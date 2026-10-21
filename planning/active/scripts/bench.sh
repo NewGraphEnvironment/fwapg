@@ -36,7 +36,8 @@ mkdir -p "$logs"
 stamp() { date -u +%Y%m%dT%H%M%SZ; }
 
 # the URL (and so any password in it) never reaches a log
-redact() { perl -pe 'BEGIN { $| = 1; $u = $ENV{DATABASE_URL} } s/\Q$u\E/<DATABASE_URL>/g'; }
+# and no home directory path does either (a public repo)
+redact() { perl -pe 'BEGIN { $| = 1; $u = $ENV{DATABASE_URL}; $h = $ENV{HOME} } s/\Q$u\E/<DATABASE_URL>/g; s/\Q$h\E/~/g'; }
 
 # psql with the URL from the environment; -X ignores ~/.psqlrc
 run_psql() { psql -X -q "$DATABASE_URL" "$@"; }
@@ -108,6 +109,14 @@ cell_script() {
 \\set sink_close ') AS walk_rows'
 \\set sink_gset true
 SET statement_timeout = '${BENCH_TIMEOUT:-30min}';
+-- a re-run replaces the cell's earlier rows (its earlier logs stay)
+DELETE FROM fwapg.bench_timings
+WHERE method = :'method' AND walk = :'walk' AND cell = :'cell' AND settings = :'settings';
+-- the walk files' dispatch flags, set here so no query of theirs falls inside the timed interval
+\\set dispatch_given true
+\\set is_l1 $( [ "$method" = L1 ] && echo true || echo false )
+\\set is_pred $( [ "$method" = A-pred ] && echo true || echo false )
+\\set is_1km $( [ "$walk" = 1km ] && echo true || echo false )
 SQL
   if [ "$settings" = noparallel ]; then
     echo "SET max_parallel_workers_per_gather = 0;"
@@ -150,7 +159,10 @@ SQL
 run_cell() {
   local script
   script=$(mktemp "${TMPDIR:-/tmp}/bench_cell.XXXXXX")
-  cell_script "$@" > "$script"
+  if ! cell_script "$@" > "$script"; then
+    rm -f "$script"
+    return 1
+  fi
   # no ON_ERROR_STOP: the script reads :ERROR itself; cd so \ir resolves
   (cd "$sql" && run_psql -At -f "$script" < /dev/null)
   local rc=$?
