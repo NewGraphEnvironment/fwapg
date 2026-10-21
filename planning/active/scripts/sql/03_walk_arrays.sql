@@ -1,6 +1,6 @@
 -- Array walks (#34) over fwapg.blk_paths, included with psql variables method
--- (A-pred or A), walk (full or 1km), grp, lo, hi, out. The INSERT must stay the
--- file's last statement: the caller reads :ERROR and :ROW_COUNT after it.
+-- (A-pred or A), walk (full or 1km), grp, lo, hi and the sink below. The walk
+-- must stay the file's last statement: a cell reads :ERROR after it.
 --
 -- A-pred: the shipped predicate fwapg.blk_on_or_upstream(a, b) (b on or upstream
 --   of a) as a join against fwa_stream_networks_sp, ids only: #30's question of
@@ -26,23 +26,43 @@
 --   cum_m, as the pointer walk makes it: a segment is kept when it starts within
 --   1,000 m (cum_m - step_m < 1000).
 
--- :explain prefixes the INSERT with EXPLAIN (05_explain.sql); empty otherwise
+-- How the rows are consumed: the walk's SELECT, which returns (origin_id,
+-- linear_feature_id, ord, cum_m), is wrapped in :sink_open ... :sink_close and
+-- ended with \gset when :sink_gset is true, ; otherwise.
+--   timing cell (bench.sh): one row of aggregates over every column, so every
+--     row is computed and none is written (PostgreSQL never runs a data-modifying
+--     statement in parallel, and writing new pages is slow on this host mount);
+--     :n is the row count.
+--   results (07_results.sql, 07_compare.sql): INSERT INTO :out, the default.
+-- :explain prefixes the statement with EXPLAIN (05_explain.sql).
 \if :{?explain}
 \else
 \set explain ''
+\endif
+\if :{?sink_open}
+\else
+\set sink_open 'INSERT INTO ' :out ' (origin_id, linear_feature_id, ord, cum_m)'
+\set sink_close ''
+\set sink_gset false
 \endif
 
 SELECT :'method' = 'A-pred' AS is_pred, :'walk' = '1km' AS is_1km \gset
 
 \if :is_pred
-:explain INSERT INTO :out (origin_id, linear_feature_id)
-SELECT o.origin_id, s.linear_feature_id
+:explain :sink_open
+SELECT o.origin_id, s.linear_feature_id, NULL::integer AS ord, NULL::double precision AS cum_m
 FROM fwapg.bench_origins o
 INNER JOIN whse_basemapping.fwa_stream_networks_sp s
   ON fwapg.blk_on_or_upstream(s.blue_line_key, s.downstream_route_measure, o.blue_line_key, o.measure)
-WHERE o.grp = :'grp' AND o.rnk BETWEEN :lo AND :hi;
+WHERE o.grp = :'grp' AND o.rnk BETWEEN :lo AND :hi
+:sink_close
+\if :sink_gset
+\gset
+\else
+;
+\endif
 \elif :is_1km
-:explain INSERT INTO :out (origin_id, linear_feature_id, ord, cum_m)
+:explain :sink_open
 WITH lines AS (
   SELECT o.origin_id, o.linear_feature_id AS origin_segment, o.measure AS origin_measure,
     0::bigint AS step, o.blue_line_key AS blk, o.measure AS junction, o.measure AS upper
@@ -104,11 +124,17 @@ chain AS (
   FROM segs
   WINDOW w AS (PARTITION BY origin_id ORDER BY step, drm DESC ROWS UNBOUNDED PRECEDING)
 )
-SELECT origin_id, linear_feature_id, ord, cum_m
+SELECT origin_id, linear_feature_id, ord::integer AS ord, cum_m
 FROM chain
-WHERE cum_m - step_m < 1000;
+WHERE cum_m - step_m < 1000
+:sink_close
+\if :sink_gset
+\gset
 \else
-:explain INSERT INTO :out (origin_id, linear_feature_id, ord, cum_m)
+;
+\endif
+\else
+:explain :sink_open
 WITH lines AS (
   SELECT o.origin_id, o.linear_feature_id AS origin_segment, o.measure AS origin_measure,
     0::bigint AS step, o.blue_line_key AS blk, o.measure AS junction, o.measure AS upper
@@ -139,8 +165,14 @@ segs AS (
     AND s.downstream_route_measure < l.upper
 )
 SELECT origin_id, linear_feature_id,
-  row_number() OVER w,
-  sum(step_m) OVER w
+  (row_number() OVER w)::integer AS ord,
+  sum(step_m) OVER w AS cum_m
 FROM segs
-WINDOW w AS (PARTITION BY origin_id ORDER BY step, drm DESC ROWS UNBOUNDED PRECEDING);
+WINDOW w AS (PARTITION BY origin_id ORDER BY step, drm DESC ROWS UNBOUNDED PRECEDING)
+:sink_close
+\if :sink_gset
+\gset
+\else
+;
+\endif
 \endif

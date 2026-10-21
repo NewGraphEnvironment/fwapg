@@ -103,7 +103,9 @@ cell_script() {
 \\set cell '$cell'
 \\set settings '$settings'
 \\set grp '$grp'
-\\set out fwapg.bench_out
+\\set sink_open 'SELECT count(*) AS n, bit_xor(origin_id::bigint) AS x_origin, bit_xor(linear_feature_id) AS x_segment, sum(ord::bigint) AS s_ord, sum(cum_m) AS s_cum FROM ('
+\\set sink_close ') AS walk_rows'
+\\set sink_gset true
 SET statement_timeout = '${BENCH_TIMEOUT:-30min}';
 SQL
   if [ "$settings" = noparallel ]; then
@@ -123,8 +125,6 @@ SQL
       fi
       cat <<SQL
 \\set rep $r
-DELETE FROM fwapg.bench_out;
-VACUUM fwapg.bench_out;
 SELECT clock_timestamp() AS t0 \\gset
 \\i $walkfile
 \\if :ERROR
@@ -134,7 +134,6 @@ SELECT clock_timestamp() AS t0 \\gset
   SELECT format('%s %s %s %s origin %s rep %s: %s', :'method', :'walk', :'cell', :'settings', :'origin_rank', :rep, :'LAST_ERROR_MESSAGE');
   \\q
 \\else
-  \\set n :ROW_COUNT
   INSERT INTO fwapg.bench_timings (method, walk, cell, settings, origin_rank, rep, ms, rows, note)
   VALUES (:'method', :'walk', :'cell', :'settings', :origin_rank, :rep,
     extract(epoch FROM clock_timestamp() - :'t0'::timestamptz) * 1000, :n,

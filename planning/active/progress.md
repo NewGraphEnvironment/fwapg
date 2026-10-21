@@ -23,3 +23,5 @@
 - bench.sh: body wrapped in `main` after an edit landed while a run of it was in flight (bash reads scripts as it runs)
 - Phase 3 harness: walk files 02–04, `05_explain.sql`; the sink pre-extended after the first EXPLAINs showed inserts into new pages cost 4 s of A's 5.6 s at 1,000 origins (Docker Desktop host mount)
 - Phase 4 run before the timings (it would load the server under them): `07_results.sql`, `07_compare.sql`, `07_setdiff.sql`; three iterations of the classes (`logs/compare_*`), the last with nothing unattributed; Hope fixture holds at 161.40 km, the docs' 308.54 km is stale (309.70 km verbatim)
+- Plan correction: cells time the walk under an aggregate over every column, not an INSERT (PostgreSQL never parallelises a data-modifying statement, which would have made the no-parallel pass a repeat); EXPLAINs re-run
+- Timing matrix launched 2026-10-21 17:16 UTC (`bench.sh timings`, defaults then noparallel)

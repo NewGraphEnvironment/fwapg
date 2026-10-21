@@ -1,7 +1,6 @@
 -- The timing tables and the cell matrix (#34). Run once by `bench.sh setup`,
--- after 00_origins.sql. bench.sh reads fwapg.bench_cells; each timed statement
--- inserts into fwapg.bench_out (unlogged, emptied per repeat) and the run
--- appends a row to fwapg.bench_timings.
+-- after 00_origins.sql. bench.sh reads fwapg.bench_cells, times each statement
+-- and appends a row to fwapg.bench_timings.
 --
 -- An origin set is (grp, rnk between lo and hi) of fwapg.bench_origins: the
 -- random sample's ranks nest, so 1..1000 contains 1..100. A per_origin cell
@@ -9,27 +8,10 @@
 -- A budget cell runs once, with no warm-up: it is expected to time out and is
 -- projected from the cell below it.
 
--- The sink is pre-extended once and emptied with DELETE and VACUUM between
--- repeats, never TRUNCATE: on this machine the database files sit on a Docker
--- Desktop host mount, where extending a relation costs about 3.7 us a row
--- (1.2 M rows: 4.4 s into new pages, 0.2 s into pages kept by VACUUM). That cost
--- is the mount's, not the method's, and would dominate every large cell.
--- vacuum_truncate = false keeps the emptied pages; 200 M rows covers the
--- largest cell (L2 at 100,000 origins, about 1,774 rows an origin).
+-- Cells consume the walk's rows under one row of aggregates over every column
+-- and write nothing (bench.sh says why); the sink table of the first runs is
+-- dropped.
 DROP TABLE IF EXISTS fwapg.bench_out;
-
-CREATE UNLOGGED TABLE fwapg.bench_out (
-  origin_id integer,
-  linear_feature_id bigint,
-  ord integer,
-  cum_m double precision
-) WITH (vacuum_truncate = false, autovacuum_enabled = false);
-
-INSERT INTO fwapg.bench_out SELECT g, g, g, g FROM generate_series(1, 200000000) g;
-DELETE FROM fwapg.bench_out;
-VACUUM fwapg.bench_out;
-
-SELECT 'bench_out pre-extended', pg_size_pretty(pg_relation_size('fwapg.bench_out'));
 
 CREATE TABLE IF NOT EXISTS fwapg.bench_timings (
   id serial PRIMARY KEY,
