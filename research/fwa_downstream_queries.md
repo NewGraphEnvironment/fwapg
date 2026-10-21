@@ -37,6 +37,7 @@ On 4,000 origins (random 1..1,000 and a seeded 1,000 from each of ADMS, BULK and
 | | null local code | 47 | 23 |
 | | order: local codes out of order along a line | 43,320 | 3,688 |
 | | order: two lines with the same codes | 53 | 45 |
+| | order: across a braid on the path | 9 | 9 |
 
 The arrays and the pointers agree on 3,976 of the 4,000 origins, and where their sets agree the largest distance difference is 0 m: both sum the same per-segment step (`step_m`, below). From Hope (Fraser, measure 160400) both return 239 segments, 161.40 km of main flow, as `docs/03_functions.md` gives; ltree returns 544 segments, 309.70 km, against the docs' 308.54 km, which is stale.
 
@@ -48,7 +49,7 @@ The arrays and the pointers agree on 3,976 of the 4,000 origins, and where their
 
 ## Speed
 
-Measured on one machine (16 cores, 128 GB, PostgreSQL 17.5 in Docker Desktop, `shared_buffers` 32 GB, `work_mem` 2 GB, warm cache, server defaults: up to 8 workers), each walk consumed under one row of aggregates over every output column, so every row is computed and none is written. Medians of three repeats after a warm-up; a single origin is the median of 20. A statement with no origins costs 0.8 to 1.6 ms (55 ms for the array predicate).
+Measured on one machine (16 cores, 128 GB, PostgreSQL 17.5 in Docker Desktop, `shared_buffers` 32 GB, `work_mem` 2 GB, warm cache), each walk consumed under one row of aggregates over every output column, so every row is computed and none is written. Unless a line says otherwise, the times are at server defaults (up to 8 workers), medians of three repeats after a warm-up; a single origin is the median of 20 origins; the ltree join's 100,000-origin and whole-group cells are one run each, with no warm-up. A statement with no origins costs 0.8 to 1.6 ms (55 ms for the array predicate).
 
 To the outlet, random origins:
 
@@ -57,19 +58,28 @@ To the outlet, random origins:
 | 1 | 28 ms | 8 ms | 2.5 ms | 2.3 ms |
 | 1,000 | 15 s | 12 s | 1.3 s | 2.4 s |
 | 10,000 | | 102 s | 9.2 s | 6.1 s |
-| 100,000 | | 943 s | 210 s | 219 s |
+| 100,000 | | 943 s (one run) | 210 s | 219 s |
 
 A random origin has about 1,160 segments below it on the walks (1,770 for ltree), so 100,000 origins are 115 M rows (174 M). Within 1 km (about 5 segments an origin) the array walk takes 42 ms at 1,000 origins and 2.6 s at 100,000, the pointer walk 19 ms and 1.5 s. Every segment of a watershed group, to the outlet: ADMS (10,458) ltree 154 s, arrays 9.4 s, pointers 16 s; BULK (30,046) 199 s, 12 s, 47 s; LFRA (18,180) 101 s, 1.7 s, 2.7 s.
 
-- **Neither walk leads everywhere to the outlet.** The array walk's time over the pointer walk's runs from 0.27 (BULK: arrays 3.7 times faster) to 2.1 (LFRA's 1,000-origin sample: pointers 2.1 times faster); the arrays lead at random 1,000 and on whole groups, the pointers at random 10,000 and on each group's 1,000-origin sample, and 100,000 is even.
-- **Within 1 km the pointer walk is 1.7 to 5.5 times faster** on every batch.
-- **Both are faster than the ltree join on every batch:** the arrays 1.75 to 58 times, the pointers 3.1 to 47 times (with or without workers), 9.7 and 5.2 times at 1,000 random origins.
-- **Workers** (each cell re-run at both settings interleaved, the pointer walk as the control for drift, which never uses them): they speed the array walk 1.5 to 1.7 times on random batches and 7.6 times on BULK, which without them takes 101 s against the pointers' 52 s; they speed the shipped trace 2 times; they slow the ltree join 1.15 to 1.6 times; they do nothing at 1 km.
-- **Per origin, both walks slow from 10,000 to 100,000 origins** (with workers, the arrays from 0.9 to 2.1 ms an origin, the pointers from 0.6 to 2.2 ms) while the join holds at 9 to 10 ms; that was not investigated.
+The array walk's time over the pointer walk's, to the outlet, at defaults (below 1, the arrays are faster):
+
+| batch | arrays / pointers |
+|---|---|
+| 1 random origin | 1.07 |
+| random 1,000; 10,000; 100,000 | 0.53; 1.50; 0.96 |
+| 1,000 from ADMS; BULK; LFRA | 1.22; 1.25; 2.13 |
+| all of ADMS; BULK; LFRA | 0.59; 0.27; 0.66 |
+
+- **Neither walk leads everywhere to the outlet.** At defaults the arrays are faster on random 1,000 and on the three whole groups (up to 3.7 times, BULK), the pointers on random 10,000 and on the three groups' 1,000-origin samples (up to 2.1 times, LFRA).
+- **Within 1 km the pointer walk is 1.7 to 5.5 times faster** on each batch measured, in both passes.
+- **Both walks are faster than the ltree join on each batch measured, to the outlet**, at defaults: the arrays 3.3 times at one origin and 4.5 to 58 times on batches, the pointers 3.5 times at one origin and 4.3 to 47 times on batches (at random 1,000: 9.7 and 5.2 times).
+- **Workers**, from 11 cells re-run at both settings interleaved, with the pointer walk (which never uses them, and moved 0.90 to 1.01 between settings) as the control for drift: on those cells, they speed the array walk 1.5 times (random 1,000), 1.7 times (random 10,000) and 7.6 times (BULK, which without workers takes 101 s against the pointers' 52 s); they speed the shipped trace 2 times (random 1,000); they slow the ltree join 1.6 times (random 1,000) and 1.15 times (random 10,000); they leave the 1 km walks unchanged. At one origin the two passes give the same times for every method. The other cells were not interleaved; their no-worker times come from a later pass and mix the setting with drift between runs.
+- **Per origin, both walks slow from 10,000 to 100,000 origins** (at defaults, the arrays from 0.9 to 2.1 ms an origin, the pointers from 0.6 to 2.2 ms) while the join holds at 9 to 10 ms; that was not investigated.
 - **The array predicate cannot be a join condition:** 15.5 s for one origin, because it is evaluated on every segment of the province, and 1,000 origins time out at 30 minutes.
 
 ## Answers to #30
 
-**Paths against a `downstream_id` walked recursively.** Neither wins everywhere. To the outlet, either leads by up to 3.7 times depending on the batch, and without workers the arrays lose their lead on large batches (BULK: 101 s against 52 s); within 1 km the pointers are 1.7 to 5.5 times faster. On correctness the pointers are slightly ahead: they agree with the arrays on 3,976 of 4,000 origins, and of the other 24, the pointers keep the segment a code junction drops (17), continue where the paths stop but the mouth is on the tree (4) and take the tree's line where the paths take another before rejoining (3). They cost the paths' build plus 142 s and 385 MB, against the paths' 228 MB, and are the simpler query (no window over the rows). They do not win decisively, so the paths stay what the extras use; a `downstream_id` is cheap to add from the tree and paths if a consumer needs short walks or runs without workers.
+**Paths against a `downstream_id` walked recursively.** Neither wins everywhere. At defaults, to the outlet, the arrays are faster on random 1,000 origins and on whole watershed groups (up to 3.7 times), the pointers on random 10,000 and on the groups' 1,000-origin samples (up to 2.1 times); within 1 km the pointers are 1.7 to 5.5 times faster on each batch measured. The array walk depends on workers and the pointer walk cannot use them: without workers, on the interleaved cells, the two are even at random 1,000 and the pointers are faster at random 10,000 (2.4 times) and on BULK (1.9 times). On correctness the pointers are slightly ahead: they agree with the arrays on 3,976 of 4,000 origins, and of the other 24, the pointers keep the segment a code junction drops (17), continue where the paths stop but the mouth is on the tree (4) and take the tree's line where the paths take another before rejoining (3). They cost the paths' build plus 142 s and 385 MB, against the paths' 228 MB, and are the simpler query (no window over the rows). They do not win decisively, so the paths stay what the extras use; a `downstream_id` is cheap to add from the tree and paths if a consumer needs short walks.
 
-**The array query against ltree, and the `fwa_` functions.** The array walk is 5.8 to 9.7 times faster than the ltree join at 1,000 origins (without and with workers), and returns a different thing: the water's path, ordered, with a distance on every segment, where ltree returns everything the codes put below the origin, side channels included, ordered by codes. Arrays are not the cost: the walk unnests about four junctions an origin and reads one index range per line. An `fwa_` function could use the paths as a walk (a set-returning function per origin, or a join over the unnested path), not by putting `fwapg.blk_on_or_upstream()` in a join's `ON` clause, which reads every segment for each origin. Because the sets differ, it would be a new function beside `FWA_Downstream()`, not a faster drop-in.
+**The array query against ltree, and the `fwa_` functions.** At defaults the array walk is 9.7 times faster than the ltree join on 1,000 random origins (12.0 times in the interleaved run, 4.8 times there without workers), and returns a different thing: the water's path, ordered, with a distance on every segment, where ltree returns everything the codes put below the origin, side channels included, ordered by codes. Arrays are not the cost: the walk unnests about four junctions an origin and reads one index range per line. An `fwa_` function could use the paths as a walk (a set-returning function per origin, or a join over the unnested path), not by putting `fwapg.blk_on_or_upstream()` in a join's `ON` clause, which reads every segment for each origin. Because the sets differ, it would be a new function beside `FWA_Downstream()`, not a faster drop-in.

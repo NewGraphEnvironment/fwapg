@@ -143,9 +143,9 @@ Rows at 1,000 random origins: L1 1.76 M, L2 1.77 M, A 1.156 M, P 1.156 M; at 100
 
 **Random origins, 1 km**: 1 origin A 1.45, P 0.78 ms (both at the fixed cost); 1,000: A 42 / 31 ms, P 19 / 15 ms; 10,000: A 382 / 306 ms, P 198 / 160 ms; 100,000: A 2.6 / 2.4 s, P 1.5 / 1.3 s (about 5 segments an origin).
 
-**Whole groups, to the outlet** (default / np): ADMS (10,458 origins) L2 154 / 124 s, A 9.4 / 16.5 s, P 16.1 / 15.8 s; BULK (30,046) L2 199 / 216 s, A 12.5 / 100 s, P 46.8 / 48.6 s; LFRA (18,180) L2 101 / 137 s, A 1.7 / 2.5 s, P 2.7 / 3.0 s. Each group's seeded 1,000 sits in the same order (`logs/summary_*`).
+**Whole groups, to the outlet** (default / np): ADMS (10,458 origins) L2 154 / 124 s, A 9.4 / 16.5 s, P 16.1 / 15.8 s; BULK (30,046) L2 199 / 216 s, A 12.5 / 100 s, P 46.8 / 48.6 s; LFRA (18,180) L2 101 / 137 s, A 1.7 / 2.5 s, P 2.7 / 3.0 s. The groups' seeded 1,000-origin samples do not sit in the same order: at defaults the whole groups order A < P < L2, the samples P < A < L2 (`ratio` lines).
 
-**Settings, interleaved** (`bench.sh ab`, 22:08–23:16 UTC, `logs/summary_20261021T231626Z.log`). Review round 2 found the two passes confounded with time: every default cell ran before every no-parallel one, and P, which never uses workers, differed by 12–39 % between them. So eleven cells were re-run at both settings in the order default, no-parallel, no-parallel, default; median of six repeats each. P is the control: its ratio (no-parallel over default) is 0.90 at 1,000, 1.00 at 10,000 and 1.01 on BULK, so drift within the interleaved run is under about 10 %.
+**Settings, interleaved** (`bench.sh ab`, 22:08–23:16 UTC, `logs/summary_20261021T231626Z.log`). Review round 2 found the two passes confounded with time: every default cell ran before every no-parallel one, and P, which never uses workers, differed by 12 to 39 % between them on the random batches (its ratio over all cells runs from 0.77 to 1.39, a few within 2 to 6 %). So eleven cells were re-run at both settings in the order default, no-parallel, no-parallel, default; median of six repeats each. P is the control: its ratio (no-parallel over default) is 0.90 at 1,000, 1.00 at 10,000 and 1.01 on BULK, so drift within the interleaved run is under about 10 %.
 
 | cell | default | no-parallel | ratio |
 |---|---|---|---|
@@ -165,7 +165,7 @@ The no-parallel column of the main tables above comes from the later pass, so it
 
 What the numbers say (ratios read off the `ratio` lines of `logs/summary_20261021T231626Z.log`; "a / b" above 1 means b is faster):
 
-- **Array walk against pointer walk, to the outlet:** neither leads everywhere. A / P runs from 0.27 (BULK whole, with workers: A 3.7 times faster) to 2.22 (random 10,000 without workers: P 2.2 times faster). With workers: A leads at random 1,000 (0.53) and on the three whole groups (0.27–0.66); P leads at random 10,000 (1.50) and on the three groups' 1,000 subsamples (1.22–2.13); 100,000 is even (0.96).
+- **Array walk against pointer walk, to the outlet:** neither leads everywhere. At defaults A / P runs from 0.27 (BULK whole: A 3.7 times faster) to 2.13 (LFRA's 1,000 sample: P 2.1 times faster). At defaults: A leads at random 1,000 (0.53) and on the three whole groups (0.27–0.66); P leads at random 10,000 (1.50) and on the three groups' 1,000 subsamples (1.22–2.13); 100,000 is even (0.96).
 - **Within 1 km, P is 1.7 to 5.5 times faster than A** on every batch (A / P 1.74–5.50; at one origin 1.9, both within about 1 ms of the fixed cost).
 - **Both walks are faster than the ltree join on every batch, to the outlet:** L2 / A from 1.75 to 58, L2 / P from 3.1 to 47 (largest on LFRA, where the chains are short and L2 still enumerates the lower Fraser's side channels). At random 1,000 with workers, L2 / A 9.7 and L2 / P 5.2.
 - **Workers** (interleaved table): they speed the array walk (1.5 times at 1,000, 1.7 at 10,000, 7.6 on BULK), the shipped trace (2.0 times at 1,000; EXPLAIN shows one worker over the origins) and nothing at 1 km; they slow the ltree join (1.6 times at 1,000, 1.15 at 10,000). A recursive CTE never uses them, so P is the same either way.
@@ -173,25 +173,24 @@ What the numbers say (ratios read off the `ratio` lines of `logs/summary_2026102
 - **The array predicate is unusable as a join:** 15.5 s for one origin (a sequential scan of every segment, its `EXISTS` evaluated on each), and 1,000 origins time out at 30 min (projected 4.3 h).
 - **The shipped trace** costs 28 ms an origin warm; 1,000 origins take 15 s with workers. The first default run of that cell (28.9 s, 17:37 UTC) had no warm-up and read `fwa_streams` cold for origins 101..1,000; it was replaced by the re-run.
 
-## Claims checked (after review round 2)
+## Claims checked (after review rounds 2 and 3)
 
-Review round 2 found comparative claims written by hand from the tables that the tables did not support ("within a factor of two", "leads whenever workers are off", "its two passes agree", "the reverse"). The mechanism: a ratio computed by eye from two rows, then generalised by a quantifier. `08_summary.sql` now prints every pair's ratio (`ratio` lines) and the interleaved settings (`ab` lines), and every quantified or comparative claim in `research/fwa_downstream_queries.md` was enumerated (a grep for times, faster, slower, lead, every, all, never, none, each, about) and checked against them, 25 matches:
+Rounds 2 and 3 found comparative claims that their sources did not support. The mechanism, named by round 3: a claim was checked as the checker re-stated it (adding a scope such as "with workers" or "random batches" that the sentence lacked) against one source the checker picked, not as written against every row its quantifier covers; and settings effects measured on a few interleaved cells were generalised to whole methods. The remedy taken: every comparative sentence in `research/fwa_downstream_queries.md`'s Speed and Answers sections now names its batches and setting in the sentence itself, the arrays-over-pointers ratios are printed as a table there, the settings claims are confined to the 11 interleaved cells and say so, and each was re-read against the `ratio` and `ab` lines of `logs/summary_20261021T231626Z.log` as written:
 
-| claim | source | verdict |
+| claim as written | rows its scope covers | verdict |
 |---|---|---|
-| ltree returns about 1.4 times the walks' segments | `bench_res`: 5,676,798 / 4,004,331 = 1.42 | holds |
-| pointer method counts (node 4,547,628, line 136,786, junction 9,800, null 213,227) | `logs/ids_qa_*` | holds |
+| at defaults, arrays faster on random 1,000 and the 3 whole groups (up to 3.7 times), pointers on random 10,000 and the 3 group samples (up to 2.1 times) | A / P default: 0.53, 0.59, 0.27, 0.66; 1.50, 1.22, 1.25, 2.13 | holds; 1 origin (1.07) and 100,000 (0.96) are in the table, not in the sentence |
+| within 1 km pointers 1.7 to 5.5 times faster on each batch measured, in both passes | A / P 1km, 14 rows: 1.74 to 5.50 | holds |
+| at defaults arrays 3.3 times faster than the join at one origin and 4.5 to 58 on batches; pointers 3.5, and 4.3 to 47 | L2 / A default: 3.27; 4.48 to 57.62; L2 / P: 3.51; 4.26 to 46.64 | holds (the endpoints 4.48, 57.62, 4.26 and 46.64 rest on the join's one-run cells, stated in the section) |
+| workers, on the interleaved cells: arrays 1.5, 1.7, 7.6 times faster; trace 2 times; join 1.6 and 1.15 times slower; 1 km unchanged; P control 0.90 to 1.01 | `ab` lines: 1.52, 1.72, 7.61; 1.95; 0.61, 0.87; 0.99, 1.01; 0.90, 1.00, 1.01, 1.01 | holds |
+| at one origin the two passes give the same times for every method | cells `1`: L1 28.46 / 28.12, L2 8.17 / 8.42, A 2.50 / 2.50, P 2.33 / 2.27, 1 km 1.45 / 1.48 and 0.78 / 0.77, A-pred 15,508 / 15,644 ms | holds (within 3 %) |
+| without workers on the interleaved cells: even at random 1,000, pointers 2.4 times at 10,000 and 1.9 times on BULK | `ab`: A 1,948 / P 1,972 ms; 15,562 / 6,593 ms; 100,806 / 52,482 ms | holds |
+| arrays 9.7 times faster than the join on random 1,000 at defaults; 12.0 and 4.8 in the interleaved run | `ratio L2 / A full 1000` default 9.73; `ab` 15,494 / 1,286 and 9,406 / 1,948 | holds |
+| ltree about 1.4 times the walks' segments | `bench_res` 5,676,798 / 4,004,331 | holds |
 | no-origin statement 0.8 to 1.6 ms, array predicate 55 ms | cells `0` | holds |
-| about 1,160 segments an origin (1,770 ltree); 115 M and 174 M rows at 100,000 | cells `1000`, `100000` rows | holds |
-| 1 km: arrays 42 ms and 2.6 s, pointers 19 ms and 1.5 s; about 5 segments | cells | holds |
-| arrays over pointers, to the outlet, from 0.27 (BULK) to 2.1 (LFRA_1000), with workers; who leads where | `ratio A / P full`, default | holds (single origin 1.07, not claimed) |
-| within 1 km the pointers are 1.7 to 5.5 times faster on every batch | `ratio A / P 1km`: 1.74 to 5.50 | holds |
-| arrays 1.75 to 58, pointers 3.1 to 47 times faster than the join, every batch; 9.7 and 5.2 at 1,000 | `ratio L2 / A`, `L2 / P` | holds |
-| workers: arrays 1.5–1.7 times faster, BULK 7.6 (101 against 52 s); trace 2 times; join 1.15–1.6 times slower; nothing at 1 km | `ab` lines | holds |
-| per origin from 10,000 to 100,000: arrays 0.9 to 2.1 ms, pointers 0.6 to 2.2 ms, join 9 to 10 ms | cells, default | holds |
-| array predicate 15.5 s an origin, 1,000 time out | cells `1`, `1000` | holds |
-| arrays 5.8 to 9.7 times faster than the join at 1,000 | `ratio L2 / A full 1000` | holds |
-| about four junctions an origin | `blk_paths` mean 4.18 lines | holds |
+| about 1,160 segments an origin (1,770 ltree); 115 M and 174 M rows | cells `1000`, `100000` | holds |
+| per origin from 10,000 to 100,000 at defaults: arrays 0.9 to 2.1 ms, pointers 0.6 to 2.2, join 9 to 10 | cells `10000`, `100000` default | holds |
+| about four junctions an origin | random origins with a path: 3.76 lines on average (round 3) | holds |
 
 ## Phase 4: correctness (2026-10-21, `logs/results_*`, `logs/compare_*`)
 
@@ -221,7 +220,7 @@ Run before the timings, because the comparison queries would load the server und
 
 The classes were tightened after review rounds 1 and 2 (`logs/compare_20261021T2*`): side channels must be on non-main lines (0 main-line segments in the class, checked), which exposed main-line segments a broader class had absorbed, now `path_ends` and `code_parent_bypassed`; `path_ends` takes main lines only (round 2 found it absorbing side channels of an ancestor code); `route_differs` requires the walks to rejoin; the A–P `path_ends` requires the array walk to be a prefix of the pointer walk. The results were regenerated with the final walk files first. The largest A–P distance difference where the sets agree is logged: 0 m, to the outlet and at 1 km. One comparison run (`compare_20261021T215544Z.log`) logged a warning, `could not truncate file … Input/output error`, on dropping a table: the Docker Desktop host mount, at a dropped table's file; the run after it is clean.
 
-The local-code predicate discriminates: it flags 7.3 % of the array walk's segments (1 in 50 sample, 218 of 2,973) and every set difference it explains. Of the L2–A order differences, 43,320 of 43,382 are a downstream segment on the same line with a greater local code than the one above it.
+The local-code predicate discriminates: it flags 7.3 % of the array walk's segments (1 in 50 sample, 218 of 2,973), and it explains 544 of the class's 550 set differences; the other 6 come from its second branch, an origin whose own local code is anomalous. Of the L2–A order differences, 43,320 of 43,382 are a downstream segment on the same line with a greater local code than the one above it.
 
 **Hope fixture** (`fwa_downstreamtrace` origin, `sum(ST_Length)` over whole segments):
 
@@ -232,7 +231,7 @@ The local-code predicate discriminates: it flags 7.3 % of the array walk's segme
 | L2 | 544 | 309.70 | 161.40 | |
 | L1 | 536 | 307.81 | 161.08 | |
 
-161.40 km holds for A, P and L2's main flow. **The docs' 308.54 km is stale:** the documented query, run verbatim, returns 309.70 km (544 segments) on this load. L1's main flow is 0.32 km shorter because its trace cuts the origin's segment at the measure; its total is lower for that and for the 8 segments absent from `fwa_streams`.
+161.40 km holds for A, P and L2's main flow. **The docs' 308.54 km is stale:** the documented query, run verbatim, returns 309.70 km (544 segments) on this load. L1 is lower only by the 8 segments absent from `fwa_streams` (1,891 m, the whole 309.70 − 307.81 km gap), two of them on main flow (701242814, 183 m; 701242858, 141 m: the 0.32 km). The sums take whole network segments by id, so the trace's cut of the origin segment does not enter them.
 
 ## Plan review
 
