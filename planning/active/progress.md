@@ -9,4 +9,6 @@
 - Plan parked in the issue body under `## Plan`
 - Created branch `34-measure-downstream-queries-ltree-blue-li` off `newgraph`
 - Scaffolded PWF baseline from issue #34 with approved phases
-- Next: start Phase 1 (`scripts/bench.sh`, `sql/00_env.sql`, `sql/00_origins.sql`)
+- Commits: 43d13ea (baseline)
+- Session ended after the baseline by `/compact-prep`; nothing of Phase 1 started
+- Next: start Phase 1 (`scripts/bench.sh`, `sql/00_env.sql`, `sql/00_origins.sql`) against the local Docker database (`DATABASE_URL` exported); re-read the plan in the issue body first
