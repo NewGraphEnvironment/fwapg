@@ -13,6 +13,7 @@
 #   cell M W C S        one timing cell: method, walk, cell, settings
 #   setup               timing tables and the cell matrix (sql/06_timings.sql)
 #   timings             every cell in fwapg.bench_cells, at defaults then noparallel
+#   summary             medians, p95, timeouts and projections per cell (sql/08_summary.sql)
 #   explain             EXPLAIN (ANALYZE, BUFFERS) at 1 and 1,000 origins
 #   results             each method's rows for the comparison samples (fwapg.bench_res)
 #   compare             correctness: set, order and distance into fwapg.bench_diffs
@@ -216,6 +217,9 @@ main() {
           logged "cell_${m}_${w}_${c}_${settings}" run_cell "$m" "$w" "$c" "$settings" || true
         done
       done
+      ;;
+    summary)
+      logged summary run_psql -At -v ON_ERROR_STOP=1 -f "$sql/08_summary.sql"
       ;;
     explain)
       wait_idle
