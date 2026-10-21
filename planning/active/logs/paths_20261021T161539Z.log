@@ -4,7 +4,7 @@ before:
 blk_parents|1570499|5153b43b719febf8b82c8111862e441f
 blk_paths|1570499|06a9b844c59f728413467e3751f28731
 build start 2026-10-21T16:15:51Z
-++ dirname /Users/airvine/Projects/repo/fwapg/extras/blue_line_paths/blue_line_paths.sh
+++ dirname ~/Projects/repo/fwapg/extras/blue_line_paths/blue_line_paths.sh
 SELECT 1597430
 ALTER TABLE
 SELECT 1568520

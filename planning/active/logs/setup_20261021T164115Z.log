@@ -1,5 +1,5 @@
 bench_out pre-extended|11 GB
-psql:/Users/airvine/Projects/repo/fwapg/planning/active/scripts/sql/06_timings.sql:46: NOTICE:  relation "bench_timings" already exists, skipping
+psql:~/Projects/repo/fwapg/planning/active/scripts/sql/06_timings.sql:46: NOTICE:  relation "bench_timings" already exists, skipping
 1|L1|full|1|3|t|t|f
 2|L2|full|1|3|t|t|f
 3|A-pred|full|1|3|t|t|f

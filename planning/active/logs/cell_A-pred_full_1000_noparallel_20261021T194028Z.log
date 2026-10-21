@@ -1,0 +1,3 @@
+psql:03_walk_arrays.sql:60: ERROR:  canceling statement due to statement timeout
+CONTEXT:  SQL function "blk_on_or_upstream" statement 1
+A-pred full 1000 noparallel origin NULL rep 0: canceling statement due to statement timeout

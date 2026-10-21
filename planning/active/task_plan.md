@@ -21,10 +21,10 @@ The method, the contract the three methods share, the pointer rules, the cells a
 - [x] `sql/01_qa.sql`: the assertions; the 8 cut-offs, the override, and node pointers that leave a continuing line, listed
 
 ## Phase 3: queries and timings
-- [ ] `sql/02_walk_ltree.sql`, `03_walk_arrays.sql`, `04_walk_pointer.sql`: L1, L2, A-pred, A, P as inline statements with psql variables, both walks
-- [ ] `sql/05_explain.sql`: `EXPLAIN (ANALYZE, BUFFERS)` per method and walk at 1 and 1,000 origins, in the logs
-- [ ] `sql/06_timings.sql`: the cells at defaults and at `max_parallel_workers_per_gather = 0`, into `fwapg.bench_timings(method, walk, cell, settings, repeat, ms, rows, note)`, projected rows beside each
-- [ ] Table of medians, timeouts and projections in `findings.md`
+- [x] `sql/02_walk_ltree.sql`, `03_walk_arrays.sql`, `04_walk_pointer.sql`: L1, L2, A-pred, A, P as inline statements with psql variables, both walks
+- [x] `sql/05_explain.sql`: `EXPLAIN (ANALYZE, BUFFERS)` per method and walk at 1 and 1,000 origins, in the logs
+- [x] `sql/06_timings.sql`: the cells at defaults and at `max_parallel_workers_per_gather = 0`, into `fwapg.bench_timings(method, walk, cell, settings, repeat, ms, rows, note)`, projected rows beside each
+- [x] Table of medians, timeouts and projections in `findings.md`
 
 ## Phase 4: correctness
 - [x] `sql/07_compare.sql`: set, order and distance differences into `fwapg.bench_diffs`, each class a predicate

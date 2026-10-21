@@ -1,0 +1,4 @@
+P full BULK_1000 noparallel origin NULL rep 0: 1010973 rows, 1118.9 ms
+P full BULK_1000 noparallel origin NULL rep 1: 1010973 rows, 1019.5 ms
+P full BULK_1000 noparallel origin NULL rep 2: 1010973 rows, 953.7 ms
+P full BULK_1000 noparallel origin NULL rep 3: 1010973 rows, 1038.4 ms

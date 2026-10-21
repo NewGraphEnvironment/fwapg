@@ -1,4 +1,4 @@
-psql:/Users/airvine/Projects/repo/fwapg/planning/active/scripts/sql/06_timings.sql:33: NOTICE:  table "bench_cells" does not exist, skipping
+psql:~/Projects/repo/fwapg/planning/active/scripts/sql/06_timings.sql:33: NOTICE:  table "bench_cells" does not exist, skipping
 1|L1|full|1|3|t|t|f
 2|L2|full|1|3|t|t|f
 3|A-pred|full|1|3|t|t|f

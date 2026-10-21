@@ -1,4 +1,4 @@
-psql:/Users/airvine/Projects/repo/fwapg/planning/active/scripts/sql/00_origins.sql:10: NOTICE:  table "bench_origins" does not exist, skipping
+psql:~/Projects/repo/fwapg/planning/active/scripts/sql/00_origins.sql:10: NOTICE:  table "bench_origins" does not exist, skipping
 origins ADMS|10458; in tree 10458, with a path 10448, in fwa_streams 10449, edge 6010 0
 origins BULK|30046; in tree 30046, with a path 30046, in fwa_streams 30037, edge 6010 0
 origins LFRA|18180; in tree 18175, with a path 17790, in fwa_streams 18154, edge 6010 0

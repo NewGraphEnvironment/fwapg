@@ -5,8 +5,8 @@
 -- An origin set is (grp, rnk between lo and hi) of fwapg.bench_origins: the
 -- random sample's ranks nest, so 1..1000 contains 1..100. A per_origin cell
 -- times each origin of its set as its own statement (the single-origin cell).
--- A budget cell runs once, with no warm-up: it is expected to time out and is
--- projected from the cell below it.
+-- A budget cell runs once, with no warm-up: it was expected to time out and be
+-- projected from the cell below it (on this machine each finished inside 30 min).
 
 -- Cells consume the walk's rows under one row of aggregates over every column
 -- and write nothing (bench.sh says why); the sink table of the first runs is
@@ -47,14 +47,16 @@ CREATE TABLE fwapg.bench_cells (
 INSERT INTO fwapg.bench_cells
 SELECT row_number() OVER (ORDER BY c.k, m.k, w.k), m.method, w.walk, c.cell, c.grp, c.lo, c.hi,
   CASE
-    WHEN m.method = 'L1' AND c.cell = '1000' THEN 1
     WHEN m.method = 'L2' AND c.budget THEN 1
     ELSE 3
   END,
-  NOT ((m.method = 'L1' AND c.cell = '1000') OR (m.method = 'L2' AND c.budget)),
+  NOT (m.method = 'L2' AND c.budget),
   c.cell = '1',
   m.method = 'L2' AND c.budget
 FROM (VALUES
+  -- no origins: the fixed cost of a statement (planning, the round trips of
+  -- the timing itself), to read the single-origin cells against
+  (0, '0', 'random', 0, 0, false),
   (1, '1', 'random', 1, 20, false),
   (2, '100', 'random', 1, 100, false),
   (3, '1000', 'random', 1, 1000, false),
@@ -75,8 +77,8 @@ WHERE
   -- the whole groups: to the outlet only
   AND (w.walk = 'full' OR c.cell NOT IN ('ADMS', 'BULK', 'LFRA'))
   AND CASE m.method
-    WHEN 'L1' THEN c.cell IN ('1', '100', '1000')
-    WHEN 'A-pred' THEN c.cell IN ('1', '1000')
+    WHEN 'L1' THEN c.cell IN ('0', '1', '100', '1000')
+    WHEN 'A-pred' THEN c.cell IN ('0', '1', '1000')
     WHEN 'L2' THEN c.cell != '100'
     ELSE c.cell != '100'
   END;

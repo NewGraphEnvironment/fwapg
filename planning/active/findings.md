@@ -123,21 +123,52 @@ Size, from `00_env.sql`: `blk_paths` 228 MB with its key, `blk_parents` 136 MB; 
 - **Plan corrected: cells time a SELECT, not an INSERT.** PostgreSQL never runs a data-modifying statement in parallel, so `INSERT INTO bench_out SELECT ...` ran every method single-process, and the plan's second pass at `max_parallel_workers_per_gather = 0` would have repeated the first. Each cell now runs the walk under one row of aggregates over every output column (`count(*)`, `bit_xor` of the ids, `sum(ord)`, `sum(cum_m)`), so every row and every window value is computed, nothing is written, and the planner may use workers. The pre-extended sink was dropped. Re-run EXPLAINs (`logs/explain_20261021T171503Z.log`): workers launch for L2 (2) and A (2) at 1,000 origins; to the outlet at 1,000 random origins A takes 1.28 s, P 2.23 s, L2 12.6 s; one origin takes A 0.43 ms, P 3.9 ms, L2 27 ms, L1 91 ms, A-pred 20.3 s (a sequential scan of every segment, no workers).
 - The refactored walks return the stored rows exactly (random 1..5, every method and walk); L2's `ord` differs on 96 tied rows between runs, because its sort has no unique key (the `code_tie_across_lines` class).
 
+## Phase 3: timings (2026-10-21 17:16–21:29 UTC, `logs/cell_*`, `logs/summary_20261021T212933Z.log`)
+
+The matrix ran unattended on the idle server, defaults then `max_parallel_workers_per_gather = 0`, every cell a warm-up and three repeats (median reported) except L2's budget cells (one run, no warm-up: each finished inside its 30 min timeout, so none is projected). Each statement is the walk under one row of aggregates over every column. Times are medians in ms unless marked s; "np" is the no-parallel pass. After review round 1 the single-origin cells, L1 at 1,000 (now warm-up and three repeats) and a no-origin cell were re-run with the walk files' dispatch query moved out of the timed interval; those re-runs replaced the cells' rows.
+
+**Fixed cost of a statement** (no origins: planning and the timing round trips): L1 0.9, L2 1.1, A 1.3 (1 km 1.6), P 0.9 ms; A-pred 55 ms.
+
+**Random origins, to the outlet** (default / np):
+
+| origins | L1 | L2 | A-pred | A | P |
+|---|---|---|---|---|---|
+| 1 (median of 20; p95) | 28.5; 38.7 | 8.2; 16.9 | 15.5 s; 17.4 s | 2.5; 4.4 | 2.3; 4.5 |
+| 100 | 2.9 s / 2.8 s | | | | |
+| 1,000 | 14.7 s / 29.2 s | 12.3 s / 7.6 s | timeout (30 min) | 1.26 s / 1.31 s | 2.38 s / 1.71 s |
+| 10,000 | | 102 s / 62 s | | 9.2 s / 11.6 s | 6.1 s / 5.2 s |
+| 100,000 | | 943 s / 607 s (1 run) | | 210 s / 348 s | 219 s / 196 s |
+
+Rows at 1,000 random origins: L1 1.76 M, L2 1.77 M, A 1.156 M, P 1.156 M; at 100,000: L2 174 M, A and P 115 M.
+
+**Random origins, 1 km**: 1 origin A 1.45, P 0.78 ms (both at the fixed cost); 1,000: A 42 / 31 ms, P 19 / 15 ms; 10,000: A 382 / 306 ms, P 198 / 160 ms; 100,000: A 2.6 / 2.4 s, P 1.5 / 1.3 s (about 5 segments an origin).
+
+**Whole groups, to the outlet** (default / np): ADMS (10,458 origins) L2 154 / 124 s, A 9.4 / 16.5 s, P 16.1 / 15.8 s; BULK (30,046) L2 199 / 216 s, A 12.5 / 100 s, P 46.8 / 48.6 s; LFRA (18,180) L2 101 / 137 s, A 1.7 / 2.5 s, P 2.7 / 3.0 s. Each group's seeded 1,000 sits in the same order (`logs/summary_*`).
+
+What the numbers say:
+
+- **The array walk and the pointer walk are within a factor of two of each other, except on BULK with workers (A 3.7 times faster)**, and which is ahead depends on the walk and on workers: A leads to the outlet at 1,000 origins and on whole groups with workers (BULK 12.5 s against 46.8 s); P leads at 10,000, at 100,000 without workers, on every 1 km walk (about twice as fast), and on BULK without workers (48.6 s against 100 s). P never uses workers (a recursive CTE is parallel-restricted), so its two passes agree; A's window sort uses them.
+- **Both are 4 to 17 times faster than the ltree join** (same settings): 4–10 times at 1,000 origins (A 1.26 / 1.31 s, P 2.38 / 1.71 s, L2 12.3 / 7.6 s), 5–17 times at 10,000, and 1.7–4.5 times at 100,000. Per origin both slow from 10,000 to 100,000 (A 0.9 to 2.1 ms, P 0.6 to 2.2 ms with workers) while L2 holds at 6–12 ms; that rise was not investigated (115 M rows; a window sort and a recursive tuplestore that large may spill past `work_mem`).
+- **Workers slow L2**: without them it is faster at 1,000 (7.6 s against 12.3 s), 10,000 and 100,000; L1 is the reverse (29 s against 15 s at 1,000).
+- **The array predicate is unusable as a join**: 15.5 s for one origin (a sequential scan of every segment, the predicate's `EXISTS` evaluated on each), and 1,000 origins time out at 30 min (projected 4.3 h).
+- **The shipped trace** costs 28 ms an origin, warm, and grows linearly (2.9 s at 100, 14.7 s at 1,000 with workers).
+
 ## Phase 4: correctness (2026-10-21, `logs/results_*`, `logs/compare_*`)
 
-Run before the timings, because the comparison queries would load the server under the timed cells. `07_results.sql` writes each method's rows for the samples into `fwapg.bench_res` (untimed): L2, A, P (to the outlet) and A, P (1 km) on random 1..1,000 and each group's 1..1,000 (4,000 origins); L1 on random 1..100; A-pred on random 1..20. `07_compare.sql` writes every set, order and distance difference into `fwapg.bench_diffs` and attributes each by ordered predicates. **No difference is unattributed**, and A and P agree on every `cum_m` to 1 cm wherever their sets agree (the largest difference there is 0: they sum the same `step_m` in the same order).
+Run before the timings, because the comparison queries would load the server under the timed cells. `07_results.sql` writes each method's rows for the samples into `fwapg.bench_res` (untimed): L2, A, P (to the outlet) and A, P (1 km) on random 1..1,000 and each group's 1..1,000 (4,000 origins); L1 on random 1..100; A-pred on random 1..20. `07_compare.sql` writes every set, order and distance difference into `fwapg.bench_diffs` and attributes each by ordered predicates. **No difference is unattributed**, and A and P agree on every `cum_m` wherever their sets agree (the largest difference there is 0 m, logged: they sum the same `step_m` in the same order).
 
 | pair | kind | class | segments | origins | what it is |
 |---|---|---|---|---|---|
-| A–P | set | `no_path` | 3,073 | 3 | the origin's line has no path; P goes on through the mouth's node |
+| A–P | set | `path_ends` | 3,077 | 4 | the chain's last line (the origin's or the last on its path) has no path of its own; A stops at its mouth, P goes on through the node; A is a prefix of P |
 | A–P | set | `code_junction_below_node` | 17 | 17 | the code junction is the start of the parent segment whose top is the tributary's mouth: A drops that one segment, P keeps it (P is right) |
-| A–P | set | `route_differs` | 25 | 4 | the tree and the paths send the water down different lines (braids, reattached segments) |
-| A–P 1 km | set | the same three | 23 | 7 | |
-| L2–A | set | `side_channel` | 1,661,801 | 3,818 | lines the water does not pass, which the codes count: L2's 5.68 M rows against A's 4.00 M |
-| L2–A | set | `no_path` | 10,292 | 26 | A ends at a pathless line's mouth; the codes go on |
+| A–P | set | `route_differs` | 21 | 3 | the tree and the paths send the water down different lines, and the walks rejoin (same last segment) |
+| A–P 1 km | set | the same three | 23 | 7 | the same segment's full-walk class, or that of a full-walk difference within the first 1 km |
+| L2–A | set | `side_channel` | 1,640,569 | 3,837 | non-main lines the water does not pass through, which the codes count (0 on a main line, checked) |
+| L2–A | set | `path_ends` | 31,430 | 29 | the paths stop; the codes go on down the last line's code ancestors (or, for a pathless side channel, its own main stem) |
 | L2–A | set | `alongside_side_channel` | 2,325 | 475 | the main stem beside a side channel the water is in: the codes count it from where the side channel leaves |
 | L2–A | set | `path_through_side_channel` | 1,919 | 702 | the path takes the water through a braid it touches; the codes do not count the braid |
-| L2–A | set | `localcode_anomaly` | 550 | 264 | local codes out of order with the measures, or nested deeper than one level, at the segment or the origin (#3's shape) |
+| L2–A | set | `localcode_anomaly` | 550 | 264 | local codes out of order with the measures, or nested deeper than one level, at the segment or (on a chain line) at the origin (#3's shape) |
+| L2–A | set | `code_parent_bypassed` | 94 | 20 | a main line whose code is an ancestor of the origin's, which the path passes by: the water reaches a line further down by a touch |
 | L2–A | set | `side_channel_rejoin` | 91 | 25 | main-stem segments below where a side channel rejoins carry its local code, and the codes need a strictly lower one |
 | L2–A | set | `code_999` | 47 | 23 | null local code: the codes cannot place it |
 | L2–A | order | `localcode_anomaly` | 43,320 | 3,688 | 1,242 distinct segment pairs: a segment downstream of the one before it on the same line, with a greater local code |
@@ -147,6 +178,8 @@ Run before the timings, because the comparison queries would load the server und
 | L1–L2 | set | `absent_from_fwa_streams` | 1,495 | 86 | the shipped trace reads `fwa_streams`, which lacks them; no origin was dropped |
 | L1–L2 | order | `code_tie_across_lines` | 1,772 | 80 | the trace's `ORDER BY` has no unique key: lines that share codes and start at measure 0 tie |
 | A-pred–A | set | `junction_at_segment_start` | 73 | 20 | the shipped predicate compares measures inclusively and counts the segment that starts at the junction; the walk does not |
+
+The classes were tightened after review round 1 (`logs/compare_20261021T21*`): side channels must be on non-main lines, which exposed 15,188 main-line segments a broader class had absorbed, now `path_ends` and `code_parent_bypassed`; `route_differs` requires the walks to rejoin; `path_ends` requires the array walk to be a prefix of the pointer walk. The results were regenerated with the final walk files first. The largest A–P distance difference where the sets agree is logged: 0 m, to the outlet and at 1 km.
 
 The local-code predicate discriminates: it flags 7.3 % of the array walk's segments (1 in 50 sample, 218 of 2,973) and every set difference it explains. Of the L2–A order differences, 43,320 of 43,382 are a downstream segment on the same line with a greater local code than the one above it.
 

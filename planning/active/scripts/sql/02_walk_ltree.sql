@@ -29,7 +29,12 @@
 \set sink_gset false
 \endif
 
+-- which statement: a bench.sh cell sets the flags itself (dispatch_given), so
+-- this query stays out of the timed interval
+\if :{?dispatch_given}
+\else
 SELECT :'method' = 'L1' AS is_l1 \gset
+\endif
 
 \if :is_l1
 :explain :sink_open

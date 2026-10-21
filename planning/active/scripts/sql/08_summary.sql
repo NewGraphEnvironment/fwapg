@@ -70,7 +70,7 @@ SELECT format('| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |',
   n.method, n.walk, n.cell, s.settings, n.origins,
   coalesce(round(t.ms::numeric, CASE WHEN t.ms < 100 THEN 2 ELSE 0 END)::text, '—'),
   coalesce(round(t.p95::numeric, 2)::text, ''),
-  coalesce(round((t.ms / n.origins)::numeric, 3)::text,
+  coalesce(round((t.ms / nullif(n.origins, 0))::numeric, 3)::text,
     'projected ' || round((bt.ms / bn.origins * n.origins / 1000)::numeric, 0) || ' s'),
   coalesce(round(t.rows)::text, '—') || ' / ' ||
     coalesce(round(rt.rows / rn.origins * n.origins)::text, '?'),

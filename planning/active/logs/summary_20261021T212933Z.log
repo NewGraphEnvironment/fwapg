@@ -1,0 +1,112 @@
+| L1 | full | 0 | default | 0 | 0.87 |  |  | 0 / 0 | 3 reps |
+| L1 | full | 0 | noparallel | 0 | 0.85 |  |  | 0 / 0 | 3 reps |
+| L2 | full | 0 | default | 0 | 1.11 |  |  | 0 / 0 | 3 reps |
+| L2 | full | 0 | noparallel | 0 | 1.12 |  |  | 0 / 0 | 3 reps |
+| A-pred | full | 0 | default | 0 | 55.42 |  |  | 0 / ? | 3 reps |
+| A-pred | full | 0 | noparallel | 0 | 51.10 |  |  | 0 / ? | 3 reps |
+| A | full | 0 | default | 0 | 1.25 |  |  | 0 / 0 | 3 reps |
+| A | full | 0 | noparallel | 0 | 1.10 |  |  | 0 / 0 | 3 reps |
+| A | 1km | 0 | default | 0 | 1.64 |  |  | 0 / 0 | 3 reps |
+| A | 1km | 0 | noparallel | 0 | 1.56 |  |  | 0 / 0 | 3 reps |
+| P | full | 0 | default | 0 | 0.86 |  |  | 0 / 0 | 3 reps |
+| P | full | 0 | noparallel | 0 | 0.80 |  |  | 0 / 0 | 3 reps |
+| P | 1km | 0 | default | 0 | 0.89 |  |  | 0 / 0 | 3 reps |
+| P | 1km | 0 | noparallel | 0 | 0.87 |  |  | 0 / 0 | 3 reps |
+| L1 | full | 1 | default | 1 | 28.46 | 38.65 | 28.458 | 1525 / 1759 | 20 origins x 3 |
+| L1 | full | 1 | noparallel | 1 | 28.12 | 38.50 | 28.120 | 1525 / 1759 | 20 origins x 3 |
+| L2 | full | 1 | default | 1 | 8.17 | 16.87 | 8.169 | 1540 / 1774 | 20 origins x 3 |
+| L2 | full | 1 | noparallel | 1 | 8.42 | 17.98 | 8.417 | 1540 / 1774 | 20 origins x 3 |
+| A-pred | full | 1 | default | 1 | 15508 | 17428.52 | 15507.687 | 1162 / ? | 20 origins x 3 |
+| A-pred | full | 1 | noparallel | 1 | 15644 | 17617.63 | 15644.383 | 1162 / ? | 20 origins x 3 |
+| A | full | 1 | default | 1 | 2.50 | 4.38 | 2.501 | 1158 / 1156 | 20 origins x 3 |
+| A | full | 1 | noparallel | 1 | 2.50 | 4.07 | 2.505 | 1158 / 1156 | 20 origins x 3 |
+| A | 1km | 1 | default | 1 | 1.45 | 1.98 | 1.451 | 4 / 5 | 20 origins x 3 |
+| A | 1km | 1 | noparallel | 1 | 1.48 | 1.71 | 1.481 | 4 / 5 | 20 origins x 3 |
+| P | full | 1 | default | 1 | 2.33 | 4.53 | 2.329 | 1159 / 1156 | 20 origins x 3 |
+| P | full | 1 | noparallel | 1 | 2.27 | 4.45 | 2.268 | 1159 / 1156 | 20 origins x 3 |
+| P | 1km | 1 | default | 1 | 0.78 | 0.90 | 0.779 | 4 / 5 | 20 origins x 3 |
+| P | 1km | 1 | noparallel | 1 | 0.77 | 1.00 | 0.770 | 4 / 5 | 20 origins x 3 |
+| L1 | full | 100 | default | 100 | 2859 |  | 28.590 | 177650 / 175905 | 3 reps |
+| L1 | full | 100 | noparallel | 100 | 2801 |  | 28.013 | 177650 / 175905 | 3 reps |
+| L1 | full | 1000 | default | 1000 | 14697 |  | 14.697 | 1759052 / 1759052 | 3 reps |
+| L1 | full | 1000 | noparallel | 1000 | 29224 |  | 29.224 | 1759052 / 1759052 | 3 reps |
+| L2 | full | 1000 | default | 1000 | 12272 |  | 12.272 | 1774080 / 1774080 | 3 reps |
+| L2 | full | 1000 | noparallel | 1000 | 7581 |  | 7.581 | 1774080 / 1774080 | 3 reps |
+| A-pred | full | 1000 | default | 1000 | — |  | projected 15508 s | — / ? | timeout |
+| A-pred | full | 1000 | noparallel | 1000 | — |  | projected 15644 s | — / ? | timeout |
+| A | full | 1000 | default | 1000 | 1261 |  | 1.261 | 1155537 / 1155537 | 3 reps |
+| A | full | 1000 | noparallel | 1000 | 1314 |  | 1.314 | 1155537 / 1155537 | 3 reps |
+| A | 1km | 1000 | default | 1000 | 41.84 |  | 0.042 | 4968 / 4968 | 3 reps |
+| A | 1km | 1000 | noparallel | 1000 | 30.64 |  | 0.031 | 4968 / 4968 | 3 reps |
+| P | full | 1000 | default | 1000 | 2381 |  | 2.381 | 1155560 / 1155560 | 3 reps |
+| P | full | 1000 | noparallel | 1000 | 1710 |  | 1.710 | 1155560 / 1155560 | 3 reps |
+| P | 1km | 1000 | default | 1000 | 18.66 |  | 0.019 | 4970 / 4970 | 3 reps |
+| P | 1km | 1000 | noparallel | 1000 | 15.05 |  | 0.015 | 4970 / 4970 | 3 reps |
+| L2 | full | 10000 | default | 10000 | 102138 |  | 10.214 | 17655385 / 17740800 | 3 reps |
+| L2 | full | 10000 | noparallel | 10000 | 61950 |  | 6.195 | 17655385 / 17740800 | 3 reps |
+| A | full | 10000 | default | 10000 | 9185 |  | 0.919 | 11646618 / 11555370 | 3 reps |
+| A | full | 10000 | noparallel | 10000 | 11603 |  | 1.160 | 11646618 / 11555370 | 3 reps |
+| A | 1km | 10000 | default | 10000 | 382 |  | 0.038 | 51008 / 49680 | 3 reps |
+| A | 1km | 10000 | noparallel | 10000 | 306 |  | 0.031 | 51008 / 49680 | 3 reps |
+| P | full | 10000 | default | 10000 | 6133 |  | 0.613 | 11653690 / 11555600 | 3 reps |
+| P | full | 10000 | noparallel | 10000 | 5229 |  | 0.523 | 11653690 / 11555600 | 3 reps |
+| P | 1km | 10000 | default | 10000 | 198 |  | 0.020 | 51011 / 49700 | 3 reps |
+| P | 1km | 10000 | noparallel | 10000 | 160 |  | 0.016 | 51011 / 49700 | 3 reps |
+| L2 | full | 100000 | default | 100000 | 943398 |  | 9.434 | 174376621 / 177408000 | 1 reps |
+| L2 | full | 100000 | noparallel | 100000 | 607437 |  | 6.074 | 174376621 / 177408000 | 1 reps |
+| A | full | 100000 | default | 100000 | 210496 |  | 2.105 | 114689634 / 115553700 | 3 reps |
+| A | full | 100000 | noparallel | 100000 | 347741 |  | 3.477 | 114689634 / 115553700 | 3 reps |
+| A | 1km | 100000 | default | 100000 | 2631 |  | 0.026 | 509488 / 496800 | 3 reps |
+| A | 1km | 100000 | noparallel | 100000 | 2406 |  | 0.024 | 509488 / 496800 | 3 reps |
+| P | full | 100000 | default | 100000 | 218587 |  | 2.186 | 114739699 / 115556000 | 3 reps |
+| P | full | 100000 | noparallel | 100000 | 195909 |  | 1.959 | 114739699 / 115556000 | 3 reps |
+| P | 1km | 100000 | default | 100000 | 1512 |  | 0.015 | 509547 / 497000 | 3 reps |
+| P | 1km | 100000 | noparallel | 100000 | 1274 |  | 0.013 | 509547 / 497000 | 3 reps |
+| L2 | full | ADMS_1000 | default | 1000 | 15122 |  | 15.122 | 2056725 / 1774080 | 3 reps |
+| L2 | full | ADMS_1000 | noparallel | 1000 | 9658 |  | 9.658 | 2056725 / 1774080 | 3 reps |
+| A | full | ADMS_1000 | default | 1000 | 1873 |  | 1.873 | 1668889 / 1155537 | 3 reps |
+| A | full | ADMS_1000 | noparallel | 1000 | 1363 |  | 1.363 | 1668889 / 1155537 | 3 reps |
+| A | 1km | ADMS_1000 | default | 1000 | 35.82 |  | 0.036 | 4306 / 4968 | 3 reps |
+| A | 1km | ADMS_1000 | noparallel | 1000 | 31.02 |  | 0.031 | 4306 / 4968 | 3 reps |
+| P | full | ADMS_1000 | default | 1000 | 1533 |  | 1.533 | 1671879 / 1155560 | 3 reps |
+| P | full | ADMS_1000 | noparallel | 1000 | 1399 |  | 1.399 | 1671879 / 1155560 | 3 reps |
+| P | 1km | ADMS_1000 | default | 1000 | 6.74 |  | 0.007 | 4310 / 4970 | 3 reps |
+| P | 1km | ADMS_1000 | noparallel | 1000 | 5.64 |  | 0.006 | 4310 / 4970 | 3 reps |
+| L2 | full | BULK_1000 | default | 1000 | 9427 |  | 9.427 | 1564673 / 1774080 | 3 reps |
+| L2 | full | BULK_1000 | noparallel | 1000 | 6031 |  | 6.031 | 1564673 / 1774080 | 3 reps |
+| A | full | BULK_1000 | default | 1000 | 1322 |  | 1.322 | 1010973 / 1155537 | 3 reps |
+| A | full | BULK_1000 | noparallel | 1000 | 869 |  | 0.869 | 1010973 / 1155537 | 3 reps |
+| A | 1km | BULK_1000 | default | 1000 | 32.61 |  | 0.033 | 4423 / 4968 | 3 reps |
+| A | 1km | BULK_1000 | noparallel | 1000 | 25.88 |  | 0.026 | 4423 / 4968 | 3 reps |
+| P | full | BULK_1000 | default | 1000 | 1055 |  | 1.055 | 1010973 / 1155560 | 3 reps |
+| P | full | BULK_1000 | noparallel | 1000 | 1019 |  | 1.019 | 1010973 / 1155560 | 3 reps |
+| P | 1km | BULK_1000 | default | 1000 | 6.95 |  | 0.007 | 4423 / 4970 | 3 reps |
+| P | 1km | BULK_1000 | noparallel | 1000 | 9.00 |  | 0.009 | 4423 / 4970 | 3 reps |
+| L2 | full | LFRA_1000 | default | 1000 | 8615 |  | 8.615 | 281320 / 1774080 | 3 reps |
+| L2 | full | LFRA_1000 | noparallel | 1000 | 7486 |  | 7.486 | 281320 / 1774080 | 3 reps |
+| A | full | LFRA_1000 | default | 1000 | 394 |  | 0.394 | 168932 / 1155537 | 3 reps |
+| A | full | LFRA_1000 | noparallel | 1000 | 149 |  | 0.149 | 168932 / 1155537 | 3 reps |
+| A | 1km | LFRA_1000 | default | 1000 | 27.38 |  | 0.027 | 4819 / 4968 | 3 reps |
+| A | 1km | LFRA_1000 | noparallel | 1000 | 26.88 |  | 0.027 | 4819 / 4968 | 3 reps |
+| P | full | LFRA_1000 | default | 1000 | 185 |  | 0.185 | 169018 / 1155560 | 3 reps |
+| P | full | LFRA_1000 | noparallel | 1000 | 175 |  | 0.175 | 169018 / 1155560 | 3 reps |
+| P | 1km | LFRA_1000 | default | 1000 | 7.39 |  | 0.007 | 4822 / 4970 | 3 reps |
+| P | 1km | LFRA_1000 | noparallel | 1000 | 8.21 |  | 0.008 | 4822 / 4970 | 3 reps |
+| L2 | full | ADMS | default | 10458 | 153614 |  | 14.689 | 21500952 / 21509230 | 1 reps |
+| L2 | full | ADMS | noparallel | 10458 | 124170 |  | 11.873 | 21500952 / 21509230 | 1 reps |
+| A | full | ADMS | default | 10458 | 9437 |  | 0.902 | 17453013 / 17453241 | 3 reps |
+| A | full | ADMS | noparallel | 10458 | 16459 |  | 1.574 | 17453013 / 17453241 | 3 reps |
+| P | full | ADMS | default | 10458 | 16120 |  | 1.541 | 17476933 / 17484511 | 3 reps |
+| P | full | ADMS | noparallel | 10458 | 15753 |  | 1.506 | 17476933 / 17484511 | 3 reps |
+| L2 | full | BULK | default | 30046 | 199456 |  | 6.638 | 46836602 / 47012165 | 1 reps |
+| L2 | full | BULK | noparallel | 30046 | 215829 |  | 7.183 | 46836602 / 47012165 | 1 reps |
+| A | full | BULK | default | 30046 | 12472 |  | 0.415 | 30249250 / 30375695 | 3 reps |
+| A | full | BULK | noparallel | 30046 | 100244 |  | 3.336 | 30249250 / 30375695 | 3 reps |
+| P | full | BULK | default | 30046 | 46782 |  | 1.557 | 30249250 / 30375695 | 3 reps |
+| P | full | BULK | noparallel | 30046 | 48629 |  | 1.618 | 30249250 / 30375695 | 3 reps |
+| L2 | full | LFRA | default | 18180 | 100627 |  | 5.535 | 5111484 / 5114398 | 1 reps |
+| L2 | full | LFRA | noparallel | 18180 | 137256 |  | 7.550 | 5111484 / 5114398 | 1 reps |
+| A | full | LFRA | default | 18180 | 1746 |  | 0.096 | 3049609 / 3071184 | 3 reps |
+| A | full | LFRA | noparallel | 18180 | 2491 |  | 0.137 | 3049609 / 3071184 | 3 reps |
+| P | full | LFRA | default | 18180 | 2650 |  | 0.146 | 3051942 / 3072747 | 3 reps |
+| P | full | LFRA | noparallel | 18180 | 2986 |  | 0.164 | 3051942 / 3072747 | 3 reps |

@@ -48,6 +48,15 @@ CROSS JOIN LATERAL unnest(p.path_blks, p.path_measures) WITH ORDINALITY AS u(blk
 LEFT JOIN fwapg.blk_parents bp ON bp.blue_line_key = coalesce(p.path_blks[u.step - 1], o.blue_line_key)
 WHERE o.origin_id IN (SELECT DISTINCT origin_id FROM fwapg.bench_res);
 
+-- each line's watershed code, and the chain's last line: the origin's line or
+-- the last on its path, which has no path of its own (the paths stop there)
+ALTER TABLE cmp_lines ADD COLUMN wscode ltree, ADD COLUMN is_last boolean;
+UPDATE cmp_lines c SET wscode = (
+  SELECT s.wscode_ltree FROM whse_basemapping.fwa_stream_networks_sp s
+  WHERE s.blue_line_key = c.blk ORDER BY s.downstream_route_measure LIMIT 1
+);
+UPDATE cmp_lines c SET is_last = c.step = (SELECT max(m.step) FROM cmp_lines m WHERE m.origin_id = c.origin_id);
+
 CREATE INDEX ON cmp_lines (origin_id, blk);
 ANALYZE cmp_lines;
 
@@ -167,13 +176,35 @@ ALTER TABLE cmp_lc_anomaly ADD PRIMARY KEY (linear_feature_id);
 
 -- ---------------------------------------------------------------- A-P classes
 
--- the origin's line has no path: the array walk ends at its mouth; the pointer
--- walk goes on wherever the mouth's node, or the line's next segment, leads
-UPDATE fwapg.bench_diffs d SET class = 'no_path'
-FROM fwapg.bench_origins o
+-- the paths stop: the chain's last line (the origin's, or the last on its
+-- path) has no path of its own, because its water leaves BC before it reaches
+-- its parent, or it has no parent; the array walk ends at that line's mouth, the
+-- pointer walk goes on wherever the mouth's node leads
+UPDATE fwapg.bench_diffs d SET class = 'path_ends'
 WHERE d.pair IN ('A-P', 'A-P 1km') AND d.kind = 'set' AND d.class IS NULL
-AND o.origin_id = d.origin_id AND NOT o.has_path
-AND d.in_b;
+AND d.in_b AND NOT d.in_a
+-- the pointer walk passes the array walk's last segment before reaching it:
+-- the array walk is a prefix of the pointer walk, cut where the paths stop
+AND (
+  SELECT r.ord FROM fwapg.bench_res r
+  WHERE r.method = 'P' AND r.walk = CASE WHEN d.pair = 'A-P' THEN 'full' ELSE '1km' END
+  AND r.origin_id = d.origin_id AND r.linear_feature_id = d.linear_feature_id
+) > (
+  SELECT p.ord FROM fwapg.bench_res p
+  WHERE p.method = 'P' AND p.walk = CASE WHEN d.pair = 'A-P' THEN 'full' ELSE '1km' END
+  AND p.origin_id = d.origin_id
+  AND p.linear_feature_id = (
+    SELECT a.linear_feature_id FROM fwapg.bench_res a
+    WHERE a.method = 'A' AND a.walk = CASE WHEN d.pair = 'A-P' THEN 'full' ELSE '1km' END
+    AND a.origin_id = d.origin_id
+    ORDER BY a.ord DESC LIMIT 1
+  )
+)
+AND NOT EXISTS (
+  SELECT 1 FROM fwapg.bench_diffs e
+  WHERE e.pair = d.pair AND e.kind = 'set' AND e.origin_id = d.origin_id AND e.in_a
+)
+AND EXISTS (SELECT 1 FROM cmp_lines c WHERE c.origin_id = d.origin_id AND c.is_last);
 
 -- the code junction is one segment below the node where the tributary's mouth
 -- is: the path's junction measure is the start of the parent segment X whose
@@ -267,13 +298,25 @@ WHERE d.pair = 'L2-A' AND d.kind = 'set' AND d.class IS NULL
 AND x.linear_feature_id = d.linear_feature_id
 AND (x.localcode_ltree IS NULL OR x.wscode_ltree <@ '999');
 
--- the origin's line has no path: the array walk ends at its mouth, the codes go on
-UPDATE fwapg.bench_diffs d SET class = 'no_path'
-FROM fwapg.bench_origins o, cmp_seg x
+-- the paths stop (as above): the array walk ends at the last line's mouth, and
+-- the codes go on down that line's code ancestors (codes above its own, or, for a
+-- side channel, its own main stem)
+UPDATE fwapg.bench_diffs d SET class = 'path_ends'
+FROM cmp_seg x, cmp_lines c
 WHERE d.pair = 'L2-A' AND d.kind = 'set' AND d.class IS NULL
-AND o.origin_id = d.origin_id AND NOT o.has_path
+AND d.in_a
 AND x.linear_feature_id = d.linear_feature_id
-AND d.in_a AND x.blue_line_key != o.blue_line_key;
+AND c.origin_id = d.origin_id AND c.is_last
+AND c.wscode <@ x.wscode_ltree
+AND (
+  c.wscode != x.wscode_ltree
+  -- or the last line is a side channel and this is its own main stem
+  OR (x.is_main AND EXISTS (
+    SELECT 1 FROM whse_basemapping.fwa_stream_networks_sp l
+    WHERE l.blue_line_key = c.blk AND l.blue_line_key != l.watershed_key
+  ))
+)
+AND NOT EXISTS (SELECT 1 FROM cmp_lines k WHERE k.origin_id = d.origin_id AND k.blk = x.blue_line_key);
 
 -- side channels: a line the water does not pass through, which the codes count
 UPDATE fwapg.bench_diffs d SET class = 'side_channel'
@@ -283,6 +326,23 @@ AND d.in_a
 AND x.linear_feature_id = d.linear_feature_id
 AND NOT x.is_main
 AND NOT EXISTS (SELECT 1 FROM cmp_lines c WHERE c.origin_id = d.origin_id AND c.blk = x.blue_line_key);
+
+-- the path passes a code parent by: the segment is on a main line whose code
+-- is an ancestor of the origin's, which the chain never enters, while the chain
+-- does enter a line further down by code (the water reaches that line by a
+-- touch, not through the code parent)
+UPDATE fwapg.bench_diffs d SET class = 'code_parent_bypassed'
+FROM cmp_seg x, fwapg.bench_origins o
+WHERE d.pair = 'L2-A' AND d.kind = 'set' AND d.class IS NULL
+AND d.in_a
+AND x.linear_feature_id = d.linear_feature_id AND x.is_main
+AND o.origin_id = d.origin_id AND o.wscode_ltree <@ x.wscode_ltree
+AND NOT EXISTS (SELECT 1 FROM cmp_lines k WHERE k.origin_id = d.origin_id AND k.blk = x.blue_line_key)
+AND EXISTS (
+  SELECT 1 FROM cmp_lines k
+  WHERE k.origin_id = d.origin_id
+  AND k.wscode @> x.wscode_ltree AND k.wscode != x.wscode_ltree
+);
 
 -- the path takes the water through a side channel (a braid it touches), which
 -- the codes do not count as downstream
