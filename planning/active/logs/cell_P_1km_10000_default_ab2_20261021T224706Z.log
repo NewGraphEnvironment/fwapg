@@ -1,0 +1,4 @@
+P 1km 10000 default_ab2 origin NULL rep 0: 51011 rows, 601.3 ms
+P 1km 10000 default_ab2 origin NULL rep 1: 51011 rows, 193.5 ms
+P 1km 10000 default_ab2 origin NULL rep 2: 51011 rows, 187.2 ms
+P 1km 10000 default_ab2 origin NULL rep 3: 51011 rows, 187.8 ms

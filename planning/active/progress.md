@@ -27,3 +27,4 @@
 - Timing matrix launched 2026-10-21 17:16 UTC (`bench.sh timings`, defaults then noparallel)
 - Timing matrix finished 2026-10-21 21:25 UTC (defaults 17:16–19:18, no-parallel 19:18–21:25); only A-pred at 1,000 timed out (both passes)
 - Review round 1 (11 findings): dispatch query moved out of the timed interval (cells 0, 1 and L1 1,000 re-run, with a no-origin cell for the fixed cost); classes tightened (side channels non-main, route_differs must rejoin, path_ends must be a prefix), which exposed 15,188 main-line segments now attributed to `path_ends` and `code_parent_bypassed`; results regenerated with the final walk files; home paths redacted from logs
+- Review round 2 (9 findings): settings confounded with time, so 11 cells re-run interleaved (A B B A, 22:08–23:16 UTC) with P as the drift control; `path_ends` restricted to main lines; comparative claims rewritten from the logged ratio table and enumerated (findings, "Claims checked")

@@ -145,13 +145,53 @@ Rows at 1,000 random origins: L1 1.76 M, L2 1.77 M, A 1.156 M, P 1.156 M; at 100
 
 **Whole groups, to the outlet** (default / np): ADMS (10,458 origins) L2 154 / 124 s, A 9.4 / 16.5 s, P 16.1 / 15.8 s; BULK (30,046) L2 199 / 216 s, A 12.5 / 100 s, P 46.8 / 48.6 s; LFRA (18,180) L2 101 / 137 s, A 1.7 / 2.5 s, P 2.7 / 3.0 s. Each group's seeded 1,000 sits in the same order (`logs/summary_*`).
 
-What the numbers say:
+**Settings, interleaved** (`bench.sh ab`, 22:08–23:16 UTC, `logs/summary_20261021T231626Z.log`). Review round 2 found the two passes confounded with time: every default cell ran before every no-parallel one, and P, which never uses workers, differed by 12–39 % between them. So eleven cells were re-run at both settings in the order default, no-parallel, no-parallel, default; median of six repeats each. P is the control: its ratio (no-parallel over default) is 0.90 at 1,000, 1.00 at 10,000 and 1.01 on BULK, so drift within the interleaved run is under about 10 %.
 
-- **The array walk and the pointer walk are within a factor of two of each other, except on BULK with workers (A 3.7 times faster)**, and which is ahead depends on the walk and on workers: A leads to the outlet at 1,000 origins and on whole groups with workers (BULK 12.5 s against 46.8 s); P leads at 10,000, at 100,000 without workers, on every 1 km walk (about twice as fast), and on BULK without workers (48.6 s against 100 s). P never uses workers (a recursive CTE is parallel-restricted), so its two passes agree; A's window sort uses them.
-- **Both are 4 to 17 times faster than the ltree join** (same settings): 4–10 times at 1,000 origins (A 1.26 / 1.31 s, P 2.38 / 1.71 s, L2 12.3 / 7.6 s), 5–17 times at 10,000, and 1.7–4.5 times at 100,000. Per origin both slow from 10,000 to 100,000 (A 0.9 to 2.1 ms, P 0.6 to 2.2 ms with workers) while L2 holds at 6–12 ms; that rise was not investigated (115 M rows; a window sort and a recursive tuplestore that large may spill past `work_mem`).
-- **Workers slow L2**: without them it is faster at 1,000 (7.6 s against 12.3 s), 10,000 and 100,000; L1 is the reverse (29 s against 15 s at 1,000).
-- **The array predicate is unusable as a join**: 15.5 s for one origin (a sequential scan of every segment, the predicate's `EXISTS` evaluated on each), and 1,000 origins time out at 30 min (projected 4.3 h).
-- **The shipped trace** costs 28 ms an origin, warm, and grows linearly (2.9 s at 100, 14.7 s at 1,000 with workers).
+| cell | default | no-parallel | ratio |
+|---|---|---|---|
+| L1 1,000 | 15.0 s | 29.3 s | 1.95 |
+| L2 1,000 | 15.5 s | 9.4 s | 0.61 |
+| A 1,000 | 1.29 s | 1.95 s | 1.52 |
+| P 1,000 (control) | 2.18 s | 1.97 s | 0.90 |
+| L2 10,000 | 86.9 s | 75.5 s | 0.87 |
+| A 10,000 | 9.06 s | 15.6 s | 1.72 |
+| P 10,000 (control) | 6.62 s | 6.59 s | 1.00 |
+| A 1 km 10,000 | 365 ms | 361 ms | 0.99 |
+| P 1 km 10,000 (control) | 192 ms | 194 ms | 1.01 |
+| A BULK | 13.2 s | 100.8 s | 7.61 |
+| P BULK (control) | 52.2 s | 52.5 s | 1.01 |
+
+The no-parallel column of the main tables above comes from the later pass, so its comparison with the default column mixes the setting with drift; the settings claims below come from this table only.
+
+What the numbers say (ratios read off the `ratio` lines of `logs/summary_20261021T231626Z.log`; "a / b" above 1 means b is faster):
+
+- **Array walk against pointer walk, to the outlet:** neither leads everywhere. A / P runs from 0.27 (BULK whole, with workers: A 3.7 times faster) to 2.22 (random 10,000 without workers: P 2.2 times faster). With workers: A leads at random 1,000 (0.53) and on the three whole groups (0.27–0.66); P leads at random 10,000 (1.50) and on the three groups' 1,000 subsamples (1.22–2.13); 100,000 is even (0.96).
+- **Within 1 km, P is 1.7 to 5.5 times faster than A** on every batch (A / P 1.74–5.50; at one origin 1.9, both within about 1 ms of the fixed cost).
+- **Both walks are faster than the ltree join on every batch, to the outlet:** L2 / A from 1.75 to 58, L2 / P from 3.1 to 47 (largest on LFRA, where the chains are short and L2 still enumerates the lower Fraser's side channels). At random 1,000 with workers, L2 / A 9.7 and L2 / P 5.2.
+- **Workers** (interleaved table): they speed the array walk (1.5 times at 1,000, 1.7 at 10,000, 7.6 on BULK), the shipped trace (2.0 times at 1,000; EXPLAIN shows one worker over the origins) and nothing at 1 km; they slow the ltree join (1.6 times at 1,000, 1.15 at 10,000). A recursive CTE never uses them, so P is the same either way.
+- **Per origin, both walks slow from 10,000 to 100,000 origins** (A 0.9 to 2.1 ms with workers, P 0.6 to 2.2 ms) while L2 holds at 9–12 ms; not investigated (115 M rows: a window sort and a recursive tuplestore that large may spill past `work_mem`).
+- **The array predicate is unusable as a join:** 15.5 s for one origin (a sequential scan of every segment, its `EXISTS` evaluated on each), and 1,000 origins time out at 30 min (projected 4.3 h).
+- **The shipped trace** costs 28 ms an origin warm; 1,000 origins take 15 s with workers. The first default run of that cell (28.9 s, 17:37 UTC) had no warm-up and read `fwa_streams` cold for origins 101..1,000; it was replaced by the re-run.
+
+## Claims checked (after review round 2)
+
+Review round 2 found comparative claims written by hand from the tables that the tables did not support ("within a factor of two", "leads whenever workers are off", "its two passes agree", "the reverse"). The mechanism: a ratio computed by eye from two rows, then generalised by a quantifier. `08_summary.sql` now prints every pair's ratio (`ratio` lines) and the interleaved settings (`ab` lines), and every quantified or comparative claim in `research/fwa_downstream_queries.md` was enumerated (a grep for times, faster, slower, lead, every, all, never, none, each, about) and checked against them, 25 matches:
+
+| claim | source | verdict |
+|---|---|---|
+| ltree returns about 1.4 times the walks' segments | `bench_res`: 5,676,798 / 4,004,331 = 1.42 | holds |
+| pointer method counts (node 4,547,628, line 136,786, junction 9,800, null 213,227) | `logs/ids_qa_*` | holds |
+| no-origin statement 0.8 to 1.6 ms, array predicate 55 ms | cells `0` | holds |
+| about 1,160 segments an origin (1,770 ltree); 115 M and 174 M rows at 100,000 | cells `1000`, `100000` rows | holds |
+| 1 km: arrays 42 ms and 2.6 s, pointers 19 ms and 1.5 s; about 5 segments | cells | holds |
+| arrays over pointers, to the outlet, from 0.27 (BULK) to 2.1 (LFRA_1000), with workers; who leads where | `ratio A / P full`, default | holds (single origin 1.07, not claimed) |
+| within 1 km the pointers are 1.7 to 5.5 times faster on every batch | `ratio A / P 1km`: 1.74 to 5.50 | holds |
+| arrays 1.75 to 58, pointers 3.1 to 47 times faster than the join, every batch; 9.7 and 5.2 at 1,000 | `ratio L2 / A`, `L2 / P` | holds |
+| workers: arrays 1.5–1.7 times faster, BULK 7.6 (101 against 52 s); trace 2 times; join 1.15–1.6 times slower; nothing at 1 km | `ab` lines | holds |
+| per origin from 10,000 to 100,000: arrays 0.9 to 2.1 ms, pointers 0.6 to 2.2 ms, join 9 to 10 ms | cells, default | holds |
+| array predicate 15.5 s an origin, 1,000 time out | cells `1`, `1000` | holds |
+| arrays 5.8 to 9.7 times faster than the join at 1,000 | `ratio L2 / A full 1000` | holds |
+| about four junctions an origin | `blk_paths` mean 4.18 lines | holds |
 
 ## Phase 4: correctness (2026-10-21, `logs/results_*`, `logs/compare_*`)
 
@@ -163,8 +203,8 @@ Run before the timings, because the comparison queries would load the server und
 | A–P | set | `code_junction_below_node` | 17 | 17 | the code junction is the start of the parent segment whose top is the tributary's mouth: A drops that one segment, P keeps it (P is right) |
 | A–P | set | `route_differs` | 21 | 3 | the tree and the paths send the water down different lines, and the walks rejoin (same last segment) |
 | A–P 1 km | set | the same three | 23 | 7 | the same segment's full-walk class, or that of a full-walk difference within the first 1 km |
-| L2–A | set | `side_channel` | 1,640,569 | 3,837 | non-main lines the water does not pass through, which the codes count (0 on a main line, checked) |
-| L2–A | set | `path_ends` | 31,430 | 29 | the paths stop; the codes go on down the last line's code ancestors (or, for a pathless side channel, its own main stem) |
+| L2–A | set | `side_channel` | 1,652,256 | 3,843 | non-main lines the water does not pass through, which the codes count (0 on a main line, checked) |
+| L2–A | set | `path_ends` | 19,743 | 15 | the paths stop; the codes go on down the main lines of the last line's code ancestors (or, for a pathless side channel, its own main stem) |
 | L2–A | set | `alongside_side_channel` | 2,325 | 475 | the main stem beside a side channel the water is in: the codes count it from where the side channel leaves |
 | L2–A | set | `path_through_side_channel` | 1,919 | 702 | the path takes the water through a braid it touches; the codes do not count the braid |
 | L2–A | set | `localcode_anomaly` | 550 | 264 | local codes out of order with the measures, or nested deeper than one level, at the segment or (on a chain line) at the origin (#3's shape) |
@@ -179,7 +219,7 @@ Run before the timings, because the comparison queries would load the server und
 | L1–L2 | order | `code_tie_across_lines` | 1,772 | 80 | the trace's `ORDER BY` has no unique key: lines that share codes and start at measure 0 tie |
 | A-pred–A | set | `junction_at_segment_start` | 73 | 20 | the shipped predicate compares measures inclusively and counts the segment that starts at the junction; the walk does not |
 
-The classes were tightened after review round 1 (`logs/compare_20261021T21*`): side channels must be on non-main lines, which exposed 15,188 main-line segments a broader class had absorbed, now `path_ends` and `code_parent_bypassed`; `route_differs` requires the walks to rejoin; `path_ends` requires the array walk to be a prefix of the pointer walk. The results were regenerated with the final walk files first. The largest A–P distance difference where the sets agree is logged: 0 m, to the outlet and at 1 km.
+The classes were tightened after review rounds 1 and 2 (`logs/compare_20261021T2*`): side channels must be on non-main lines (0 main-line segments in the class, checked), which exposed main-line segments a broader class had absorbed, now `path_ends` and `code_parent_bypassed`; `path_ends` takes main lines only (round 2 found it absorbing side channels of an ancestor code); `route_differs` requires the walks to rejoin; the A–P `path_ends` requires the array walk to be a prefix of the pointer walk. The results were regenerated with the final walk files first. The largest A–P distance difference where the sets agree is logged: 0 m, to the outlet and at 1 km. One comparison run (`compare_20261021T215544Z.log`) logged a warning, `could not truncate file … Input/output error`, on dropping a table: the Docker Desktop host mount, at a dropped table's file; the run after it is clean.
 
 The local-code predicate discriminates: it flags 7.3 % of the array walk's segments (1 in 50 sample, 218 of 2,973) and every set difference it explains. Of the L2–A order differences, 43,320 of 43,382 are a downstream segment on the same line with a greater local code than the one above it.
 

@@ -93,3 +93,37 @@ WHERE EXISTS (
   WHERE x.method = n.method AND x.walk = n.walk AND x.cell = n.cell AND x.settings = s.settings
 )
 ORDER BY n.run_order, s.settings;
+
+-- ---------------------------------------------------------------- ratios
+
+-- every pair of walks on every cell and setting both ran: the ratio of their
+-- medians (a over b; above 1, b is faster). The comparative claims in the
+-- write-up are read off this table, not off the rows above.
+SELECT format('ratio | %s / %s | %s %s | %s | %s',
+  a.method, b.method, a.walk, a.cell, a.settings, round((a.ms / b.ms)::numeric, 2))
+FROM cell_t a
+INNER JOIN cell_t b ON b.walk = a.walk AND b.cell = a.cell AND b.settings = a.settings AND b.reps > 0
+INNER JOIN cell_n n ON n.method = a.method AND n.walk = a.walk AND n.cell = a.cell
+WHERE a.reps > 0 AND a.cell NOT IN ('0')
+AND (a.method, b.method) IN (('L2', 'A'), ('L2', 'P'), ('A', 'P'), ('L1', 'L2'))
+AND a.settings IN ('default', 'noparallel')
+ORDER BY a.walk, n.run_order, a.method, b.method, a.settings;
+
+-- ---------------------------------------------------------------- settings, interleaved
+
+-- bench.sh ab: each cell at defaults and without workers, run A B B A
+-- (default_ab1, noparallel_ab1, noparallel_ab2, default_ab2). Per setting the
+-- median of its six timed repeats; P never uses workers, so its ratio is the
+-- drift between runs, against which the others are read.
+SELECT format('ab | %s %s %s | default %s ms | noparallel %s ms | noparallel / default %s',
+  method, walk, cell,
+  round((percentile_cont(0.5) WITHIN GROUP (ORDER BY ms) FILTER (WHERE settings LIKE 'default_ab%'))::numeric, 1),
+  round((percentile_cont(0.5) WITHIN GROUP (ORDER BY ms) FILTER (WHERE settings LIKE 'noparallel_ab%'))::numeric, 1),
+  round((
+    percentile_cont(0.5) WITHIN GROUP (ORDER BY ms) FILTER (WHERE settings LIKE 'noparallel_ab%')
+    / percentile_cont(0.5) WITHIN GROUP (ORDER BY ms) FILTER (WHERE settings LIKE 'default_ab%')
+  )::numeric, 2))
+FROM fwapg.bench_timings
+WHERE settings LIKE '%\_ab_' AND rep > 0 AND ms IS NOT NULL
+GROUP BY method, walk, cell
+ORDER BY cell, walk, method;

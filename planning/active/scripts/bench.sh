@@ -13,6 +13,7 @@
 #   cell M W C S        one timing cell: method, walk, cell, settings
 #   setup               timing tables and the cell matrix (sql/06_timings.sql)
 #   timings             every cell in fwapg.bench_cells, at defaults then noparallel
+#   ab                  chosen cells at both settings interleaved (A B B A), for drift
 #   summary             medians, p95, timeouts and projections per cell (sql/08_summary.sql)
 #   explain             EXPLAIN (ANALYZE, BUFFERS) at 1 and 1,000 origins
 #   results             each method's rows for the comparison samples (fwapg.bench_res)
@@ -118,7 +119,7 @@ WHERE method = :'method' AND walk = :'walk' AND cell = :'cell' AND settings = :'
 \\set is_pred $( [ "$method" = A-pred ] && echo true || echo false )
 \\set is_1km $( [ "$walk" = 1km ] && echo true || echo false )
 SQL
-  if [ "$settings" = noparallel ]; then
+  if [[ "$settings" == noparallel* ]]; then
     echo "SET max_parallel_workers_per_gather = 0;"
   fi
   # a per-origin cell times each origin of its set as one statement
@@ -229,6 +230,30 @@ main() {
           logged "cell_${m}_${w}_${c}_${settings}" run_cell "$m" "$w" "$c" "$settings" || true
         done
       done
+      ;;
+    ab)
+      # settings against time: each cell at defaults and without workers,
+      # interleaved A B B A so linear drift cancels; P, which never uses
+      # workers, is the control for drift
+      local m w c
+      while read -r m w c; do
+        for st in default_ab1 noparallel_ab1 noparallel_ab2 default_ab2; do
+          wait_idle
+          logged "cell_${m}_${w}_${c}_${st}" run_cell "$m" "$w" "$c" "$st" || echo "FAIL $m $w $c $st" >&2
+        done
+      done <<CELLS
+L1 full 1000
+L2 full 1000
+A full 1000
+P full 1000
+L2 full 10000
+A full 10000
+P full 10000
+A 1km 10000
+P 1km 10000
+A full BULK
+P full BULK
+CELLS
       ;;
     summary)
       logged summary run_psql -At -v ON_ERROR_STOP=1 -f "$sql/08_summary.sql"

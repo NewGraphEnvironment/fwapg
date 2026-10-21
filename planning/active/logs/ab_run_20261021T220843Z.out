@@ -1,0 +1,220 @@
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_L1_full_1000_default_ab1_20261021T220843Z.log
+L1 full 1000 default_ab1 origin NULL rep 0: 1759052 rows, 15781.1 ms
+L1 full 1000 default_ab1 origin NULL rep 1: 1759052 rows, 14934.6 ms
+L1 full 1000 default_ab1 origin NULL rep 2: 1759052 rows, 15598.6 ms
+L1 full 1000 default_ab1 origin NULL rep 3: 1759052 rows, 15632.5 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_L1_full_1000_noparallel_ab1_20261021T220946Z.log
+L1 full 1000 noparallel_ab1 origin NULL rep 0: 1759052 rows, 30815.1 ms
+L1 full 1000 noparallel_ab1 origin NULL rep 1: 1759052 rows, 29606.3 ms
+L1 full 1000 noparallel_ab1 origin NULL rep 2: 1759052 rows, 30347.2 ms
+L1 full 1000 noparallel_ab1 origin NULL rep 3: 1759052 rows, 29146.3 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_L1_full_1000_noparallel_ab2_20261021T221146Z.log
+L1 full 1000 noparallel_ab2 origin NULL rep 0: 1759052 rows, 30403.1 ms
+L1 full 1000 noparallel_ab2 origin NULL rep 1: 1759052 rows, 29126.6 ms
+L1 full 1000 noparallel_ab2 origin NULL rep 2: 1759052 rows, 29489.5 ms
+L1 full 1000 noparallel_ab2 origin NULL rep 3: 1759052 rows, 28735.1 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_L1_full_1000_default_ab2_20261021T221344Z.log
+L1 full 1000 default_ab2 origin NULL rep 0: 1759052 rows, 15402.5 ms
+L1 full 1000 default_ab2 origin NULL rep 1: 1759052 rows, 14913.5 ms
+L1 full 1000 default_ab2 origin NULL rep 2: 1759052 rows, 14976.2 ms
+L1 full 1000 default_ab2 origin NULL rep 3: 1759052 rows, 15056.9 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_L2_full_1000_default_ab1_20261021T221444Z.log
+L2 full 1000 default_ab1 origin NULL rep 0: 1774080 rows, 18390.4 ms
+L2 full 1000 default_ab1 origin NULL rep 1: 1774080 rows, 15528.8 ms
+L2 full 1000 default_ab1 origin NULL rep 2: 1774080 rows, 15225.4 ms
+L2 full 1000 default_ab1 origin NULL rep 3: 1774080 rows, 15361.7 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_L2_full_1000_noparallel_ab1_20261021T221549Z.log
+L2 full 1000 noparallel_ab1 origin NULL rep 0: 1774080 rows, 13674.3 ms
+L2 full 1000 noparallel_ab1 origin NULL rep 1: 1774080 rows, 9417.1 ms
+L2 full 1000 noparallel_ab1 origin NULL rep 2: 1774080 rows, 9396.5 ms
+L2 full 1000 noparallel_ab1 origin NULL rep 3: 1774080 rows, 9287.1 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_L2_full_1000_noparallel_ab2_20261021T221631Z.log
+L2 full 1000 noparallel_ab2 origin NULL rep 0: 1774080 rows, 13617.5 ms
+L2 full 1000 noparallel_ab2 origin NULL rep 1: 1774080 rows, 9417.3 ms
+L2 full 1000 noparallel_ab2 origin NULL rep 2: 1774080 rows, 9471.1 ms
+L2 full 1000 noparallel_ab2 origin NULL rep 3: 1774080 rows, 9345.2 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_L2_full_1000_default_ab2_20261021T221713Z.log
+L2 full 1000 default_ab2 origin NULL rep 0: 1774080 rows, 18082.1 ms
+L2 full 1000 default_ab2 origin NULL rep 1: 1774080 rows, 16280.9 ms
+L2 full 1000 default_ab2 origin NULL rep 2: 1774080 rows, 15460.1 ms
+L2 full 1000 default_ab2 origin NULL rep 3: 1774080 rows, 15538.2 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_A_full_1000_default_ab1_20261021T221818Z.log
+A full 1000 default_ab1 origin NULL rep 0: 1155537 rows, 2331.8 ms
+A full 1000 default_ab1 origin NULL rep 1: 1155537 rows, 1638.8 ms
+A full 1000 default_ab1 origin NULL rep 2: 1155537 rows, 1278.3 ms
+A full 1000 default_ab1 origin NULL rep 3: 1155537 rows, 1216.5 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_A_full_1000_noparallel_ab1_20261021T221825Z.log
+A full 1000 noparallel_ab1 origin NULL rep 0: 1155537 rows, 4125.9 ms
+A full 1000 noparallel_ab1 origin NULL rep 1: 1155537 rows, 1958.4 ms
+A full 1000 noparallel_ab1 origin NULL rep 2: 1155537 rows, 1923.7 ms
+A full 1000 noparallel_ab1 origin NULL rep 3: 1155537 rows, 1981.3 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_A_full_1000_noparallel_ab2_20261021T221835Z.log
+A full 1000 noparallel_ab2 origin NULL rep 0: 1155537 rows, 4122.3 ms
+A full 1000 noparallel_ab2 origin NULL rep 1: 1155537 rows, 1929.8 ms
+A full 1000 noparallel_ab2 origin NULL rep 2: 1155537 rows, 1956.0 ms
+A full 1000 noparallel_ab2 origin NULL rep 3: 1155537 rows, 1942.4 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_A_full_1000_default_ab2_20261021T221845Z.log
+A full 1000 default_ab2 origin NULL rep 0: 1155537 rows, 2306.6 ms
+A full 1000 default_ab2 origin NULL rep 1: 1155537 rows, 1648.9 ms
+A full 1000 default_ab2 origin NULL rep 2: 1155537 rows, 1295.3 ms
+A full 1000 default_ab2 origin NULL rep 3: 1155537 rows, 1242.4 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_P_full_1000_default_ab1_20261021T221852Z.log
+P full 1000 default_ab1 origin NULL rep 0: 1155560 rows, 3004.8 ms
+P full 1000 default_ab1 origin NULL rep 1: 1155560 rows, 2387.0 ms
+P full 1000 default_ab1 origin NULL rep 2: 1155560 rows, 2372.9 ms
+P full 1000 default_ab1 origin NULL rep 3: 1155560 rows, 2380.5 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_P_full_1000_noparallel_ab1_20261021T221902Z.log
+P full 1000 noparallel_ab1 origin NULL rep 0: 1155560 rows, 2798.5 ms
+P full 1000 noparallel_ab1 origin NULL rep 1: 1155560 rows, 2430.8 ms
+P full 1000 noparallel_ab1 origin NULL rep 2: 1155560 rows, 2404.4 ms
+P full 1000 noparallel_ab1 origin NULL rep 3: 1155560 rows, 1965.9 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_P_full_1000_noparallel_ab2_20261021T221912Z.log
+P full 1000 noparallel_ab2 origin NULL rep 0: 1155560 rows, 2257.6 ms
+P full 1000 noparallel_ab2 origin NULL rep 1: 1155560 rows, 1902.2 ms
+P full 1000 noparallel_ab2 origin NULL rep 2: 1155560 rows, 1903.4 ms
+P full 1000 noparallel_ab2 origin NULL rep 3: 1155560 rows, 1979.6 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_P_full_1000_default_ab2_20261021T221920Z.log
+P full 1000 default_ab2 origin NULL rep 0: 1155560 rows, 2249.7 ms
+P full 1000 default_ab2 origin NULL rep 1: 1155560 rows, 1920.6 ms
+P full 1000 default_ab2 origin NULL rep 2: 1155560 rows, 1872.1 ms
+P full 1000 default_ab2 origin NULL rep 3: 1155560 rows, 1998.9 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_L2_full_10000_default_ab1_20261021T221928Z.log
+L2 full 10000 default_ab1 origin NULL rep 0: 17655385 rows, 88704.7 ms
+L2 full 10000 default_ab1 origin NULL rep 1: 17655385 rows, 80112.2 ms
+L2 full 10000 default_ab1 origin NULL rep 2: 17655385 rows, 80469.7 ms
+L2 full 10000 default_ab1 origin NULL rep 3: 17655385 rows, 79757.4 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_L2_full_10000_noparallel_ab1_20261021T222457Z.log
+L2 full 10000 noparallel_ab1 origin NULL rep 0: 17655385 rows, 77042.7 ms
+L2 full 10000 noparallel_ab1 origin NULL rep 1: 17655385 rows, 69944.6 ms
+L2 full 10000 noparallel_ab1 origin NULL rep 2: 17655385 rows, 71024.5 ms
+L2 full 10000 noparallel_ab1 origin NULL rep 3: 17655385 rows, 73026.9 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_L2_full_10000_noparallel_ab2_20261021T222949Z.log
+L2 full 10000 noparallel_ab2 origin NULL rep 0: 17655385 rows, 79538.1 ms
+L2 full 10000 noparallel_ab2 origin NULL rep 1: 17655385 rows, 77993.2 ms
+L2 full 10000 noparallel_ab2 origin NULL rep 2: 17655385 rows, 82197.9 ms
+L2 full 10000 noparallel_ab2 origin NULL rep 3: 17655385 rows, 81685.7 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_L2_full_10000_default_ab2_20261021T223510Z.log
+L2 full 10000 default_ab2 origin NULL rep 0: 17655385 rows, 97515.9 ms
+L2 full 10000 default_ab2 origin NULL rep 1: 17655385 rows, 94223.8 ms
+L2 full 10000 default_ab2 origin NULL rep 2: 17655385 rows, 93401.5 ms
+L2 full 10000 default_ab2 origin NULL rep 3: 17655385 rows, 94626.4 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_A_full_10000_default_ab1_20261021T224130Z.log
+A full 10000 default_ab1 origin NULL rep 0: 11646618 rows, 11185.7 ms
+A full 10000 default_ab1 origin NULL rep 1: 11646618 rows, 9298.3 ms
+A full 10000 default_ab1 origin NULL rep 2: 11646618 rows, 9153.6 ms
+A full 10000 default_ab1 origin NULL rep 3: 11646618 rows, 8957.8 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_A_full_10000_noparallel_ab1_20261021T224209Z.log
+A full 10000 noparallel_ab1 origin NULL rep 0: 11646618 rows, 20908.1 ms
+A full 10000 noparallel_ab1 origin NULL rep 1: 11646618 rows, 15928.7 ms
+A full 10000 noparallel_ab1 origin NULL rep 2: 11646618 rows, 15513.4 ms
+A full 10000 noparallel_ab1 origin NULL rep 3: 11646618 rows, 16230.9 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_A_full_10000_noparallel_ab2_20261021T224318Z.log
+A full 10000 noparallel_ab2 origin NULL rep 0: 11646618 rows, 20157.2 ms
+A full 10000 noparallel_ab2 origin NULL rep 1: 11646618 rows, 15570.8 ms
+A full 10000 noparallel_ab2 origin NULL rep 2: 11646618 rows, 15491.2 ms
+A full 10000 noparallel_ab2 origin NULL rep 3: 11646618 rows, 15555.9 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_A_full_10000_default_ab2_20261021T224425Z.log
+A full 10000 default_ab2 origin NULL rep 0: 11646618 rows, 10496.6 ms
+A full 10000 default_ab2 origin NULL rep 1: 11646618 rows, 9260.1 ms
+A full 10000 default_ab2 origin NULL rep 2: 11646618 rows, 8970.2 ms
+A full 10000 default_ab2 origin NULL rep 3: 11646618 rows, 8931.8 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_P_full_10000_default_ab1_20261021T224502Z.log
+P full 10000 default_ab1 origin NULL rep 0: 11653690 rows, 7047.4 ms
+P full 10000 default_ab1 origin NULL rep 1: 11653690 rows, 6616.6 ms
+P full 10000 default_ab1 origin NULL rep 2: 11653690 rows, 6636.0 ms
+P full 10000 default_ab1 origin NULL rep 3: 11653690 rows, 6581.7 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_P_full_10000_noparallel_ab1_20261021T224529Z.log
+P full 10000 noparallel_ab1 origin NULL rep 0: 11653690 rows, 6947.9 ms
+P full 10000 noparallel_ab1 origin NULL rep 1: 11653690 rows, 6577.9 ms
+P full 10000 noparallel_ab1 origin NULL rep 2: 11653690 rows, 6692.3 ms
+P full 10000 noparallel_ab1 origin NULL rep 3: 11653690 rows, 6704.3 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_P_full_10000_noparallel_ab2_20261021T224556Z.log
+P full 10000 noparallel_ab2 origin NULL rep 0: 11653690 rows, 6902.3 ms
+P full 10000 noparallel_ab2 origin NULL rep 1: 11653690 rows, 6528.1 ms
+P full 10000 noparallel_ab2 origin NULL rep 2: 11653690 rows, 6609.7 ms
+P full 10000 noparallel_ab2 origin NULL rep 3: 11653690 rows, 6564.9 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_P_full_10000_default_ab2_20261021T224623Z.log
+P full 10000 default_ab2 origin NULL rep 0: 11653690 rows, 6975.2 ms
+P full 10000 default_ab2 origin NULL rep 1: 11653690 rows, 6522.6 ms
+P full 10000 default_ab2 origin NULL rep 2: 11653690 rows, 6642.7 ms
+P full 10000 default_ab2 origin NULL rep 3: 11653690 rows, 6619.3 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_A_1km_10000_default_ab1_20261021T224650Z.log
+A 1km 10000 default_ab1 origin NULL rep 0: 51008 rows, 1606.3 ms
+A 1km 10000 default_ab1 origin NULL rep 1: 51008 rows, 401.4 ms
+A 1km 10000 default_ab1 origin NULL rep 2: 51008 rows, 365.8 ms
+A 1km 10000 default_ab1 origin NULL rep 3: 51008 rows, 356.9 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_A_1km_10000_noparallel_ab1_20261021T224653Z.log
+A 1km 10000 noparallel_ab1 origin NULL rep 0: 51008 rows, 1711.4 ms
+A 1km 10000 noparallel_ab1 origin NULL rep 1: 51008 rows, 362.8 ms
+A 1km 10000 noparallel_ab1 origin NULL rep 2: 51008 rows, 361.7 ms
+A 1km 10000 noparallel_ab1 origin NULL rep 3: 51008 rows, 358.8 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_A_1km_10000_noparallel_ab2_20261021T224656Z.log
+A 1km 10000 noparallel_ab2 origin NULL rep 0: 51008 rows, 1738.1 ms
+A 1km 10000 noparallel_ab2 origin NULL rep 1: 51008 rows, 367.4 ms
+A 1km 10000 noparallel_ab2 origin NULL rep 2: 51008 rows, 366.8 ms
+A 1km 10000 noparallel_ab2 origin NULL rep 3: 51008 rows, 359.9 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_A_1km_10000_default_ab2_20261021T224659Z.log
+A 1km 10000 default_ab2 origin NULL rep 0: 51008 rows, 1612.3 ms
+A 1km 10000 default_ab2 origin NULL rep 1: 51008 rows, 399.1 ms
+A 1km 10000 default_ab2 origin NULL rep 2: 51008 rows, 365.8 ms
+A 1km 10000 default_ab2 origin NULL rep 3: 51008 rows, 348.5 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_P_1km_10000_default_ab1_20261021T224702Z.log
+P 1km 10000 default_ab1 origin NULL rep 0: 51011 rows, 611.9 ms
+P 1km 10000 default_ab1 origin NULL rep 1: 51011 rows, 193.1 ms
+P 1km 10000 default_ab1 origin NULL rep 2: 51011 rows, 192.7 ms
+P 1km 10000 default_ab1 origin NULL rep 3: 51011 rows, 193.8 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_P_1km_10000_noparallel_ab1_20261021T224703Z.log
+P 1km 10000 noparallel_ab1 origin NULL rep 0: 51011 rows, 598.3 ms
+P 1km 10000 noparallel_ab1 origin NULL rep 1: 51011 rows, 196.2 ms
+P 1km 10000 noparallel_ab1 origin NULL rep 2: 51011 rows, 192.7 ms
+P 1km 10000 noparallel_ab1 origin NULL rep 3: 51011 rows, 194.4 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_P_1km_10000_noparallel_ab2_20261021T224705Z.log
+P 1km 10000 noparallel_ab2 origin NULL rep 0: 51011 rows, 600.3 ms
+P 1km 10000 noparallel_ab2 origin NULL rep 1: 51011 rows, 195.0 ms
+P 1km 10000 noparallel_ab2 origin NULL rep 2: 51011 rows, 195.4 ms
+P 1km 10000 noparallel_ab2 origin NULL rep 3: 51011 rows, 195.0 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_P_1km_10000_default_ab2_20261021T224706Z.log
+P 1km 10000 default_ab2 origin NULL rep 0: 51011 rows, 601.3 ms
+P 1km 10000 default_ab2 origin NULL rep 1: 51011 rows, 193.5 ms
+P 1km 10000 default_ab2 origin NULL rep 2: 51011 rows, 187.2 ms
+P 1km 10000 default_ab2 origin NULL rep 3: 51011 rows, 187.8 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_A_full_BULK_default_ab1_20261021T224707Z.log
+A full BULK default_ab1 origin NULL rep 0: 30249250 rows, 13844.4 ms
+A full BULK default_ab1 origin NULL rep 1: 30249250 rows, 13260.5 ms
+A full BULK default_ab1 origin NULL rep 2: 30249250 rows, 13164.3 ms
+A full BULK default_ab1 origin NULL rep 3: 30249250 rows, 13223.4 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_A_full_BULK_noparallel_ab1_20261021T224801Z.log
+A full BULK noparallel_ab1 origin NULL rep 0: 30249250 rows, 102121.2 ms
+A full BULK noparallel_ab1 origin NULL rep 1: 30249250 rows, 100949.2 ms
+A full BULK noparallel_ab1 origin NULL rep 2: 30249250 rows, 104410.8 ms
+A full BULK noparallel_ab1 origin NULL rep 3: 30249250 rows, 102088.5 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_A_full_BULK_noparallel_ab2_20261021T225451Z.log
+A full BULK noparallel_ab2 origin NULL rep 0: 30249250 rows, 101214.5 ms
+A full BULK noparallel_ab2 origin NULL rep 1: 30249250 rows, 100514.9 ms
+A full BULK noparallel_ab2 origin NULL rep 2: 30249250 rows, 100600.7 ms
+A full BULK noparallel_ab2 origin NULL rep 3: 30249250 rows, 100665.6 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_A_full_BULK_default_ab2_20261021T230134Z.log
+A full BULK default_ab2 origin NULL rep 0: 30249250 rows, 13656.7 ms
+A full BULK default_ab2 origin NULL rep 1: 30249250 rows, 13376.0 ms
+A full BULK default_ab2 origin NULL rep 2: 30249250 rows, 13352.5 ms
+A full BULK default_ab2 origin NULL rep 3: 30249250 rows, 13220.7 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_P_full_BULK_default_ab1_20261021T230228Z.log
+P full BULK default_ab1 origin NULL rep 0: 30249250 rows, 51649.6 ms
+P full BULK default_ab1 origin NULL rep 1: 30249250 rows, 52397.7 ms
+P full BULK default_ab1 origin NULL rep 2: 30249250 rows, 52578.3 ms
+P full BULK default_ab1 origin NULL rep 3: 30249250 rows, 52616.8 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_P_full_BULK_noparallel_ab1_20261021T230557Z.log
+P full BULK noparallel_ab1 origin NULL rep 0: 30249250 rows, 52798.4 ms
+P full BULK noparallel_ab1 origin NULL rep 1: 30249250 rows, 52673.1 ms
+P full BULK noparallel_ab1 origin NULL rep 2: 30249250 rows, 52905.3 ms
+P full BULK noparallel_ab1 origin NULL rep 3: 30249250 rows, 52648.9 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_P_full_BULK_noparallel_ab2_20261021T230928Z.log
+P full BULK noparallel_ab2 origin NULL rep 0: 30249250 rows, 52694.3 ms
+P full BULK noparallel_ab2 origin NULL rep 1: 30249250 rows, 52249.6 ms
+P full BULK noparallel_ab2 origin NULL rep 2: 30249250 rows, 52318.9 ms
+P full BULK noparallel_ab2 origin NULL rep 3: 30249250 rows, 52233.7 ms
+log: /Users/airvine/Projects/repo/fwapg/planning/active/logs/cell_P_full_BULK_default_ab2_20261021T231258Z.log
+P full BULK default_ab2 origin NULL rep 0: 30249250 rows, 52366.5 ms
+P full BULK default_ab2 origin NULL rep 1: 30249250 rows, 52038.9 ms
+P full BULK default_ab2 origin NULL rep 2: 30249250 rows, 51283.1 ms
+P full BULK default_ab2 origin NULL rep 3: 30249250 rows, 46324.1 ms

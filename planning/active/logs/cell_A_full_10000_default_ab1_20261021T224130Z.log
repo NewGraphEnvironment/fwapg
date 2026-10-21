@@ -1,0 +1,4 @@
+A full 10000 default_ab1 origin NULL rep 0: 11646618 rows, 11185.7 ms
+A full 10000 default_ab1 origin NULL rep 1: 11646618 rows, 9298.3 ms
+A full 10000 default_ab1 origin NULL rep 2: 11646618 rows, 9153.6 ms
+A full 10000 default_ab1 origin NULL rep 3: 11646618 rows, 8957.8 ms

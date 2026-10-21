@@ -203,8 +203,7 @@ AND (
 AND NOT EXISTS (
   SELECT 1 FROM fwapg.bench_diffs e
   WHERE e.pair = d.pair AND e.kind = 'set' AND e.origin_id = d.origin_id AND e.in_a
-)
-AND EXISTS (SELECT 1 FROM cmp_lines c WHERE c.origin_id = d.origin_id AND c.is_last);
+);
 
 -- the code junction is one segment below the node where the tributary's mouth
 -- is: the path's junction measure is the start of the parent segment X whose
@@ -299,13 +298,14 @@ AND x.linear_feature_id = d.linear_feature_id
 AND (x.localcode_ltree IS NULL OR x.wscode_ltree <@ '999');
 
 -- the paths stop (as above): the array walk ends at the last line's mouth, and
--- the codes go on down that line's code ancestors (codes above its own, or, for a
--- side channel, its own main stem)
+-- the codes go on down the main lines of that line's code ancestors (codes above
+-- its own, or, for a side channel, its own main stem); side channels of those
+-- codes fall to side_channel below
 UPDATE fwapg.bench_diffs d SET class = 'path_ends'
 FROM cmp_seg x, cmp_lines c
 WHERE d.pair = 'L2-A' AND d.kind = 'set' AND d.class IS NULL
 AND d.in_a
-AND x.linear_feature_id = d.linear_feature_id
+AND x.linear_feature_id = d.linear_feature_id AND x.is_main
 AND c.origin_id = d.origin_id AND c.is_last
 AND c.wscode <@ x.wscode_ltree
 AND (
