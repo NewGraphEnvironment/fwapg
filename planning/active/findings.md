@@ -66,6 +66,28 @@ Timings:
 | array walk from Hope, main chain, `drm < junction − 1 mm` | 239, 161.40 km (the `docs/03_functions.md` fixture exactly) | 48 ms |
 | array walk, 200 seeded random origins | mean 1,143 segments and 388 km an origin; max 3,932 and 1,279 km | 2.48 s, 12 ms an origin |
 
+## Phase 1: environment and origins (2026-10-21, `logs/env_*`, `logs/origins_*`, `logs/hope_*`)
+
+Settings at the measurement (server defaults): PostgreSQL 17.5, ltree 1.3, PostGIS 3.5.2, `jit` on, `max_parallel_workers_per_gather` 8 (`max_parallel_workers` 14), `work_mem` 2 GB, `hash_mem_multiplier` 2, `shared_buffers` 32 GB, `effective_cache_size` 96 GB, `random_page_cost` 1.1. The database sits on a Docker Desktop volume (grpcfuse) on the 16-core, 128 GB machine.
+
+Sizes as in the planning table, plus `fwa_streams` 4,538,224 rows, 8,148 MB total, and its code indexes (`wsc_gist` 451 MB, `wsc_btree` 385 MB, `lc_gist` 477 MB, `lc_btree` 407 MB, `blkey_measure` 172 MB).
+
+Assertions held: no blue line has two segments at one `downstream_route_measure`; every tree segment is a network segment. Re-measured: 369,217 segments absent from `fwa_streams`, 397,073 not in the tree, 1,099 lines whose lowest segment starts above 1 mm, 212,790 lines (366,162 segments) with no path.
+
+**New: 328,961 segments have a null `localcode_ltree`** (null `wscode_ltree`: 0). 170,773 of them are under 999; the other 158,188 are on the network, mostly edge types 1450 (71,534), 1100 (50,279) and 1350 (33,064). The ltree predicate's code criteria are null for them, so L2 returns them only on the origin's own blue line (criterion 1). The `code_999` class covers them: a segment under 999 or with a null local code.
+
+Origins (`fwapg.bench_origins`, seeded rank `md5('fwapg#34:' || linear_feature_id)`; eligible: both codes non-null, not under 999; 366,377 segments excluded province-wide):
+
+| grp | origins | in tree | with a path | in `fwa_streams` | excluded |
+|---|---|---|---|---|---|
+| random | 100,000 | 99,339 | 96,597 | 99,938 | |
+| random 1..1,000 | 1,000 | 993 | 958 | 999 | |
+| ADMS | 10,458 | 10,458 | 10,448 | 10,449 | 1,062 |
+| BULK | 30,046 | 30,046 | 30,046 | 30,037 | 2,426 |
+| LFRA | 18,180 | 18,175 | 17,790 | 18,154 | 1,811 |
+
+Hope trace (`fwa_downstreamtrace(356364114, 160400)`, 536 rows): warm-up 2,667 ms, then 1,084, 1,085 and 1,093 ms; **median 1,085 ms warm**. The 6.8 s planning number was a cold probe.
+
 ## Plan review
 
 A Plan-agent critique of the approved plan returned 24 findings (`review-plan.md`); all were folded into the plan before the baseline. The ones that changed the design: L1 reads a smaller table (new class `absent_from_fwa_streams`); A and P share a per-segment `step_m` so their distances compare at all; rules 1–3 apply to every segment, null only when none applies; the paths are re-timed before the pointer build; cells are one psql call each so a timeout is a recorded result; the array predicate `blk_on_or_upstream` gets its own cell (#30's third question); the cycle check is one reverse walk from the roots; the Hope fixture is `sum(st_length)`, not `cum_m`.

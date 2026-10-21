@@ -1,0 +1,5 @@
+hope trace rep 0 (warm-up)|536 rows, 2667.2 ms
+hope trace rep 1|536 rows, 1084.2 ms
+hope trace rep 2|536 rows, 1084.8 ms
+hope trace rep 3|536 rows, 1092.6 ms
+hope trace median of 3|1084.8 ms

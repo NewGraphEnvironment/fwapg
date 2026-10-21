@@ -12,3 +12,10 @@
 - Commits: 43d13ea (baseline)
 - Session ended after the baseline by `/compact-prep`; nothing of Phase 1 started
 - Next: start Phase 1 (`scripts/bench.sh`, `sql/00_env.sql`, `sql/00_origins.sql`) against the local Docker database (`DATABASE_URL` exported); re-read the plan in the issue body first
+
+## Session 2026-10-21 (resumed after /clear)
+
+- Phase 1: `scripts/bench.sh` (one psql call per step and cell, URL redacted, timeouts recorded per cell), `sql/00_env.sql`, `sql/00_origins.sql`, `sql/00_hope.sql`, `sql/06_timings.sql` (timing tables and the cell matrix as `fwapg.bench_cells`)
+- Env: assertions hold; new fact, 158,188 on-network segments with a null local code (findings)
+- Origins: 100,000 random and every eligible segment of ADMS, BULK, LFRA (2 min)
+- Hope trace warm: median 1,085 ms (the 6.8 s probe was cold)

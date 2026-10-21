@@ -10,10 +10,10 @@ Neither has been measured. The main-flow tree (#2) has 0 splits province-wide, s
 The method, the contract the three methods share, the pointer rules, the cells and the correctness classes are in the issue body under `## Plan` (approved 2026-10-21, with a Plan-agent critique of 24 findings folded in; `review-plan.md`).
 
 ## Phase 1: harness and origins
-- [ ] `planning/active/scripts/bench.sh`: one psql call per step and cell against `DATABASE_URL`, `\timing`, timeouts recorded and the run continued, no `set -x`, logs to `planning/active/logs/<step>_<date>.log` with the URL redacted
-- [ ] `sql/00_env.sql`: named settings, table and index sizes, and assertions: `(blue_line_key, downstream_route_measure)` unique, segments absent from `fwa_streams`, lines whose bottom is above 1 mm — into `findings.md`
-- [ ] `sql/00_origins.sql`: `fwapg.bench_origins` as above
-- [ ] The Hope trace re-run under the harness, warm, beside the 6.8 s probe
+- [x] `planning/active/scripts/bench.sh`: one psql call per step and cell against `DATABASE_URL`, `\timing`, timeouts recorded and the run continued, no `set -x`, logs to `planning/active/logs/<step>_<date>.log` with the URL redacted
+- [x] `sql/00_env.sql`: named settings, table and index sizes, and assertions: `(blue_line_key, downstream_route_measure)` unique, segments absent from `fwa_streams`, lines whose bottom is above 1 mm — into `findings.md`
+- [x] `sql/00_origins.sql`: `fwapg.bench_origins` as above
+- [x] The Hope trace re-run under the harness, warm, beside the 6.8 s probe
 
 ## Phase 2: paths and `downstream_id`
 - [ ] Re-time `blue_line_paths.sh` with sorted-row md5s of both tables before and after; on a mismatch, diff and attribute
