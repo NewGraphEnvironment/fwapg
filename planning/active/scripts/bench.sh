@@ -17,6 +17,8 @@
 #   results             each method's rows for the comparison samples (fwapg.bench_res)
 #   compare             correctness: set, order and distance into fwapg.bench_diffs
 #
+# BENCH_TIMEOUT overrides a cell's statement timeout (default 30min).
+#
 # One psql call per step and per cell, so a statement timeout ends that cell
 # only: it is recorded in fwapg.bench_timings and the run continues. No set -x:
 # the connection comes from the environment and the URL is redacted from logs.
@@ -79,8 +81,9 @@ qa_check() {
 cell_script() {
   local method="$1" walk="$2" cell="$3" settings="$4"
   local spec
-  spec=$(run_psql -At -v ON_ERROR_STOP=1 -v method="$method" -v walk="$walk" -v cell="$cell" \
-    -c "SELECT grp, lo, hi, repeats, warm, per_origin FROM fwapg.bench_cells WHERE method = :'method' AND walk = :'walk' AND cell = :'cell'")
+  # on stdin: psql -c does not interpolate variables
+  spec=$(echo "SELECT grp, lo, hi, repeats, warm, per_origin FROM fwapg.bench_cells WHERE method = :'method' AND walk = :'walk' AND cell = :'cell'" |
+    run_psql -At -v ON_ERROR_STOP=1 -v method="$method" -v walk="$walk" -v cell="$cell" -f -)
   if [ -z "$spec" ]; then
     echo "no cell $method/$walk/$cell in fwapg.bench_cells" >&2
     return 1
@@ -101,7 +104,7 @@ cell_script() {
 \\set settings '$settings'
 \\set grp '$grp'
 \\set out fwapg.bench_out
-SET statement_timeout = '30min';
+SET statement_timeout = '${BENCH_TIMEOUT:-30min}';
 SQL
   if [ "$settings" = noparallel ]; then
     echo "SET max_parallel_workers_per_gather = 0;"
@@ -120,9 +123,10 @@ SQL
       fi
       cat <<SQL
 \\set rep $r
-TRUNCATE fwapg.bench_out;
+DELETE FROM fwapg.bench_out;
+VACUUM fwapg.bench_out;
 SELECT clock_timestamp() AS t0 \\gset
-\\ir $walkfile
+\\i $walkfile
 \\if :ERROR
   INSERT INTO fwapg.bench_timings (method, walk, cell, settings, origin_rank, rep, ms, rows, note)
   VALUES (:'method', :'walk', :'cell', :'settings', :origin_rank, :rep, NULL, NULL,
@@ -166,7 +170,7 @@ main() {
       logged env run_psql -At -v ON_ERROR_STOP=1 -f "$sql/00_env.sql"
       ;;
     origins)
-      logged origins run_psql -At -v ON_ERROR_STOP=1 -f "$sql/00_origins.sql"
+      logged origins run_psql -At -v ON_ERROR_STOP=1 -f "$sql/00_origins.sql" -f "$sql/00_origins_hope.sql"
       ;;
     hope)
       wait_idle
@@ -219,7 +223,7 @@ main() {
       logged explain bash -c 'cd "$1" && psql -X -q "$DATABASE_URL" -v ON_ERROR_STOP=1 -f 05_explain.sql' _ "$sql"
       ;;
     results)
-      wait_idle
+      # untimed: no wait for an idle server
       logged results bash -c 'cd "$1" && psql -X -q "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -f 07_results.sql' _ "$sql"
       ;;
     compare)

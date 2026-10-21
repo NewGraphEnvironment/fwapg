@@ -1,0 +1,4 @@
+ERROR:  syntax error at or near ":"
+LINE 1: ... per_origin FROM fwapg.bench_cells WHERE method = :'method' ...
+                                                             ^
+no cell P/full/1 in fwapg.bench_cells

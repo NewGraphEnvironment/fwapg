@@ -3,7 +3,8 @@
 -- `bench.sh explain` from this directory, after a cell has warmed the cache.
 -- L1 is a plpgsql function, so its plan is one Function Scan: shown at one
 -- origin only. A-pred at 1,000 origins evaluates the predicate for every
--- (origin, segment) pair and is shown without ANALYZE.
+-- (origin, segment) pair and is shown without ANALYZE. The sink is emptied with
+-- DELETE and VACUUM, as in the cells (06_timings.sql says why).
 
 SET statement_timeout = '30min';
 \set out fwapg.bench_out
@@ -16,45 +17,53 @@ SET statement_timeout = '30min';
 \echo '== L1 full, 1 origin'
 \set method L1
 \set walk full
-TRUNCATE fwapg.bench_out;
+DELETE FROM fwapg.bench_out;
+VACUUM fwapg.bench_out;
 \ir 02_walk_ltree.sql
 
 \echo '== L2 full, 1 origin'
 \set method L2
-TRUNCATE fwapg.bench_out;
+DELETE FROM fwapg.bench_out;
+VACUUM fwapg.bench_out;
 \ir 02_walk_ltree.sql
 
 \echo '== A-pred full, 1 origin'
 \set method A-pred
-TRUNCATE fwapg.bench_out;
+DELETE FROM fwapg.bench_out;
+VACUUM fwapg.bench_out;
 \ir 03_walk_arrays.sql
 
 \echo '== A full, 1 origin'
 \set method A
-TRUNCATE fwapg.bench_out;
+DELETE FROM fwapg.bench_out;
+VACUUM fwapg.bench_out;
 \ir 03_walk_arrays.sql
 
 \echo '== A 1km, 1 origin'
 \set walk 1km
-TRUNCATE fwapg.bench_out;
+DELETE FROM fwapg.bench_out;
+VACUUM fwapg.bench_out;
 \ir 03_walk_arrays.sql
 
 \echo '== P full, 1 origin'
 \set method P
 \set walk full
-TRUNCATE fwapg.bench_out;
+DELETE FROM fwapg.bench_out;
+VACUUM fwapg.bench_out;
 \ir 04_walk_pointer.sql
 
 \echo '== P 1km, 1 origin'
 \set walk 1km
-TRUNCATE fwapg.bench_out;
+DELETE FROM fwapg.bench_out;
+VACUUM fwapg.bench_out;
 \ir 04_walk_pointer.sql
 
 \set hi 1000
 \echo '== L2 full, 1,000 origins'
 \set method L2
 \set walk full
-TRUNCATE fwapg.bench_out;
+DELETE FROM fwapg.bench_out;
+VACUUM fwapg.bench_out;
 \ir 02_walk_ltree.sql
 
 \echo '== A-pred full, 1,000 origins (no ANALYZE)'
@@ -65,23 +74,28 @@ TRUNCATE fwapg.bench_out;
 
 \echo '== A full, 1,000 origins'
 \set method A
-TRUNCATE fwapg.bench_out;
+DELETE FROM fwapg.bench_out;
+VACUUM fwapg.bench_out;
 \ir 03_walk_arrays.sql
 
 \echo '== A 1km, 1,000 origins'
 \set walk 1km
-TRUNCATE fwapg.bench_out;
+DELETE FROM fwapg.bench_out;
+VACUUM fwapg.bench_out;
 \ir 03_walk_arrays.sql
 
 \echo '== P full, 1,000 origins'
 \set method P
 \set walk full
-TRUNCATE fwapg.bench_out;
+DELETE FROM fwapg.bench_out;
+VACUUM fwapg.bench_out;
 \ir 04_walk_pointer.sql
 
 \echo '== P 1km, 1,000 origins'
 \set walk 1km
-TRUNCATE fwapg.bench_out;
+DELETE FROM fwapg.bench_out;
+VACUUM fwapg.bench_out;
 \ir 04_walk_pointer.sql
 
-TRUNCATE fwapg.bench_out;
+DELETE FROM fwapg.bench_out;
+VACUUM fwapg.bench_out;

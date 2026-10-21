@@ -27,9 +27,9 @@ The method, the contract the three methods share, the pointer rules, the cells a
 - [ ] Table of medians, timeouts and projections in `findings.md`
 
 ## Phase 4: correctness
-- [ ] `sql/07_compare.sql`: set, order and distance differences into `fwapg.bench_diffs`, each class a predicate
-- [ ] Unattributed class empty, or the run is not done
-- [ ] Hope fixture as `sum(st_length)`, each method
+- [x] `sql/07_compare.sql`: set, order and distance differences into `fwapg.bench_diffs`, each class a predicate
+- [x] Unattributed class empty, or the run is not done
+- [x] Hope fixture as `sum(st_length)`, each method
 
 ## Phase 5: write-up
 - [ ] `research/fwa_downstream_queries.md` (Verified / Issues / Produced by line; what works, the numbers with units, which table each method reads, what each cannot do) and its row in `research/README.md`

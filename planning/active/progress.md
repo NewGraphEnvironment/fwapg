@@ -21,3 +21,5 @@
 - Hope trace warm: median 953 ms on the idle server (the 6.8 s probe was cold). A first run gave 1,085 ms under an orphaned 26 h `pcic` QA query holding 7 cores; that query (no client left) was cancelled, and bench.sh now waits for an idle server before each timed step
 - Phase 2: paths re-timed (992 s, md5s identical before and after); `fwapg.downstream_ids` built in 142 s, 385 MB, QA all `t`; rule 3 steps past a parent that starts at the junction (249 segments)
 - bench.sh: body wrapped in `main` after an edit landed while a run of it was in flight (bash reads scripts as it runs)
+- Phase 3 harness: walk files 02–04, `05_explain.sql`; the sink pre-extended after the first EXPLAINs showed inserts into new pages cost 4 s of A's 5.6 s at 1,000 origins (Docker Desktop host mount)
+- Phase 4 run before the timings (it would load the server under them): `07_results.sql`, `07_compare.sql`, `07_setdiff.sql`; three iterations of the classes (`logs/compare_*`), the last with nothing unattributed; Hope fixture holds at 161.40 km, the docs' 308.54 km is stale (309.70 km verbatim)

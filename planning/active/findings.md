@@ -116,6 +116,49 @@ Size, from `00_env.sql`: `blk_paths` 228 MB with its key, `blk_parents` 136 MB; 
 - **The Beaver River override** (868144443, an excluded 6010 connector): not in the tree, a `node` pointer onto the tree; no segment points to it.
 - **Node pointers that leave the blue line while the line continues: 1** (a side channel, not in the tree). The A–P difference by design is therefore almost entirely at line ends, not mid-line.
 
+## Phase 3 harness notes (2026-10-21)
+
+- **The sink dominated the first EXPLAINs** (`logs/explain_20261021T163845Z.log`): A to the outlet at 1,000 origins finished its SELECT in 1.6 s and spent 4.0 s inserting 1.16 M rows. The database files sit on a Docker Desktop host mount, where every relation extension is slow: 1.2 M rows take 4.4 s into new pages (TRUNCATE first) and 0.2 s into pages kept by DELETE and VACUUM. A temp table is as slow (4.5 s). The cost is the mount's, not the method's, so `bench_out` is pre-extended to 200 M rows once (`vacuum_truncate = false`) and emptied with DELETE and VACUUM between repeats. That first EXPLAIN log is kept as the record of the problem; the EXPLAINs are re-run on the pre-extended sink.
+- psql `\ir` resolves against the including file's directory, so the cell script (a temp file) uses `\i` against the working directory.
+
+## Phase 4: correctness (2026-10-21, `logs/results_*`, `logs/compare_*`)
+
+Run before the timings, because the comparison queries would load the server under the timed cells. `07_results.sql` writes each method's rows for the samples into `fwapg.bench_res` (untimed): L2, A, P (to the outlet) and A, P (1 km) on random 1..1,000 and each group's 1..1,000 (4,000 origins); L1 on random 1..100; A-pred on random 1..20. `07_compare.sql` writes every set, order and distance difference into `fwapg.bench_diffs` and attributes each by ordered predicates. **No difference is unattributed**, and A and P agree on every `cum_m` to 1 cm wherever their sets agree (the largest difference there is 0: they sum the same `step_m` in the same order).
+
+| pair | kind | class | segments | origins | what it is |
+|---|---|---|---|---|---|
+| A–P | set | `no_path` | 3,073 | 3 | the origin's line has no path; P goes on through the mouth's node |
+| A–P | set | `code_junction_below_node` | 17 | 17 | the code junction is the start of the parent segment whose top is the tributary's mouth: A drops that one segment, P keeps it (P is right) |
+| A–P | set | `route_differs` | 25 | 4 | the tree and the paths send the water down different lines (braids, reattached segments) |
+| A–P 1 km | set | the same three | 23 | 7 | |
+| L2–A | set | `side_channel` | 1,661,801 | 3,818 | lines the water does not pass, which the codes count: L2's 5.68 M rows against A's 4.00 M |
+| L2–A | set | `no_path` | 10,292 | 26 | A ends at a pathless line's mouth; the codes go on |
+| L2–A | set | `alongside_side_channel` | 2,325 | 475 | the main stem beside a side channel the water is in: the codes count it from where the side channel leaves |
+| L2–A | set | `path_through_side_channel` | 1,919 | 702 | the path takes the water through a braid it touches; the codes do not count the braid |
+| L2–A | set | `localcode_anomaly` | 550 | 264 | local codes out of order with the measures, or nested deeper than one level, at the segment or the origin (#3's shape) |
+| L2–A | set | `side_channel_rejoin` | 91 | 25 | main-stem segments below where a side channel rejoins carry its local code, and the codes need a strictly lower one |
+| L2–A | set | `code_999` | 47 | 23 | null local code: the codes cannot place it |
+| L2–A | order | `localcode_anomaly` | 43,320 | 3,688 | 1,242 distinct segment pairs: a segment downstream of the one before it on the same line, with a greater local code |
+| L2–A | order | `code_tie_across_lines` | 53 | 45 | two lines at the same codes; the code order breaks the tie by measure, which across lines says nothing |
+| L2–A | order | `path_through_side_channel` | 9 | 9 | |
+| L2–P | | the L2–A class where A and P agree on the segment, the A–P class where they do not | | 3,856 | |
+| L1–L2 | set | `absent_from_fwa_streams` | 1,495 | 86 | the shipped trace reads `fwa_streams`, which lacks them; no origin was dropped |
+| L1–L2 | order | `code_tie_across_lines` | 1,772 | 80 | the trace's `ORDER BY` has no unique key: lines that share codes and start at measure 0 tie |
+| A-pred–A | set | `junction_at_segment_start` | 73 | 20 | the shipped predicate compares measures inclusively and counts the segment that starts at the junction; the walk does not |
+
+The local-code predicate discriminates: it flags 7.3 % of the array walk's segments (1 in 50 sample, 218 of 2,973) and every set difference it explains. Of the L2–A order differences, 43,320 of 43,382 are a downstream segment on the same line with a greater local code than the one above it.
+
+**Hope fixture** (`fwa_downstreamtrace` origin, `sum(ST_Length)` over whole segments):
+
+| method | segments | km whole | km main flow | outlet `cum_m` |
+|---|---|---|---|---|
+| A | 239 | 161.40 | 161.40 | 160.400 km |
+| P | 239 | 161.40 | 161.40 | 160.400 km |
+| L2 | 544 | 309.70 | 161.40 | |
+| L1 | 536 | 307.81 | 161.08 | |
+
+161.40 km holds for A, P and L2's main flow. **The docs' 308.54 km is stale:** the documented query, run verbatim, returns 309.70 km (544 segments) on this load. L1's main flow is 0.32 km shorter because its trace cuts the origin's segment at the measure; its total is lower for that and for the 8 segments absent from `fwa_streams`.
+
 ## Plan review
 
 A Plan-agent critique of the approved plan returned 24 findings (`review-plan.md`); all were folded into the plan before the baseline. The ones that changed the design: L1 reads a smaller table (new class `absent_from_fwa_streams`); A and P share a per-segment `step_m` so their distances compare at all; rules 1–3 apply to every segment, null only when none applies; the paths are re-timed before the pointer build; cells are one psql call each so a timeout is a recorded result; the array predicate `blk_on_or_upstream` gets its own cell (#30's third question); the cycle check is one reverse walk from the roots; the Hope fixture is `sum(st_length)`, not `cum_m`.

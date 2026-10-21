@@ -1,0 +1,49 @@
+psql:07_compare.sql:55: NOTICE:  table "bench_diffs" does not exist, skipping
+diffs A-P set code_junction_below_node|17 segments, 17 origins
+diffs A-P set no_path|3073 segments, 3 origins
+diffs A-P set route_differs|25 segments, 4 origins
+diffs A-P 1km set code_junction_below_node|2 segments, 2 origins
+diffs A-P 1km set no_path|5 segments, 2 origins
+diffs A-P 1km set route_differs|16 segments, 3 origins
+diffs Apred-A set unattributed|73 segments, 20 origins
+diffs L1-L2 order localcode_anomaly|6 segments, 4 origins
+diffs L1-L2 order path_through_side_channel|1750 segments, 80 origins
+diffs L1-L2 order unattributed|16 segments, 16 origins
+diffs L1-L2 set absent_from_fwa_streams|1495 segments, 86 origins
+diffs L2-A order localcode_anomaly|43332 segments, 3688 origins
+diffs L2-A order path_through_side_channel|24 segments, 20 origins
+diffs L2-A order unattributed|26 segments, 25 origins
+diffs L2-A set alongside_side_channel|2325 segments, 475 origins
+diffs L2-A set code_999|47 segments, 23 origins
+diffs L2-A set localcode_anomaly|618 segments, 278 origins
+diffs L2-A set no_path|10292 segments, 26 origins
+diffs L2-A set path_through_side_channel|1919 segments, 702 origins
+diffs L2-A set side_channel|1661801 segments, 3818 origins
+diffs L2-A set unattributed|23 segments, 12 origins
+diffs L2-P order localcode_anomaly|43356 segments, 3691 origins
+diffs L2-P order path_through_side_channel|24 segments, 20 origins
+diffs L2-P order unattributed|26 segments, 25 origins
+diffs L2-P set alongside_side_channel|2325 segments, 475 origins
+diffs L2-P set code_999|47 segments, 23 origins
+diffs L2-P set code_junction_below_node|17 segments, 17 origins
+diffs L2-P set localcode_anomaly|618 segments, 278 origins
+diffs L2-P set no_path|7311 segments, 26 origins
+diffs L2-P set path_through_side_channel|1919 segments, 702 origins
+diffs L2-P set route_differs|23 segments, 4 origins
+diffs L2-P set side_channel|1661799 segments, 3818 origins
+diffs L2-P set unattributed|23 segments, 12 origins
+origins compared A 1km|4000
+origins compared A full|4000
+origins compared A-pred full|20
+origins compared L1 full|100
+origins compared L2 full|4000
+origins compared P 1km|4000
+origins compared P full|4000
+origins with a difference A-P|24
+origins with a difference A-P 1km|7
+origins with a difference Apred-A|20
+origins with a difference L1-L2|86
+origins with a difference L2-A|3855
+origins with a difference L2-P|3856
+assert: no unattributed difference|f
+assert: A and P agree on every distance to 1 cm where their sets agree|t
