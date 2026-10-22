@@ -165,7 +165,7 @@ The no-parallel column of the main tables above comes from the later pass, so it
 
 What the numbers say (ratios read off the `ratio` lines of `logs/summary_20261021T231626Z.log`; "a / b" above 1 means b is faster):
 
-- **Array walk against pointer walk, to the outlet:** neither leads everywhere. At defaults A / P runs from 0.27 (BULK whole: A 3.7 times faster) to 2.13 (LFRA's 1,000 sample: P 2.1 times faster). At defaults: A leads at random 1,000 (0.53) and on the three whole groups (0.27–0.66); P leads at random 10,000 (1.50) and on the three groups' 1,000 subsamples (1.22–2.13); 100,000 is even (0.96).
+- **Array walk against pointer walk, to the outlet:** neither leads everywhere. At defaults A / P runs from 0.27 (BULK whole: A 3.8 times faster) to 2.13 (LFRA's 1,000 sample: P 2.1 times faster). At defaults: A leads at random 1,000 (0.53) and on the three whole groups (0.27–0.66); P leads at random 10,000 (1.50) and on the three groups' 1,000 subsamples (1.22–2.13); 100,000 is even (0.96).
 - **Within 1 km, P is 1.7 to 5.5 times faster than A** on every batch (A / P 1.74–5.50; at one origin 1.9, both within about 1 ms of the fixed cost).
 - **Both walks are faster than the ltree join on every batch, to the outlet:** L2 / A from 1.75 to 58, L2 / P from 3.1 to 47 (largest on LFRA, where the chains are short and L2 still enumerates the lower Fraser's side channels). At random 1,000 with workers, L2 / A 9.7 and L2 / P 5.2.
 - **Workers** (interleaved table): they speed the array walk (1.5 times at 1,000, 1.7 at 10,000, 7.6 on BULK), the shipped trace (2.0 times at 1,000; EXPLAIN shows one worker over the origins) and nothing at 1 km; they slow the ltree join (1.6 times at 1,000, 1.15 at 10,000). A recursive CTE never uses them, so P is the same either way.
@@ -179,7 +179,7 @@ Rounds 2 and 3 found comparative claims that their sources did not support. The 
 
 | claim as written | rows its scope covers | verdict |
 |---|---|---|
-| at defaults, arrays faster on random 1,000 and the 3 whole groups (up to 3.7 times), pointers on random 10,000 and the 3 group samples (up to 2.1 times) | A / P default: 0.53, 0.59, 0.27, 0.66; 1.50, 1.22, 1.25, 2.13 | holds; 1 origin (1.07) and 100,000 (0.96) are in the table, not in the sentence |
+| at defaults, arrays faster on random 1,000 and the 3 whole groups (up to 3.8 times), pointers on random 10,000 and the 3 group samples (up to 2.1 times) | A / P default: 0.53, 0.59, 0.27, 0.66; 1.50, 1.22, 1.25, 2.13 | holds; 1 origin (1.07) and 100,000 (0.96) are in the table, not in the sentence |
 | within 1 km pointers 1.7 to 5.5 times faster on each batch measured, in both passes | A / P 1km, 14 rows: 1.74 to 5.50 | holds |
 | at defaults arrays 3.3 times faster than the join at one origin and 4.5 to 58 on batches; pointers 3.5, and 4.3 to 47 | L2 / A default: 3.27; 4.48 to 57.62; L2 / P: 3.51; 4.26 to 46.64 | holds (the endpoints 4.48, 57.62, 4.26 and 46.64 rest on the join's one-run cells, stated in the section) |
 | workers, on the interleaved cells: arrays 1.5, 1.7, 7.6 times faster; trace 2 times; join 1.6 and 1.15 times slower; 1 km unchanged; P control 0.90 to 1.01 | `ab` lines: 1.52, 1.72, 7.61; 1.95; 0.61, 0.87; 0.99, 1.01; 0.90, 1.00, 1.01, 1.01 | holds |
@@ -210,7 +210,7 @@ Run before the timings, because the comparison queries would load the server und
 | L2–A | set | `code_parent_bypassed` | 94 | 20 | a main line whose code is an ancestor of the origin's, which the path passes by: the water reaches a line further down by a touch |
 | L2–A | set | `side_channel_rejoin` | 91 | 25 | main-stem segments below where a side channel rejoins carry its local code, and the codes need a strictly lower one |
 | L2–A | set | `code_999` | 47 | 23 | null local code: the codes cannot place it |
-| L2–A | order | `localcode_anomaly` | 43,320 | 3,688 | 1,242 distinct segment pairs: a segment downstream of the one before it on the same line, with a greater local code |
+| L2–A | order | `localcode_anomaly` | 43,320 | 3,688 | 1,208 distinct segment pairs: a segment downstream of the one before it on the same line, with a greater local code |
 | L2–A | order | `code_tie_across_lines` | 53 | 45 | two lines at the same codes; the code order breaks the tie by measure, which across lines says nothing |
 | L2–A | order | `path_through_side_channel` | 9 | 9 | |
 | L2–P | | the L2–A class where A and P agree on the segment, the A–P class where they do not | | 3,856 | |
@@ -220,7 +220,7 @@ Run before the timings, because the comparison queries would load the server und
 
 The classes were tightened after review rounds 1 and 2 (`logs/compare_20261021T2*`): side channels must be on non-main lines (0 main-line segments in the class, checked), which exposed main-line segments a broader class had absorbed, now `path_ends` and `code_parent_bypassed`; `path_ends` takes main lines only (round 2 found it absorbing side channels of an ancestor code); `route_differs` requires the walks to rejoin; the A–P `path_ends` requires the array walk to be a prefix of the pointer walk. The results were regenerated with the final walk files first. The largest A–P distance difference where the sets agree is logged: 0 m, to the outlet and at 1 km. One comparison run (`compare_20261021T215544Z.log`) logged a warning, `could not truncate file … Input/output error`, on dropping a table: the Docker Desktop host mount, at a dropped table's file; the run after it is clean.
 
-The local-code predicate discriminates: it flags 7.3 % of the array walk's segments (1 in 50 sample, 218 of 2,973), and it explains 544 of the class's 550 set differences; the other 6 come from its second branch, an origin whose own local code is anomalous. Of the L2–A order differences, 43,320 of 43,382 are a downstream segment on the same line with a greater local code than the one above it.
+The local-code predicate discriminates: it flags 7.3 % of the array walk's segments (1 in 50 sample, 218 of 2,973), and it explains 544 of the class's 550 set differences; the other 6 come from its second branch, an origin whose own local code is anomalous. Of the L2–A order differences (1,242 distinct segment pairs: 1,208 local-code, 31 code ties, 3 across a braid), 43,320 of 43,382 are a downstream segment on the same line with a greater local code than the one above it.
 
 **Hope fixture** (`fwa_downstreamtrace` origin, `sum(ST_Length)` over whole segments):
 

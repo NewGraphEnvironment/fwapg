@@ -32,13 +32,13 @@ The method, the contract the three methods share, the pointer rules, the cells a
 - [x] Hope fixture as `sum(st_length)`, each method
 
 ## Phase 5: write-up
-- [ ] `research/fwa_downstream_queries.md` (Verified / Issues / Produced by line; what works, the numbers with units, which table each method reads, what each cannot do) and its row in `research/README.md`
+- [x] `research/fwa_downstream_queries.md` (Verified / Issues / Produced by line; what works, the numbers with units, which table each method reads, what each cannot do) and its row in `research/README.md`
 - [ ] Archive README with `## Measurement` and `## Evidence` (logs by glob)
 - [ ] Comment on #30 with the headline numbers and the research link (our repo; the earlier reply promised it)
 - [ ] If `downstream_id` wins: file the follow-up issue to land it as an extra with a load file and published output, as the lookup table decided at the plan gate
 
 ## Validation
-- [ ] QA and comparison assertions pass
-- [ ] `/code-check branch`
+- [x] QA and comparison assertions pass
+- [x] `/code-check branch`
 - [ ] PWF checkboxes match landed work
 - [ ] `/planning-archive`
