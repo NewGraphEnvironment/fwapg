@@ -22,4 +22,4 @@ These turned the plan's open question (paths or `downstream_id`) into a measured
 
 `logs/` in this directory: `env_*`, `origins_*`, `hope_*` (the 16:13 run is the one under load), `paths_*`, `ids_*`, `explain_*` (the 16:38 one is the INSERT-sink record), `cell_*` (the timing matrix and its re-runs), `timings_run_*`, `ab_run_*` and `cell_*_ab*` (the interleaved run), `results_*`, `compare_*` (each iteration of the classes; the newest is final), `summary_*` (the newest holds the ratio and interleaved lines). Review findings: `review-*.md`.
 
-Closed by: PR into `newgraph` (see the branch `34-measure-downstream-queries-ltree-blue-li`)
+Closed by: PR #35 into `newgraph`; the #30 answer is https://github.com/NewGraphEnvironment/fwapg/issues/30#issuecomment-6330276829
