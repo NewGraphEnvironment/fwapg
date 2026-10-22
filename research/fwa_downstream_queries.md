@@ -4,10 +4,12 @@
 
 The question: from a point on the network, which segments are downstream, in order, how far, to a distance or to the outlet. Fresh, wet and link all need it.
 
+This is a working guide, built from one round of measurement. It will have mistakes, and the homes it suggests for fixes and decisions are a starting point to talk through, not rules.
+
 ## In short
 
 - **Two of the five options follow the water** (the path walk and the `downstream_id` walk); the other three answer from watershed codes, which is a broader and differently ordered set.
-- **On accuracy the `downstream_id` walk leads.** The path walk is wrong on 21 of 4,000 sampled origins (0.5 %): a dropped segment at 3 junctions province-wide, and walks that stop early where 196 lines have no path although the water continues, losing up to 550 km. No error of the `downstream_id` walk was found; 3 origins route differently and are undecided.
+- **On accuracy the `downstream_id` walk leads.** The path walk gives a different answer on 21 of 4,000 sampled origins (0.5 %): a dropped segment at 3 junctions province-wide, and walks that stop early where 196 lines have no path although the water continues, losing up to 550 km. No error of the `downstream_id` walk was found; 3 origins route differently and are undecided.
 - **On speed the two walks trade places** within about 4 times of each other, and both are 3 to 58 times faster than the ltree join. Within 1 km the `downstream_id` walk is 1.7 to 5.5 times faster.
 - **The `downstream_id` table is a prototype:** it exists only in the local database, built by the archived benchmark script. Nothing ships it.
 - **Decision open:** which walk is the default for fresh, wet and link (below, "Open questions" 1).
@@ -43,7 +45,7 @@ Accuracy is scored against the water's path along the segment geometry, on 4,000
 | | 1 ltree join | 2 shipped trace | 3 path walk | 4 path predicate | 5 `downstream_id` walk |
 |---|---|---|---|---|---|
 | **follows the water** | no: the code set, 1.4 times the segments (side channels) | no: as 1 | yes | yes, plus one segment at each junction | yes |
-| **known errors** | misorders where local codes run out of order (1,208 segment pairs on the sample's chains); misses null-local-code segments off the origin's line; counts code ancestors past where the water leaves BC | as 1, and lacks segments absent from `fwa_streams` | wrong on 21 origins of 4,000: one segment dropped (17), walk stops early (4) | as 3 | none found; 3 origins route differently from 3, undecided |
+| **known errors** | misorders where local codes run out of order (1,208 segment pairs on the sample's chains); misses null-local-code segments off the origin's line; counts code ancestors past where the water leaves BC | as 1, and lacks segments absent from `fwa_streams` | differs on 21 origins of 4,000: one segment dropped (17), walk stops early (4) | as 3 | none found; 3 origins route differently from 3, undecided |
 | **1 origin** | 8 ms | 28 ms | 2.5 ms | 15.5 s | 2.3 ms |
 | **1,000 origins, to the outlet** | 12 s | 15 s | 1.3 s | over 30 min | 2.4 s |
 | **100,000 origins, to the outlet** | 943 s (one run) | | 210 s | | 219 s |
@@ -77,23 +79,25 @@ One row per defect found so far. "Layer" says where a fix belongs; "fixed by" li
 |---|---|---|---|---|---|---|
 | 1 | A parent segment carries the tributary's own local code one segment below the tributary's mouth | the path walk drops that segment; so do the path predicate and the PCIC crosswalk | FWA source data (local codes) | 3 lines: MSKE (Skeena, 72 m), LFRA (152 m), LFRA (1.5 m) | a code correction at the source, offered on [#30](https://github.com/NewGraphEnvironment/fwapg/issues/30); on the `newgraph` branch, Open questions 2 and 9 | offered |
 | 2 | A line has no path although the water continues past its mouth | path-based walks stop early (up to 550 km in the sample) | not known until diagnosed: the path rules or the source data | 196 lines (83 in the main-flow tree) | Open questions 3 | open |
-| 3 | Local codes out of order, or nested more than one level (#3's shape) | the ltree join returns a wrong set or order | FWA source data | 2,013 candidate main-flow segments, found by query, not checked one by one | code corrections at the source, offered on [#30](https://github.com/NewGraphEnvironment/fwapg/issues/30) | offered |
+| 3 | Local codes out of order, or nested more than one level (#3's shape) | the ltree join returns a set or order that does not follow the water | FWA source data | 2,013 candidate main-flow segments, found by query, not checked one by one | code corrections at the source, offered on [#30](https://github.com/NewGraphEnvironment/fwapg/issues/30) | offered |
 | 4 | Beaver River: one watershed code with two main lines, whose 6010 connectors leave one node (a split) | the main-flow tree | FWA source data | 1 segment (868144443) | [`extras/mainflow_tree/overrides.csv`](../extras/mainflow_tree/overrides.csv) on the `newgraph` branch | fixed on the `newgraph` branch |
 | 5 | The Hope total in the docs is stale: 308.54 km given, 309.70 km returned | `docs/03_functions.md` | upstream docs | 1 figure | a docs PR, offered on #30 | offered |
 
+A rough guide to where things tend to belong, to be revised as cases teach us otherwise: a measured fact goes in this file; a correction to FWA data is offered upstream, where the maintainer decides; a decision about one feature is an override row on the `newgraph` branch; a behaviour that should hold generally is a rule in that build's SQL.
+
 ## Open questions and follow-ups
 
-| # | question or task | why it matters | how it gets settled | status |
-|---|---|---|---|---|
-| 1 | Which walk is the default for fresh, wet and link? | accuracy against speed | a decision: the `downstream_id` walk leads on accuracy, the two trade places on speed | **open, needs a decision** |
-| 2 | Correct the local codes that put a code junction one segment below the mouth (3 lines; Known defects, row 1) | the path walk, the path predicate and the PCIC crosswalk drop a segment there | a code correction at the source, offered upstream on #30; on the `newgraph` branch meanwhile, a rule or a per-line override in the path build (question 9) | offered upstream |
-| 3 | Why do 196 lines have no path although the water continues? | path-based walks stop early (up to 550 km lost in the sample) | list the 196 by why `blue_line_paths.sql` gave no parent (no code parent in BC, a gap in the touch rules, codes under 999 nearby); fix the paths or accept and document | open |
-| 4 | Which braid is right for the 3 origins that route differently? | the only differences not attributed to a defect | check the 3 by hand against imagery or the geometry | open |
-| 5 | Land `downstream_ids` as an extra on the `newgraph` branch | needed if 1 chooses it | build script, QA in the job, load file, published output under `fwapg/extras/`, rebuild order after paths and tree | waits on 1 |
-| 6 | Why both walks slow per origin at 100,000 origins | province-wide runs | EXPLAIN at 100,000 for a sort or tuplestore spilling past `work_mem` | open |
-| 7 | Re-time the headline cells on the production host | absolute times here are a Docker Desktop mount | re-run `bench.sh` cells there | open |
-| 8 | Offered upstream, the maintainer's call: the stale Hope figure in `docs/03_functions.md`; local-code corrections like #3 in the fixes file; a `downstream_id` table if useful in fwapg | his package | his reply on #30 | offered |
-| 9 | On the `newgraph` branch, while a source-data defect waits for a correction upstream: a general rule in the build, or a per-feature override file (as `extras/mainflow_tree/overrides.csv`)? | a rule fixes every matching case but changes the build for all; an override is explicit and retires when the source is corrected | decided when a fix is taken up | open |
+| # | question or task | why it matters | how it gets settled | where the answer would likely live | status |
+|---|---|---|---|---|---|
+| 1 | Which walk is the default for fresh, wet and link? | accuracy against speed | a decision: the `downstream_id` walk leads on accuracy, the two trade places on speed | the research doc, as a dated decision with its reasons, and the issue that lands it | **open, needs a decision** |
+| 2 | Correct the local codes that put a code junction one segment below the mouth (3 lines; Known defects, row 1) | the path walk, the path predicate and the PCIC crosswalk drop a segment there | a code correction at the source, offered upstream on #30; on the `newgraph` branch meanwhile, a rule or a per-line override in the path build (question 9) | upstream, in the maintainer's fixes file if he takes the correction; on the `newgraph` branch meanwhile, a path-build override row or a change to `blue_line_paths.sql` | offered upstream |
+| 3 | Why do 196 lines have no path although the water continues? | path-based walks stop early (up to 550 km lost in the sample) | list the 196 by why `blue_line_paths.sql` gave no parent (no code parent in BC, a gap in the touch rules, codes under 999 nearby); fix the paths or accept and document | depends on the diagnosis: `blue_line_paths.sql` if a rule misses these lines; upstream if the codes are the cause; the research doc if the behaviour is right (water leaving BC, for example) | open |
+| 4 | Which braid should a walk follow for the 3 origins that route differently? | where a river braids, water takes both channels and a single chain has to pick one, so this is partly a convention | look at the 3 against imagery and the geometry: a dry or artefact channel is a correction; two live channels call for a stated convention | an override row in the build that made the choice (`extras/mainflow_tree/overrides.csv`, or a path-build override); a convention stated in the research doc and the tree's README if both channels carry water; or a rule change if many cases share the cause | open |
+| 5 | Land `downstream_ids` as an extra on the `newgraph` branch | needed if 1 chooses it | build script, QA in the job, load file, published output under `fwapg/extras/`, rebuild order after paths and tree | a new extra on the `newgraph` branch: build script, QA, load file, output under `fwapg/extras/` | waits on 1 |
+| 6 | Why both walks slow per origin at 100,000 origins | province-wide runs | EXPLAIN at 100,000 for a sort or tuplestore spilling past `work_mem` | the research doc, Speed section | open |
+| 7 | Re-time the headline cells on the production host | absolute times here are a Docker Desktop mount | re-run `bench.sh` cells there | the research doc, Speed section, as a second machine | open |
+| 8 | Offered upstream, the maintainer's call: the stale Hope figure in `docs/03_functions.md`; local-code corrections like #3 in the fixes file; a `downstream_id` table if useful in fwapg | his package | his reply on #30 | the maintainer's repo, if he wants them | offered |
+| 9 | On the `newgraph` branch, while a source-data defect waits for a correction upstream: a general rule in the build, or a per-feature override file (as `extras/mainflow_tree/overrides.csv`)? | a rule fixes every matching case but changes the build for all; an override is explicit and retires when the source is corrected | decided when a fix is taken up | the "fixed by" column of each defect row, decided case by case | open |
 
 ## Detail
 
@@ -163,7 +167,7 @@ The path walk's time over the `downstream_id` walk's, to the outlet, at defaults
 - **Both walks are faster than the ltree join on each batch measured, to the outlet**, at defaults: the path walk 3.3 times at one origin and 4.5 to 58 times on batches, the `downstream_id` walk 3.5 times at one origin and 4.3 to 47 times on batches (at random 1,000: 9.7 and 5.2 times).
 - **Workers**, from 11 cells re-run at both settings interleaved, with the `downstream_id` walk (which never uses them, and moved 0.90 to 1.01 between settings) as the control for drift: on those cells, they speed the path walk 1.5 times (random 1,000), 1.7 times (random 10,000) and 7.6 times (BULK, which without workers takes 101 s against the `downstream_id` walk's 52 s); they speed the shipped trace 2 times (random 1,000); they slow the ltree join 1.6 times (random 1,000) and 1.15 times (random 10,000); they leave the 1 km walks unchanged. At one origin the two passes give the same times for every method. The other cells were not interleaved; their no-worker times come from a later pass and mix the setting with drift between runs.
 - **Per origin, both walks slow from 10,000 to 100,000 origins** (at defaults, the path walk from 0.9 to 2.1 ms an origin, the `downstream_id` walk from 0.6 to 2.2 ms) while the join holds at 9 to 10 ms; that was not investigated.
-- **The path predicate cannot be a join condition:** 15.5 s for one origin, because it is evaluated on every segment of the province, and 1,000 origins time out at 30 minutes.
+- **The path predicate is a poor fit as a join condition:** 15.5 s for one origin, because it is evaluated on every segment of the province, and 1,000 origins time out at 30 minutes.
 
 ## Answers to #30
 
