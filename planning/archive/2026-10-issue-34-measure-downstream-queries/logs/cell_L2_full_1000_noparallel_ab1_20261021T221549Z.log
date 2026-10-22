@@ -1,0 +1,4 @@
+L2 full 1000 noparallel_ab1 origin NULL rep 0: 1774080 rows, 13674.3 ms
+L2 full 1000 noparallel_ab1 origin NULL rep 1: 1774080 rows, 9417.1 ms
+L2 full 1000 noparallel_ab1 origin NULL rep 2: 1774080 rows, 9396.5 ms
+L2 full 1000 noparallel_ab1 origin NULL rep 3: 1774080 rows, 9287.1 ms

@@ -1,0 +1,518 @@
+== L1 full, 1 origin
+                                                                                                                                  QUERY PLAN                                                                                                                                  
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=42.89..42.90 rows=1 width=64) (actual time=89.736..89.737 rows=1 loops=1)
+   Buffers: shared hit=7819
+   ->  Nested Loop  (cost=0.67..22.89 rows=1000 width=20) (actual time=89.704..89.727 rows=155 loops=1)
+         Buffers: shared hit=7819
+         ->  Index Scan using bench_origins_grp_rnk_key on bench_origins o  (cost=0.42..2.64 rows=1 width=16) (actual time=0.308..0.308 rows=1 loops=1)
+               Index Cond: ((grp = 'random'::text) AND (rnk >= 1) AND (rnk <= 1))
+               Buffers: shared hit=4
+         ->  Function Scan on fwa_downstreamtrace t  (cost=0.25..10.25 rows=1000 width=16) (actual time=89.395..89.411 rows=155 loops=1)
+               Buffers: shared hit=7815
+ Settings: effective_cache_size = '96GB', work_mem = '2GB', max_parallel_workers_per_gather = '8', max_parallel_workers = '14', random_page_cost = '1.1', effective_io_concurrency = '200', temp_buffers = '64MB', search_path = 'public, whse_basemapping, usgs, hydrosheds'
+ Planning:
+   Buffers: shared hit=135
+ Planning Time: 2.716 ms
+ Execution Time: 90.939 ms
+(14 rows)
+
+== L2 full, 1 origin
+                                                                                                                                                                                                                                 QUERY PLAN                                                                                                                                                                                                                                 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=56763.45..56763.46 rows=1 width=64) (actual time=27.072..27.074 rows=1 loops=1)
+   Buffers: shared hit=900
+   ->  WindowAgg  (cost=55853.55..56308.49 rows=16544 width=121) (actual time=27.044..27.065 rows=158 loops=1)
+         Buffers: shared hit=900
+         ->  Sort  (cost=55853.53..55894.89 rows=16544 width=109) (actual time=27.041..27.046 rows=158 loops=1)
+               Sort Key: o.origin_id, s.wscode_ltree DESC, s.localcode_ltree DESC, s.downstream_route_measure DESC
+               Sort Method: quicksort  Memory: 39kB
+               Buffers: shared hit=900
+               ->  Nested Loop  (cost=1146.82..54694.29 rows=16544 width=109) (actual time=1.416..26.921 rows=158 loops=1)
+                     Buffers: shared hit=733
+                     ->  Index Scan using bench_origins_grp_rnk_key on bench_origins o  (cost=0.42..2.64 rows=1 width=108) (actual time=0.010..0.011 rows=1 loops=1)
+                           Index Cond: ((grp = 'random'::text) AND (rnk >= 1) AND (rnk <= 1))
+                           Buffers: shared hit=4
+                     ->  Bitmap Heap Scan on fwa_stream_networks_sp s  (cost=1146.40..54526.25 rows=16540 width=109) (actual time=1.405..26.896 rows=158 loops=1)
+                           Recheck Cond: (((o.blue_line_key = blue_line_key) AND (downstream_route_measure <= (o.measure - '0.001'::double precision))) OR (o.wscode_ltree <@ wscode_ltree))
+                           Filter: (((o.blue_line_key = blue_line_key) AND (downstream_route_measure <= (o.measure - '0.001'::double precision))) OR ((o.wscode_ltree <@ wscode_ltree) AND ((subltree(o.localcode_ltree, 0, nlevel(localcode_ltree)) > localcode_ltree) OR ((wscode_ltree = localcode_ltree) AND (o.wscode_ltree <> wscode_ltree)) OR ((o.wscode_ltree = wscode_ltree) AND (o.blue_line_key <> blue_line_key) AND (o.localcode_ltree > localcode_ltree)))))
+                           Rows Removed by Filter: 392
+                           Heap Blocks: exact=550
+                           Buffers: shared hit=729
+                           ->  BitmapOr  (cost=1146.40..1146.40 rows=49115 width=0) (actual time=1.291..1.292 rows=0 loops=1)
+                                 Buffers: shared hit=23
+                                 ->  Bitmap Index Scan on fwa_streamnetworks_blkey_measure_idx  (cost=0.00..1.61 rows=7 width=0) (actual time=0.121..0.121 rows=3 loops=1)
+                                       Index Cond: ((blue_line_key = o.blue_line_key) AND (downstream_route_measure <= (o.measure - '0.001'::double precision)))
+                                       Buffers: shared hit=3
+                                 ->  Bitmap Index Scan on fwa_streamnetworks_wsc_gist_idx  (cost=0.00..1136.53 rows=49108 width=0) (actual time=1.169..1.169 rows=550 loops=1)
+                                       Index Cond: (wscode_ltree @> o.wscode_ltree)
+                                       Buffers: shared hit=20
+ Settings: effective_cache_size = '96GB', work_mem = '2GB', max_parallel_workers_per_gather = '8', max_parallel_workers = '14', random_page_cost = '1.1', effective_io_concurrency = '200', temp_buffers = '64MB', search_path = 'public, whse_basemapping, usgs, hydrosheds'
+ Planning:
+   Buffers: shared hit=12
+ Planning Time: 0.462 ms
+ Execution Time: 27.106 ms
+(32 rows)
+
+== A-pred full, 1 origin
+                                                                                                                                  QUERY PLAN                                                                                                                                  
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=2216130.81..2216130.82 rows=1 width=64) (actual time=20336.260..20336.261 rows=1 loops=1)
+   Buffers: shared hit=20495466
+   ->  Nested Loop  (cost=0.42..2191576.83 rows=1636932 width=12) (actual time=115.425..20336.072 rows=161 loops=1)
+         Join Filter: fwapg.blk_on_or_upstream(s.blue_line_key, s.downstream_route_measure, o.blue_line_key, o.measure)
+         Rows Removed by Join Filter: 4907280
+         Buffers: shared hit=20495466
+         ->  Index Scan using bench_origins_grp_rnk_key on bench_origins o  (cost=0.42..2.64 rows=1 width=16) (actual time=0.006..0.007 rows=1 loops=1)
+               Index Cond: ((grp = 'random'::text) AND (rnk >= 1) AND (rnk <= 1))
+               Buffers: shared hit=4
+         ->  Seq Scan on fwa_stream_networks_sp s  (cost=0.00..914766.97 rows=4910797 width=20) (actual time=0.037..5771.235 rows=4907441 loops=1)
+               Buffers: shared hit=865659
+ Settings: effective_cache_size = '96GB', work_mem = '2GB', max_parallel_workers_per_gather = '8', max_parallel_workers = '14', random_page_cost = '1.1', effective_io_concurrency = '200', temp_buffers = '64MB', search_path = 'public, whse_basemapping, usgs, hydrosheds'
+ Planning:
+   Buffers: shared hit=50
+ Planning Time: 0.360 ms
+ JIT:
+   Functions: 10
+   Options: Inlining true, Optimization true, Expressions true, Deforming true
+   Timing: Generation 0.252 ms (Deform 0.106 ms), Inlining 31.052 ms, Optimization 23.396 ms, Emission 19.000 ms, Total 73.701 ms
+ Execution Time: 20336.553 ms
+(20 rows)
+
+== A full, 1 origin
+                                                                                                                                  QUERY PLAN                                                                                                                                  
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=58.62..58.63 rows=1 width=64) (actual time=0.407..0.408 rows=1 loops=1)
+   Buffers: shared hit=186
+   ->  WindowAgg  (cost=56.19..57.71 rows=33 width=40) (actual time=0.370..0.398 rows=158 loops=1)
+         Buffers: shared hit=186
+         ->  Sort  (cost=56.14..56.23 rows=33 width=60) (actual time=0.366..0.370 rows=158 loops=1)
+               Sort Key: "*SELECT* 1".origin_id, "*SELECT* 1".step, s.downstream_route_measure DESC
+               Sort Method: quicksort  Memory: 37kB
+               Buffers: shared hit=186
+               ->  Nested Loop  (cost=0.85..55.31 rows=33 width=60) (actual time=0.020..0.339 rows=158 loops=1)
+                     Buffers: shared hit=183
+                     ->  Append  (cost=0.42..8.10 rows=5 width=48) (actual time=0.011..0.019 rows=4 loops=1)
+                           Buffers: shared hit=12
+                           ->  Subquery Scan on "*SELECT* 1"  (cost=0.42..2.65 rows=1 width=48) (actual time=0.011..0.011 rows=1 loops=1)
+                                 Buffers: shared hit=4
+                                 ->  Index Scan using bench_origins_grp_rnk_key on bench_origins o  (cost=0.42..2.64 rows=1 width=48) (actual time=0.010..0.010 rows=1 loops=1)
+                                       Index Cond: ((grp = 'random'::text) AND (rnk >= 1) AND (rnk <= 1))
+                                       Buffers: shared hit=4
+                           ->  Subquery Scan on "*SELECT* 2"  (cost=0.85..5.42 rows=4 width=48) (actual time=0.006..0.007 rows=3 loops=1)
+                                 Buffers: shared hit=8
+                                 ->  Nested Loop  (cost=0.85..5.38 rows=4 width=48) (actual time=0.006..0.007 rows=3 loops=1)
+                                       Buffers: shared hit=8
+                                       ->  Nested Loop  (cost=0.85..5.29 rows=1 width=111) (actual time=0.004..0.005 rows=1 loops=1)
+                                             Buffers: shared hit=8
+                                             ->  Index Scan using bench_origins_grp_rnk_key on bench_origins o_1  (cost=0.42..2.64 rows=1 width=24) (actual time=0.001..0.001 rows=1 loops=1)
+                                                   Index Cond: ((grp = 'random'::text) AND (rnk >= 1) AND (rnk <= 1))
+                                                   Buffers: shared hit=4
+                                             ->  Index Scan using blk_paths_pkey on blk_paths p  (cost=0.43..2.65 rows=1 width=95) (actual time=0.003..0.003 rows=1 loops=1)
+                                                   Index Cond: (blue_line_key = o_1.blue_line_key)
+                                                   Buffers: shared hit=4
+                                       ->  Function Scan on u  (cost=0.01..0.04 rows=4 width=20) (actual time=0.001..0.001 rows=3 loops=1)
+                     ->  Index Scan using fwa_streamnetworks_blkey_measure_idx on fwa_stream_networks_sp s  (cost=0.43..9.37 rows=7 width=28) (actual time=0.015..0.077 rows=40 loops=4)
+                           Index Cond: ((blue_line_key = "*SELECT* 1".blk) AND (downstream_route_measure < "*SELECT* 1".upper))
+                           Buffers: shared hit=171
+ Settings: effective_cache_size = '96GB', work_mem = '2GB', max_parallel_workers_per_gather = '8', max_parallel_workers = '14', random_page_cost = '1.1', effective_io_concurrency = '200', temp_buffers = '64MB', search_path = 'public, whse_basemapping, usgs, hydrosheds'
+ Planning:
+   Buffers: shared hit=208
+ Planning Time: 0.839 ms
+ Execution Time: 0.429 ms
+(38 rows)
+
+== A 1km, 1 origin
+                                                                                                                                  QUERY PLAN                                                                                                                                  
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=20.79..20.80 rows=1 width=64) (actual time=0.081..0.082 rows=1 loops=1)
+   Buffers: shared hit=38
+   ->  Subquery Scan on chain  (cost=17.38..20.77 rows=1 width=24) (actual time=0.078..0.080 rows=3 loops=1)
+         Filter: ((chain.cum_m - chain.step_m) < '1000'::double precision)
+         Buffers: shared hit=38
+         ->  WindowAgg  (cost=17.38..20.71 rows=4 width=52) (actual time=0.077..0.079 rows=3 loops=1)
+               Buffers: shared hit=38
+               ->  Incremental Sort  (cost=16.30..20.46 rows=4 width=60) (actual time=0.075..0.076 rows=3 loops=1)
+                     Sort Key: e.origin_id, e.step, s.downstream_route_measure DESC
+                     Presorted Key: e.origin_id, e.step
+                     Full-sort Groups: 1  Sort Method: quicksort  Average Memory: 25kB  Peak Memory: 25kB
+                     Buffers: shared hit=38
+                     ->  Nested Loop  (cost=12.22..20.35 rows=4 width=60) (actual time=0.070..0.074 rows=3 loops=1)
+                           Buffers: shared hit=38
+                           ->  Subquery Scan on e  (cost=11.01..11.18 rows=2 width=56) (actual time=0.063..0.066 rows=1 loops=1)
+                                 Filter: (e.entry_m < '1001'::double precision)
+                                 Rows Removed by Filter: 3
+                                 Buffers: shared hit=28
+                                 ->  WindowAgg  (cost=11.01..11.12 rows=5 width=56) (actual time=0.063..0.066 rows=4 loops=1)
+                                       Buffers: shared hit=28
+                                       ->  Sort  (cost=11.01..11.02 rows=5 width=56) (actual time=0.062..0.063 rows=4 loops=1)
+                                             Sort Key: o.origin_id, ('0'::bigint)
+                                             Sort Method: quicksort  Memory: 25kB
+                                             Buffers: shared hit=28
+                                             ->  Nested Loop  (cost=0.98..10.95 rows=5 width=56) (actual time=0.026..0.061 rows=4 loops=1)
+                                                   Buffers: shared hit=28
+                                                   ->  Append  (cost=0.42..8.05 rows=5 width=48) (actual time=0.004..0.012 rows=4 loops=1)
+                                                         Buffers: shared hit=12
+                                                         ->  Index Scan using bench_origins_grp_rnk_key on bench_origins o  (cost=0.42..2.64 rows=1 width=48) (actual time=0.004..0.004 rows=1 loops=1)
+                                                               Index Cond: ((grp = 'random'::text) AND (rnk >= 1) AND (rnk <= 1))
+                                                               Buffers: shared hit=4
+                                                         ->  Nested Loop  (cost=0.85..5.38 rows=4 width=48) (actual time=0.006..0.007 rows=3 loops=1)
+                                                               Buffers: shared hit=8
+                                                               ->  Nested Loop  (cost=0.85..5.29 rows=1 width=111) (actual time=0.005..0.005 rows=1 loops=1)
+                                                                     Buffers: shared hit=8
+                                                                     ->  Index Scan using bench_origins_grp_rnk_key on bench_origins o_1  (cost=0.42..2.64 rows=1 width=24) (actual time=0.001..0.002 rows=1 loops=1)
+                                                                           Index Cond: ((grp = 'random'::text) AND (rnk >= 1) AND (rnk <= 1))
+                                                                           Buffers: shared hit=4
+                                                                     ->  Index Scan using blk_paths_pkey on blk_paths p  (cost=0.43..2.65 rows=1 width=95) (actual time=0.003..0.003 rows=1 loops=1)
+                                                                           Index Cond: (blue_line_key = o_1.blue_line_key)
+                                                                           Buffers: shared hit=4
+                                                               ->  Function Scan on u  (cost=0.01..0.04 rows=4 width=20) (actual time=0.001..0.001 rows=3 loops=1)
+                                                   ->  Result  (cost=0.56..0.57 rows=1 width=8) (actual time=0.012..0.012 rows=1 loops=4)
+                                                         Buffers: shared hit=16
+                                                         InitPlan 3
+                                                           ->  Limit  (cost=0.43..0.56 rows=1 width=8) (actual time=0.011..0.011 rows=1 loops=4)
+                                                                 Buffers: shared hit=16
+                                                                 ->  Index Only Scan using fwa_streamnetworks_blkey_measure_idx on fwa_stream_networks_sp s_2  (cost=0.43..2.98 rows=20 width=8) (actual time=0.011..0.011 rows=1 loops=4)
+                                                                       Index Cond: (blue_line_key = o.blue_line_key)
+                                                                       Heap Fetches: 0
+                                                                       Buffers: shared hit=16
+                           ->  Index Scan using fwa_streamnetworks_blkey_measure_idx on fwa_stream_networks_sp s  (cost=1.22..4.56 rows=2 width=28) (actual time=0.003..0.004 rows=3 loops=1)
+                                 Index Cond: ((blue_line_key = e.blk) AND (downstream_route_measure >= COALESCE((SubPlan 2), '-Infinity'::double precision)) AND (downstream_route_measure < e.upper))
+                                 Buffers: shared hit=6
+                                 SubPlan 2
+                                   ->  Result  (cost=0.77..0.78 rows=1 width=8) (actual time=0.002..0.002 rows=1 loops=1)
+                                         Buffers: shared hit=4
+                                         InitPlan 1
+                                           ->  Limit  (cost=0.44..0.77 rows=1 width=8) (actual time=0.002..0.002 rows=1 loops=1)
+                                                 Buffers: shared hit=4
+                                                 ->  Index Only Scan Backward using fwa_streamnetworks_blkey_measure_idx on fwa_stream_networks_sp s_1  (cost=0.44..2.78 rows=7 width=8) (actual time=0.001..0.001 rows=1 loops=1)
+                                                       Index Cond: ((blue_line_key = e.blk) AND (downstream_route_measure <= ((e.junction - ('1000'::double precision - e.entry_m)) - '1'::double precision)))
+                                                       Heap Fetches: 0
+                                                       Buffers: shared hit=4
+ Settings: effective_cache_size = '96GB', work_mem = '2GB', max_parallel_workers_per_gather = '8', max_parallel_workers = '14', random_page_cost = '1.1', effective_io_concurrency = '200', temp_buffers = '64MB', search_path = 'public, whse_basemapping, usgs, hydrosheds'
+ Planning:
+   Buffers: shared hit=22
+ Planning Time: 0.347 ms
+ Execution Time: 0.126 ms
+(69 rows)
+
+== P full, 1 origin
+                                                                                                                                  QUERY PLAN                                                                                                                                  
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=274.95..274.96 rows=1 width=64) (actual time=3.849..3.850 rows=1 loops=1)
+   Buffers: shared hit=636
+   ->  CTE Scan on walk  (cost=271.16..273.18 rows=101 width=24) (actual time=0.007..3.835 rows=158 loops=1)
+         Buffers: shared hit=636
+         CTE walk
+           ->  Recursive Union  (cost=0.42..271.16 rows=101 width=24) (actual time=0.007..3.816 rows=158 loops=1)
+                 Buffers: shared hit=636
+                 ->  Index Scan using bench_origins_grp_rnk_key on bench_origins o  (cost=0.42..2.65 rows=1 width=24) (actual time=0.006..0.006 rows=1 loops=1)
+                       Index Cond: ((grp = 'random'::text) AND (rnk >= 1) AND (rnk <= 1))
+                       Buffers: shared hit=4
+                 ->  Nested Loop  (cost=0.43..26.75 rows=10 width=24) (actual time=0.024..0.024 rows=1 loops=158)
+                       Buffers: shared hit=632
+                       ->  WorkTable Scan on walk w  (cost=0.00..0.20 rows=10 width=24) (actual time=0.000..0.000 rows=1 loops=158)
+                       ->  Index Scan using downstream_ids_pkey on downstream_ids d  (cost=0.43..2.65 rows=1 width=24) (actual time=0.024..0.024 rows=1 loops=158)
+                             Index Cond: (linear_feature_id = w.linear_feature_id)
+                             Filter: (downstream_id IS NOT NULL)
+                             Rows Removed by Filter: 0
+                             Buffers: shared hit=632
+ Settings: effective_cache_size = '96GB', work_mem = '2GB', max_parallel_workers_per_gather = '8', max_parallel_workers = '14', random_page_cost = '1.1', effective_io_concurrency = '200', temp_buffers = '64MB', search_path = 'public, whse_basemapping, usgs, hydrosheds'
+ Planning:
+   Buffers: shared hit=48
+ Planning Time: 1.717 ms
+ Execution Time: 3.863 ms
+(23 rows)
+
+== P 1km, 1 origin
+                                                                                                                                  QUERY PLAN                                                                                                                                  
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=86.02..86.03 rows=1 width=64) (actual time=0.014..0.015 rows=1 loops=1)
+   Buffers: shared hit=12
+   ->  CTE Scan on walk  (cost=84.86..85.48 rows=31 width=24) (actual time=0.005..0.013 rows=3 loops=1)
+         Buffers: shared hit=12
+         CTE walk
+           ->  Recursive Union  (cost=0.42..84.86 rows=31 width=24) (actual time=0.005..0.012 rows=3 loops=1)
+                 Buffers: shared hit=12
+                 ->  Index Scan using bench_origins_grp_rnk_key on bench_origins o  (cost=0.42..2.65 rows=1 width=24) (actual time=0.005..0.005 rows=1 loops=1)
+                       Index Cond: ((grp = 'random'::text) AND (rnk >= 1) AND (rnk <= 1))
+                       Buffers: shared hit=4
+                 ->  Nested Loop  (cost=0.43..8.19 rows=3 width=24) (actual time=0.002..0.002 rows=1 loops=3)
+                       Buffers: shared hit=8
+                       ->  WorkTable Scan on walk w  (cost=0.00..0.22 rows=3 width=24) (actual time=0.000..0.000 rows=1 loops=3)
+                             Filter: (cum_m < '1000'::double precision)
+                             Rows Removed by Filter: 0
+                       ->  Index Scan using downstream_ids_pkey on downstream_ids d  (cost=0.43..2.65 rows=1 width=24) (actual time=0.002..0.002 rows=1 loops=2)
+                             Index Cond: (linear_feature_id = w.linear_feature_id)
+                             Filter: (downstream_id IS NOT NULL)
+                             Buffers: shared hit=8
+ Settings: effective_cache_size = '96GB', work_mem = '2GB', max_parallel_workers_per_gather = '8', max_parallel_workers = '14', random_page_cost = '1.1', effective_io_concurrency = '200', temp_buffers = '64MB', search_path = 'public, whse_basemapping, usgs, hydrosheds'
+ Planning Time: 0.067 ms
+ Execution Time: 0.023 ms
+(22 rows)
+
+== L2 full, 1,000 origins
+                                                                                                                                                                                                                                    QUERY PLAN                                                                                                                                                                                                                                    
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=11643533.34..11643533.35 rows=1 width=64) (actual time=12490.873..12613.692 rows=1 loops=1)
+   Buffers: shared hit=7499223
+   ->  WindowAgg  (cost=3062.34..10471078.95 rows=42634705 width=121) (actual time=265.884..12556.780 rows=1774080 loops=1)
+         Buffers: shared hit=7499223
+         ->  Gather Merge  (cost=3062.10..9405211.33 rows=42634705 width=109) (actual time=265.863..12385.094 rows=1774080 loops=1)
+               Workers Planned: 2
+               Workers Launched: 2
+               Buffers: shared hit=7499223
+               ->  Incremental Sort  (cost=2062.07..4483108.47 rows=17764460 width=109) (actual time=201.732..4431.808 rows=591360 loops=3)
+                     Sort Key: o.origin_id, s.wscode_ltree DESC, s.localcode_ltree DESC, s.downstream_route_measure DESC
+                     Presorted Key: o.origin_id
+                     Full-sort Groups: 303  Sort Method: quicksort  Average Memory: 31kB  Peak Memory: 31kB
+                     Pre-sorted Groups: 308  Sort Method: quicksort  Average Memory: 599kB  Peak Memory: 685kB
+                     Buffers: shared hit=7499223
+                     Worker 0:  Full-sort Groups: 322  Sort Method: quicksort  Average Memory: 31kB  Peak Memory: 31kB
+                       Pre-sorted Groups: 320  Sort Method: quicksort  Average Memory: 513kB  Peak Memory: 633kB
+                     Worker 1:  Full-sort Groups: 306  Sort Method: quicksort  Average Memory: 31kB  Peak Memory: 31kB
+                       Pre-sorted Groups: 316  Sort Method: quicksort  Average Memory: 564kB  Peak Memory: 709kB
+                     ->  Nested Loop  (cost=408.76..3128426.82 rows=17764460 width=109) (actual time=154.510..3854.263 rows=591360 loops=3)
+                           Buffers: shared hit=6259717
+                           ->  Parallel Index Scan using bench_origins_pkey on bench_origins o  (cost=0.42..6011.91 rows=1074 width=108) (actual time=149.739..167.461 rows=333 loops=3)
+                                 Filter: ((rnk >= 1) AND (rnk <= 1000) AND (grp = 'random'::text))
+                                 Rows Removed by Filter: 52562
+                                 Buffers: shared hit=4719
+                           ->  Bitmap Heap Scan on fwa_stream_networks_sp s  (cost=408.34..2741.88 rows=16540 width=109) (actual time=1.181..10.972 rows=1774 loops=1000)
+                                 Recheck Cond: (((o.blue_line_key = blue_line_key) AND (downstream_route_measure <= (o.measure - '0.001'::double precision))) OR (o.wscode_ltree <@ wscode_ltree))
+                                 Filter: (((o.blue_line_key = blue_line_key) AND (downstream_route_measure <= (o.measure - '0.001'::double precision))) OR ((o.wscode_ltree <@ wscode_ltree) AND ((subltree(o.localcode_ltree, 0, nlevel(localcode_ltree)) > localcode_ltree) OR ((wscode_ltree = localcode_ltree) AND (o.wscode_ltree <> wscode_ltree)) OR ((o.wscode_ltree = wscode_ltree) AND (o.blue_line_key <> blue_line_key) AND (o.localcode_ltree > localcode_ltree)))))
+                                 Rows Removed by Filter: 3978
+                                 Heap Blocks: exact=1882473
+                                 Buffers: shared hit=6254998
+                                 ->  BitmapOr  (cost=408.34..408.34 rows=49115 width=0) (actual time=0.764..0.764 rows=0 loops=1000)
+                                       Buffers: shared hit=79075
+                                       ->  Bitmap Index Scan on fwa_streamnetworks_blkey_measure_idx  (cost=0.00..1.55 rows=7 width=0) (actual time=0.021..0.021 rows=21 loops=1000)
+                                             Index Cond: ((blue_line_key = o.blue_line_key) AND (downstream_route_measure <= (o.measure - '0.001'::double precision)))
+                                             Buffers: shared hit=3065
+                                       ->  Bitmap Index Scan on fwa_streamnetworks_wsc_gist_idx  (cost=0.00..398.52 rows=49108 width=0) (actual time=0.742..0.742 rows=5752 loops=1000)
+                                             Index Cond: (wscode_ltree @> o.wscode_ltree)
+                                             Buffers: shared hit=76010
+ Settings: effective_cache_size = '96GB', work_mem = '2GB', max_parallel_workers_per_gather = '8', max_parallel_workers = '14', random_page_cost = '1.1', effective_io_concurrency = '200', temp_buffers = '64MB', search_path = 'public, whse_basemapping, usgs, hydrosheds'
+ Planning Time: 0.267 ms
+ JIT:
+   Functions: 42
+   Options: Inlining true, Optimization true, Expressions true, Deforming true
+   Timing: Generation 2.841 ms (Deform 0.982 ms), Inlining 77.293 ms, Optimization 222.610 ms, Emission 148.814 ms, Total 451.557 ms
+ Execution Time: 12614.371 ms
+(45 rows)
+
+== A-pred full, 1,000 origins (no ANALYZE)
+                                                             QUERY PLAN                                                             
+------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=1699684404.80..1699684404.81 rows=1 width=64)
+   ->  Gather  (cost=1699684403.98..1699684404.69 rows=7 width=64)
+         Workers Planned: 7
+         ->  Partial Aggregate  (cost=1699683403.98..1699683403.99 rows=1 width=64)
+               ->  Nested Loop  (cost=0.42..1690644030.69 rows=602624886 width=12)
+                     Join Filter: fwapg.blk_on_or_upstream(s.blue_line_key, s.downstream_route_measure, o.blue_line_key, o.measure)
+                     ->  Parallel Seq Scan on fwa_stream_networks_sp s  (cost=0.00..872674.42 rows=701542 width=20)
+                     ->  Index Scan using bench_origins_grp_rnk_key on bench_origins o  (cost=0.42..1738.63 rows=2577 width=16)
+                           Index Cond: ((grp = 'random'::text) AND (rnk >= 1) AND (rnk <= 1000))
+ JIT:
+   Functions: 12
+   Options: Inlining true, Optimization true, Expressions true, Deforming true
+(12 rows)
+
+== A full, 1,000 origins
+                                                                                                                                  QUERY PLAN                                                                                                                                  
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=74633.87..74633.88 rows=1 width=64) (actual time=1228.151..1270.286 rows=1 loops=1)
+   Buffers: shared hit=1181268
+   ->  WindowAgg  (cost=58638.40..72306.05 rows=84648 width=40) (actual time=880.304..1213.185 rows=1155537 loops=1)
+         Buffers: shared hit=1181268
+         ->  Gather Merge  (cost=58638.24..68496.89 rows=84648 width=60) (actual time=880.295..1009.493 rows=1155537 loops=1)
+               Workers Planned: 2
+               Workers Launched: 2
+               Buffers: shared hit=1181268
+               ->  Sort  (cost=57638.21..57726.39 rows=35270 width=60) (actual time=791.864..801.359 rows=385179 loops=3)
+                     Sort Key: "*SELECT* 1".origin_id, "*SELECT* 1".step, s.downstream_route_measure DESC
+                     Sort Method: quicksort  Memory: 98617kB
+                     Buffers: shared hit=1181268
+                     Worker 0:  Sort Method: quicksort  Memory: 9431kB
+                     Worker 1:  Sort Method: quicksort  Memory: 12949kB
+                     ->  Nested Loop  (cost=0.85..54974.24 rows=35270 width=60) (actual time=0.958..713.330 rows=385179 loops=3)
+                           Buffers: shared hit=1181224
+                           ->  Parallel Append  (cost=0.42..7554.70 rows=5369 width=48) (actual time=0.715..23.799 rows=1588 loops=3)
+                                 Buffers: shared hit=5782
+                                 ->  Subquery Scan on "*SELECT* 1"  (cost=0.42..1764.40 rows=2577 width=48) (actual time=0.532..19.684 rows=1000 loops=1)
+                                       Buffers: shared hit=1009
+                                       ->  Index Scan using bench_origins_grp_rnk_key on bench_origins o  (cost=0.42..1738.63 rows=2577 width=48) (actual time=0.532..19.573 rows=1000 loops=1)
+                                             Index Cond: ((grp = 'random'::text) AND (rnk >= 1) AND (rnk <= 1000))
+                                             Buffers: shared hit=1009
+                                 ->  Subquery Scan on "*SELECT* 2"  (cost=49.11..5763.45 rows=6064 width=48) (actual time=0.817..17.054 rows=1255 loops=3)
+                                       Buffers: shared hit=4773
+                                       ->  Nested Loop  (cost=49.11..5702.81 rows=6064 width=48) (actual time=0.817..16.880 rows=1255 loops=3)
+                                             Buffers: shared hit=4773
+                                             ->  Nested Loop  (cost=49.10..5566.36 rows=1516 width=111) (actual time=0.798..15.826 rows=319 loops=3)
+                                                   Buffers: shared hit=4773
+                                                   ->  Parallel Bitmap Heap Scan on bench_origins o_1  (cost=48.68..2021.81 rows=1516 width=24) (actual time=0.593..2.809 rows=333 loops=3)
+                                                         Recheck Cond: ((grp = 'random'::text) AND (rnk >= 1) AND (rnk <= 1000))
+                                                         Heap Blocks: exact=723
+                                                         Buffers: shared hit=813
+                                                         ->  Bitmap Index Scan on bench_origins_grp_rnk_key  (cost=0.00..48.03 rows=2577 width=0) (actual time=0.519..0.519 rows=1000 loops=1)
+                                                               Index Cond: ((grp = 'random'::text) AND (rnk >= 1) AND (rnk <= 1000))
+                                                               Buffers: shared hit=8
+                                                   ->  Index Scan using blk_paths_pkey on blk_paths p  (cost=0.43..2.34 rows=1 width=95) (actual time=0.038..0.038 rows=1 loops=1000)
+                                                         Index Cond: (blue_line_key = o_1.blue_line_key)
+                                                         Buffers: shared hit=3960
+                                             ->  Function Scan on u  (cost=0.01..0.04 rows=4 width=20) (actual time=0.002..0.002 rows=4 loops=958)
+                           ->  Index Scan using fwa_streamnetworks_blkey_measure_idx on fwa_stream_networks_sp s  (cost=0.43..8.76 rows=7 width=28) (actual time=0.019..0.413 rows=243 loops=4764)
+                                 Index Cond: ((blue_line_key = "*SELECT* 1".blk) AND (downstream_route_measure < "*SELECT* 1".upper))
+                                 Buffers: shared hit=1175442
+ Settings: effective_cache_size = '96GB', work_mem = '2GB', max_parallel_workers_per_gather = '8', max_parallel_workers = '14', random_page_cost = '1.1', effective_io_concurrency = '200', temp_buffers = '64MB', search_path = 'public, whse_basemapping, usgs, hydrosheds'
+ Planning:
+   Buffers: shared hit=8
+ Planning Time: 0.257 ms
+ Execution Time: 1281.443 ms
+(48 rows)
+
+== A 1km, 1,000 origins
+                                                                                                                                  QUERY PLAN                                                                                                                                  
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=37985.44..37985.45 rows=1 width=64) (actual time=61.009..61.235 rows=1 loops=1)
+   Buffers: shared hit=40802
+   ->  Subquery Scan on chain  (cost=17231.05..37930.58 rows=3135 width=24) (actual time=44.411..60.984 rows=4968 loops=1)
+         Filter: ((chain.cum_m - chain.step_m) < '1000'::double precision)
+         Rows Removed by Filter: 5
+         Buffers: shared hit=40802
+         ->  WindowAgg  (cost=17231.05..37781.67 rows=9405 width=52) (actual time=44.410..60.689 rows=4973 loops=1)
+               Buffers: shared hit=40802
+               ->  Incremental Sort  (cost=17228.89..37193.85 rows=9405 width=60) (actual time=44.407..59.618 rows=4973 loops=1)
+                     Sort Key: e.origin_id, e.step, s.downstream_route_measure DESC
+                     Presorted Key: e.origin_id, e.step
+                     Full-sort Groups: 148  Sort Method: quicksort  Average Memory: 27kB  Peak Memory: 27kB
+                     Buffers: shared hit=40802
+                     ->  Nested Loop  (cost=17213.22..36914.92 rows=9405 width=60) (actual time=44.251..59.004 rows=4973 loops=1)
+                           Buffers: shared hit=40802
+                           ->  Subquery Scan on e  (cost=17212.00..17662.95 rows=4295 width=56) (actual time=44.229..45.645 rows=1702 loops=1)
+                                 Filter: (e.entry_m < '1001'::double precision)
+                                 Rows Removed by Filter: 3062
+                                 Buffers: shared hit=24655
+                                 ->  WindowAgg  (cost=17212.00..17501.89 rows=12885 width=56) (actual time=44.229..45.466 rows=4764 loops=1)
+                                       Buffers: shared hit=24655
+                                       ->  Sort  (cost=17211.98..17244.19 rows=12885 width=56) (actual time=44.225..44.614 rows=4764 loops=1)
+                                             Sort Key: o.origin_id, ('0'::bigint)
+                                             Sort Method: quicksort  Memory: 565kB
+                                             Buffers: shared hit=24655
+                                             ->  Nested Loop  (cost=0.98..16332.36 rows=12885 width=56) (actual time=0.035..43.818 rows=4764 loops=1)
+                                                   Buffers: shared hit=24655
+                                                   ->  Append  (cost=0.42..8859.06 rows=12885 width=48) (actual time=0.022..26.556 rows=4764 loops=1)
+                                                         Buffers: shared hit=5779
+                                                         ->  Index Scan using bench_origins_grp_rnk_key on bench_origins o  (cost=0.42..1738.63 rows=2577 width=48) (actual time=0.022..1.762 rows=1000 loops=1)
+                                                               Index Cond: ((grp = 'random'::text) AND (rnk >= 1) AND (rnk <= 1000))
+                                                               Buffers: shared hit=1008
+                                                         ->  Nested Loop  (cost=1049.11..7056.00 rows=10308 width=48) (actual time=0.575..24.595 rows=3764 loops=1)
+                                                               Buffers: shared hit=4771
+                                                               ->  Gather  (cost=1049.10..6824.06 rows=2577 width=111) (actual time=0.570..23.373 rows=958 loops=1)
+                                                                     Workers Planned: 1
+                                                                     Workers Launched: 1
+                                                                     Buffers: shared hit=4771
+                                                                     ->  Nested Loop  (cost=49.10..5566.36 rows=1516 width=111) (actual time=0.364..3.608 rows=479 loops=2)
+                                                                           Buffers: shared hit=4771
+                                                                           ->  Parallel Bitmap Heap Scan on bench_origins o_1  (cost=48.68..2021.81 rows=1516 width=24) (actual time=0.359..0.876 rows=500 loops=2)
+                                                                                 Recheck Cond: ((grp = 'random'::text) AND (rnk >= 1) AND (rnk <= 1000))
+                                                                                 Heap Blocks: exact=805
+                                                                                 Buffers: shared hit=813
+                                                                                 ->  Bitmap Index Scan on bench_origins_grp_rnk_key  (cost=0.00..48.03 rows=2577 width=0) (actual time=0.358..0.358 rows=1000 loops=1)
+                                                                                       Index Cond: ((grp = 'random'::text) AND (rnk >= 1) AND (rnk <= 1000))
+                                                                                       Buffers: shared hit=8
+                                                                           ->  Index Scan using blk_paths_pkey on blk_paths p  (cost=0.43..2.34 rows=1 width=95) (actual time=0.005..0.005 rows=1 loops=1000)
+                                                                                 Index Cond: (blue_line_key = o_1.blue_line_key)
+                                                                                 Buffers: shared hit=3958
+                                                               ->  Function Scan on u  (cost=0.01..0.04 rows=4 width=20) (actual time=0.001..0.001 rows=4 loops=958)
+                                                   ->  Result  (cost=0.56..0.57 rows=1 width=8) (actual time=0.003..0.003 rows=1 loops=4764)
+                                                         Buffers: shared hit=18876
+                                                         InitPlan 3
+                                                           ->  Limit  (cost=0.43..0.56 rows=1 width=8) (actual time=0.003..0.003 rows=1 loops=4764)
+                                                                 Buffers: shared hit=18876
+                                                                 ->  Index Only Scan using fwa_streamnetworks_blkey_measure_idx on fwa_stream_networks_sp s_2  (cost=0.43..2.98 rows=20 width=8) (actual time=0.003..0.003 rows=1 loops=4764)
+                                                                       Index Cond: (blue_line_key = o.blue_line_key)
+                                                                       Heap Fetches: 0
+                                                                       Buffers: shared hit=18876
+                           ->  Index Scan using fwa_streamnetworks_blkey_measure_idx on fwa_stream_networks_sp s  (cost=1.22..4.46 rows=2 width=28) (actual time=0.002..0.005 rows=3 loops=1702)
+                                 Index Cond: ((blue_line_key = e.blk) AND (downstream_route_measure >= COALESCE((SubPlan 2), '-Infinity'::double precision)) AND (downstream_route_measure < e.upper))
+                                 Buffers: shared hit=10081
+                                 SubPlan 2
+                                   ->  Result  (cost=0.77..0.78 rows=1 width=8) (actual time=0.003..0.003 rows=1 loops=1702)
+                                         Buffers: shared hit=6066
+                                         InitPlan 1
+                                           ->  Limit  (cost=0.44..0.77 rows=1 width=8) (actual time=0.003..0.003 rows=1 loops=1702)
+                                                 Buffers: shared hit=6066
+                                                 ->  Index Only Scan Backward using fwa_streamnetworks_blkey_measure_idx on fwa_stream_networks_sp s_1  (cost=0.44..2.78 rows=7 width=8) (actual time=0.003..0.003 rows=1 loops=1702)
+                                                       Index Cond: ((blue_line_key = e.blk) AND (downstream_route_measure <= ((e.junction - ('1000'::double precision - e.entry_m)) - '1'::double precision)))
+                                                       Heap Fetches: 0
+                                                       Buffers: shared hit=6066
+ Settings: effective_cache_size = '96GB', work_mem = '2GB', max_parallel_workers_per_gather = '8', max_parallel_workers = '14', random_page_cost = '1.1', effective_io_concurrency = '200', temp_buffers = '64MB', search_path = 'public, whse_basemapping, usgs, hydrosheds'
+ Planning:
+   Buffers: shared hit=8
+ Planning Time: 0.510 ms
+ Execution Time: 61.284 ms
+(78 rows)
+
+== P full, 1,000 origins
+                                                                                                                                  QUERY PLAN                                                                                                                                  
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=489178.09..489178.10 rows=1 width=64) (actual time=2212.989..2212.991 rows=1 loops=1)
+   Buffers: shared hit=4623248
+   ->  CTE Scan on walk  (cost=479832.45..484816.79 rows=249217 width=24) (actual time=3.440..2133.656 rows=1155560 loops=1)
+         Buffers: shared hit=4623248
+         CTE walk
+           ->  Recursive Union  (cost=0.42..479832.45 rows=249217 width=24) (actual time=3.440..1989.578 rows=1155560 loops=1)
+                 Buffers: shared hit=4623248
+                 ->  Index Scan using bench_origins_grp_rnk_key on bench_origins o  (cost=0.42..1745.08 rows=2577 width=24) (actual time=3.439..4.521 rows=1000 loops=1)
+                       Index Cond: ((grp = 'random'::text) AND (rnk >= 1) AND (rnk <= 1000))
+                       Buffers: shared hit=1008
+                 ->  Nested Loop  (cost=0.43..47559.52 rows=24664 width=24) (actual time=0.001..0.443 rows=269 loops=4298)
+                       Buffers: shared hit=4622240
+                       ->  WorkTable Scan on walk w  (cost=0.00..515.40 rows=25770 width=24) (actual time=0.000..0.009 rows=269 loops=4298)
+                       ->  Index Scan using downstream_ids_pkey on downstream_ids d  (cost=0.43..1.82 rows=1 width=24) (actual time=0.001..0.001 rows=1 loops=1155560)
+                             Index Cond: (linear_feature_id = w.linear_feature_id)
+                             Filter: (downstream_id IS NOT NULL)
+                             Rows Removed by Filter: 0
+                             Buffers: shared hit=4622240
+ Settings: effective_cache_size = '96GB', work_mem = '2GB', max_parallel_workers_per_gather = '8', max_parallel_workers = '14', random_page_cost = '1.1', effective_io_concurrency = '200', temp_buffers = '64MB', search_path = 'public, whse_basemapping, usgs, hydrosheds'
+ Planning Time: 0.108 ms
+ JIT:
+   Functions: 14
+   Options: Inlining false, Optimization false, Expressions true, Deforming true
+   Timing: Generation 0.333 ms (Deform 0.121 ms), Inlining 0.000 ms, Optimization 0.176 ms, Emission 3.272 ms, Total 3.781 ms
+ Execution Time: 2227.973 ms
+(25 rows)
+
+== P 1km, 1,000 origins
+                                                                                                                                  QUERY PLAN                                                                                                                                  
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=206638.76..206638.77 rows=1 width=64) (actual time=15.275..15.276 rows=1 loops=1)
+   Buffers: shared hit=16964
+   ->  CTE Scan on walk  (cost=203459.25..205154.99 rows=84787 width=24) (actual time=3.517..14.966 rows=4970 loops=1)
+         Buffers: shared hit=16964
+         CTE walk
+           ->  Recursive Union  (cost=0.42..203459.25 rows=84787 width=24) (actual time=3.517..14.525 rows=4970 loops=1)
+                 Buffers: shared hit=16964
+                 ->  Index Scan using bench_origins_grp_rnk_key on bench_origins o  (cost=0.42..1745.08 rows=2577 width=24) (actual time=3.516..4.758 rows=1000 loops=1)
+                       Index Cond: ((grp = 'random'::text) AND (rnk >= 1) AND (rnk <= 1000))
+                       Buffers: shared hit=1008
+                 ->  Nested Loop  (cost=0.43..20086.63 rows=8221 width=24) (actual time=0.003..0.557 rows=234 loops=17)
+                       Buffers: shared hit=15956
+                       ->  WorkTable Scan on walk w  (cost=0.00..579.82 rows=8590 width=24) (actual time=0.000..0.013 rows=235 loops=17)
+                             Filter: (cum_m < '1000'::double precision)
+                             Rows Removed by Filter: 58
+                       ->  Index Scan using downstream_ids_pkey on downstream_ids d  (cost=0.43..2.27 rows=1 width=24) (actual time=0.002..0.002 rows=1 loops=3989)
+                             Index Cond: (linear_feature_id = w.linear_feature_id)
+                             Filter: (downstream_id IS NOT NULL)
+                             Rows Removed by Filter: 0
+                             Buffers: shared hit=15956
+ Settings: effective_cache_size = '96GB', work_mem = '2GB', max_parallel_workers_per_gather = '8', max_parallel_workers = '14', random_page_cost = '1.1', effective_io_concurrency = '200', temp_buffers = '64MB', search_path = 'public, whse_basemapping, usgs, hydrosheds'
+ Planning Time: 0.106 ms
+ JIT:
+   Functions: 15
+   Options: Inlining false, Optimization false, Expressions true, Deforming true
+   Timing: Generation 0.346 ms (Deform 0.120 ms), Inlining 0.000 ms, Optimization 0.183 ms, Emission 3.322 ms, Total 3.850 ms
+ Execution Time: 15.680 ms
+(27 rows)
+

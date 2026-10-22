@@ -1,0 +1,7 @@
+psql:~/Projects/repo/fwapg/planning/active/scripts/sql/00_origins.sql:10: NOTICE:  table "bench_origins" does not exist, skipping
+origins ADMS|10458; in tree 10458, with a path 10448, in fwa_streams 10449, edge 6010 0
+origins BULK|30046; in tree 30046, with a path 30046, in fwa_streams 30037, edge 6010 0
+origins LFRA|18180; in tree 18175, with a path 17790, in fwa_streams 18154, edge 6010 0
+origins random|100000; in tree 99339, with a path 96597, in fwa_streams 99938, edge 6010 3
+random 1..1000|in tree 993, with a path 958, in fwa_streams 999
+excluded (null or 999 code)|province 366377, ADMS 1062, BULK 2426, LFRA 1811

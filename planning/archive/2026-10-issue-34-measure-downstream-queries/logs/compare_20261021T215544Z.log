@@ -1,0 +1,58 @@
+psql:07_compare.sql:64: WARNING:  could not truncate file "base/16384/221537280": Input/output error
+local-code predicate base rate (array walk segments, 1 in 50 sample)|218 of 2973 (7.3 %)
+order differences L2-A as distinct segment pairs|1242
+diffs A-P set code_junction_below_node|17 segments, 17 origins
+diffs A-P set path_ends|3077 segments, 4 origins
+diffs A-P set route_differs|21 segments, 3 origins
+diffs A-P 1km set code_junction_below_node|2 segments, 2 origins
+diffs A-P 1km set path_ends|9 segments, 3 origins
+diffs A-P 1km set route_differs|12 segments, 2 origins
+diffs Apred-A set junction_at_segment_start|73 segments, 20 origins
+diffs L1-L2 order code_tie_across_lines|1772 segments, 80 origins
+diffs L1-L2 set absent_from_fwa_streams|1495 segments, 86 origins
+diffs L2-A order code_tie_across_lines|53 segments, 45 origins
+diffs L2-A order localcode_anomaly|43320 segments, 3688 origins
+diffs L2-A order path_through_side_channel|9 segments, 9 origins
+diffs L2-A set alongside_side_channel|2325 segments, 475 origins
+diffs L2-A set code_999|47 segments, 23 origins
+diffs L2-A set code_parent_bypassed|94 segments, 20 origins
+diffs L2-A set localcode_anomaly|550 segments, 264 origins
+diffs L2-A set path_ends|31430 segments, 29 origins
+diffs L2-A set path_through_side_channel|1919 segments, 702 origins
+diffs L2-A set side_channel|1640569 segments, 3837 origins
+diffs L2-A set side_channel_rejoin|91 segments, 25 origins
+diffs L2-P order code_tie_across_lines|53 segments, 45 origins
+diffs L2-P order localcode_anomaly|43344 segments, 3691 origins
+diffs L2-P order path_through_side_channel|9 segments, 9 origins
+diffs L2-P set alongside_side_channel|2325 segments, 475 origins
+diffs L2-P set code_999|47 segments, 23 origins
+diffs L2-P set code_junction_below_node|17 segments, 17 origins
+diffs L2-P set code_parent_bypassed|94 segments, 20 origins
+diffs L2-P set localcode_anomaly|550 segments, 264 origins
+diffs L2-P set path_ends|28453 segments, 30 origins
+diffs L2-P set path_through_side_channel|1919 segments, 702 origins
+diffs L2-P set route_differs|19 segments, 3 origins
+diffs L2-P set side_channel|1640567 segments, 3837 origins
+diffs L2-P set side_channel_rejoin|91 segments, 25 origins
+origins compared A 1km|4000
+origins compared A full|4000
+origins compared A-pred full|20
+origins compared L1 full|100
+origins compared L2 full|4000
+origins compared P 1km|4000
+origins compared P full|4000
+origins with a difference A-P|24
+origins with a difference A-P 1km|7
+origins with a difference Apred-A|20
+origins with a difference L1-L2|86
+origins with a difference L2-A|3855
+origins with a difference L2-P|3856
+largest A-P distance difference where the sets agree (m) 1km|0
+largest A-P distance difference where the sets agree (m) full|0
+side_channel segments on a main line (expected 0)|0
+assert: no unattributed difference|t
+assert: A and P agree on every distance to 1 cm where their sets agree|t
+hope A|239 segments, 161.40 km whole, 161.40 km main flow, outlet cum_m 160.400 km
+hope L1|536 segments, 307.81 km whole, 161.08 km main flow, outlet cum_m - km
+hope L2|544 segments, 309.70 km whole, 161.40 km main flow, outlet cum_m - km
+hope P|239 segments, 161.40 km whole, 161.40 km main flow, outlet cum_m 160.400 km

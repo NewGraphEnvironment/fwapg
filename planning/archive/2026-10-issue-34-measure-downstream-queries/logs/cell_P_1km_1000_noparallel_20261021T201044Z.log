@@ -1,0 +1,4 @@
+P 1km 1000 noparallel origin NULL rep 0: 4970 rows, 166.4 ms
+P 1km 1000 noparallel origin NULL rep 1: 4970 rows, 16.1 ms
+P 1km 1000 noparallel origin NULL rep 2: 4970 rows, 15.9 ms
+P 1km 1000 noparallel origin NULL rep 3: 4970 rows, 13.8 ms

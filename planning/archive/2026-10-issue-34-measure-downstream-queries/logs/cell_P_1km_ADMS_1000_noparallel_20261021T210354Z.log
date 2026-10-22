@@ -1,0 +1,4 @@
+P 1km ADMS_1000 noparallel origin NULL rep 0: 4310 rows, 91.1 ms
+P 1km ADMS_1000 noparallel origin NULL rep 1: 4310 rows, 8.3 ms
+P 1km ADMS_1000 noparallel origin NULL rep 2: 4310 rows, 6.3 ms
+P 1km ADMS_1000 noparallel origin NULL rep 3: 4310 rows, 5.8 ms

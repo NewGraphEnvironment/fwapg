@@ -1,0 +1,4 @@
+P 1km 10000 noparallel_ab2 origin NULL rep 0: 51011 rows, 600.3 ms
+P 1km 10000 noparallel_ab2 origin NULL rep 1: 51011 rows, 195.0 ms
+P 1km 10000 noparallel_ab2 origin NULL rep 2: 51011 rows, 195.4 ms
+P 1km 10000 noparallel_ab2 origin NULL rep 3: 51011 rows, 195.0 ms

@@ -1,0 +1,4 @@
+L1 full 100 noparallel origin NULL rep 0: 177650 rows, 3478.2 ms
+L1 full 100 noparallel origin NULL rep 1: 177650 rows, 2802.5 ms
+L1 full 100 noparallel origin NULL rep 2: 177650 rows, 2822.4 ms
+L1 full 100 noparallel origin NULL rep 3: 177650 rows, 2765.5 ms

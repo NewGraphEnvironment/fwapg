@@ -1,0 +1,4 @@
+L2 full BULK_1000 default origin NULL rep 0: 1564673 rows, 9663.2 ms
+L2 full BULK_1000 default origin NULL rep 1: 1564673 rows, 9597.0 ms
+L2 full BULK_1000 default origin NULL rep 2: 1564673 rows, 9428.0 ms
+L2 full BULK_1000 default origin NULL rep 3: 1564673 rows, 9102.2 ms

@@ -1,0 +1,8 @@
+psql:07_results.sql:9: NOTICE:  table "bench_res" does not exist, skipping
+A 1km|18516 rows, 4000 origins
+A full|4004331 rows, 4000 origins
+A-pred full|24352 rows, 20 origins
+L1 full|177650 rows, 100 origins
+L2 full|5676798 rows, 4000 origins
+P 1km|18525 rows, 4000 origins
+P full|4007430 rows, 4000 origins

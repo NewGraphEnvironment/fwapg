@@ -1,0 +1,40 @@
+setting effective_cache_size|12582912 8kB
+setting hash_mem_multiplier|2
+setting jit|on
+setting max_parallel_workers|14
+setting max_parallel_workers_per_gather|8
+setting random_page_cost|1.1
+setting server_version|17.5 (Debian 17.5-1.pgdg110+1)
+setting shared_buffers|4194304 8kB
+setting statement_timeout|0 ms
+setting work_mem|2097152 kB
+extension ltree|1.3
+extension postgis|3.5.2
+table fwapg.blk_parents|1570499 rows, heap 102 MB, total 136 MB
+table fwapg.blk_paths|1570499 rows, heap 195 MB, total 228 MB
+table whse_basemapping.fwa_stream_networks_mainflow_tree|4510368 rows, heap 259 MB, total 482 MB
+table whse_basemapping.fwa_stream_networks_sp|4907441 rows, heap 6763 MB, total 10013 MB
+table whse_basemapping.fwa_streams|4538224 rows, heap 5357 MB, total 8148 MB
+index fwapg.blk_parents_pkey|34 MB
+index fwapg.blk_paths_pkey|34 MB
+index fwa_streamnetworks_blkey_measure_idx|191 MB
+index fwa_streamnetworks_lc_btree_idx|425 MB
+index fwa_streamnetworks_lc_gist_idx|503 MB
+index fwa_stream_networks_sp_pkey|142 MB
+index fwa_streamnetworks_wsc_btree_idx|450 MB
+index fwa_streamnetworks_wsc_gist_idx|545 MB
+index fwa_streams_blkey_measure_idx|172 MB
+index fwa_streams_lc_btree_idx|407 MB
+index fwa_streams_lc_gist_idx|477 MB
+index fwa_streams_pkey|134 MB
+index fwa_streams_wsc_btree_idx|385 MB
+index fwa_streams_wsc_gist_idx|451 MB
+segments absent from fwa_streams|369217
+segments not in the main-flow tree|397073
+blue lines whose lowest segment starts above 1 mm|1099
+blue lines with no blk_paths row (segments)|212790 (366162)
+segments by class|edge 6010 250, edge 1425 343, code under 999 208189, null code 328961
+blk_paths path length|mean 4.18 lines, max 17
+main-flow tree qa|cut_off 8, dead_end 473, no_parent 23
+assert: no blue line has two segments at one downstream_route_measure|t
+assert: every tree segment is a network segment|t

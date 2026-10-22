@@ -1,0 +1,4 @@
+P full LFRA_1000 noparallel origin NULL rep 0: 169018 rows, 324.0 ms
+P full LFRA_1000 noparallel origin NULL rep 1: 169018 rows, 178.0 ms
+P full LFRA_1000 noparallel origin NULL rep 2: 169018 rows, 176.2 ms
+P full LFRA_1000 noparallel origin NULL rep 3: 169018 rows, 172.3 ms

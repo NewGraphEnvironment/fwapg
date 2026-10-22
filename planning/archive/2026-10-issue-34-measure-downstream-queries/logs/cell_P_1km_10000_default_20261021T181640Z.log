@@ -1,0 +1,4 @@
+P 1km 10000 default origin NULL rep 0: 51011 rows, 619.4 ms
+P 1km 10000 default origin NULL rep 1: 51011 rows, 202.1 ms
+P 1km 10000 default origin NULL rep 2: 51011 rows, 198.2 ms
+P 1km 10000 default origin NULL rep 3: 51011 rows, 198.8 ms

@@ -1,0 +1,4 @@
+A 1km BULK_1000 default origin NULL rep 0: 4423 rows, 258.4 ms
+A 1km BULK_1000 default origin NULL rep 1: 4423 rows, 33.6 ms
+A 1km BULK_1000 default origin NULL rep 2: 4423 rows, 33.0 ms
+A 1km BULK_1000 default origin NULL rep 3: 4423 rows, 33.7 ms

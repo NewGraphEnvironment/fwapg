@@ -1,0 +1,4 @@
+P 1km LFRA_1000 noparallel origin NULL rep 0: 4822 rows, 106.9 ms
+P 1km LFRA_1000 noparallel origin NULL rep 1: 4822 rows, 9.1 ms
+P 1km LFRA_1000 noparallel origin NULL rep 2: 4822 rows, 6.9 ms
+P 1km LFRA_1000 noparallel origin NULL rep 3: 4822 rows, 9.0 ms

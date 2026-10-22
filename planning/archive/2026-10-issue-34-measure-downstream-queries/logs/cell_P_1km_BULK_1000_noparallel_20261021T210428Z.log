@@ -1,0 +1,4 @@
+P 1km BULK_1000 noparallel origin NULL rep 0: 4423 rows, 108.7 ms
+P 1km BULK_1000 noparallel origin NULL rep 1: 4423 rows, 10.9 ms
+P 1km BULK_1000 noparallel origin NULL rep 2: 4423 rows, 10.0 ms
+P 1km BULK_1000 noparallel origin NULL rep 3: 4423 rows, 9.8 ms

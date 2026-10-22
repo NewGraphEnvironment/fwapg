@@ -1,0 +1,4 @@
+P full BULK default_ab1 origin NULL rep 0: 30249250 rows, 51649.6 ms
+P full BULK default_ab1 origin NULL rep 1: 30249250 rows, 52397.7 ms
+P full BULK default_ab1 origin NULL rep 2: 30249250 rows, 52578.3 ms
+P full BULK default_ab1 origin NULL rep 3: 30249250 rows, 52616.8 ms

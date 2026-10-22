@@ -1,0 +1,4 @@
+P full 100000 default origin NULL rep 0: 114739699 rows, 219532.5 ms
+P full 100000 default origin NULL rep 1: 114739699 rows, 214934.5 ms
+P full 100000 default origin NULL rep 2: 114739699 rows, 218589.0 ms
+P full 100000 default origin NULL rep 3: 114739699 rows, 221552.9 ms
