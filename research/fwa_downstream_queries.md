@@ -18,20 +18,20 @@ The question: from a point on the network, which segments are downstream, in ord
 |---|---|---|---|---|---|
 | 1 | **ltree join**: `FWA_Downstream()` as a join condition | fwapg (upstream), function | nothing; code indexes on `fwa_stream_networks_sp` | compares the origin's watershed and local codes and measure with every segment's, through the GiST and btree code indexes | every segment the codes put below the origin, side channels included, ordered by codes |
 | 2 | **shipped trace**: `FWA_DownstreamTrace()` | fwapg (upstream), function | nothing; reads `fwa_streams` | option 1 over `fwa_streams`, every column with geometry, the origin's segment cut at the measure | as option 1, less the 369,217 segments `fwa_streams` lacks |
-| 3 | **path walk** over `fwapg.blk_paths` | our fork, `extras/blue_line_paths` (tables); the walk is a query in the benchmark scripts, not a function | each line's parent and junction (codes, then touching mouths, then fallbacks), chained to the sea | the origin's line below the origin, then each line on its path below its junction: one index range per line (about 4 a random origin), then a sort for order and distance | the lines the water passes, in flow order, distance on every segment; stops where the paths stop |
-| 4 | **path predicate**: `fwapg.blk_on_or_upstream()` as a join condition | our fork, function | `blk_paths` | evaluated against every segment of the province for each origin | option 3's set plus the segment starting at each junction (inclusive comparison) |
-| 5 | **`downstream_id` walk** over `fwapg.downstream_ids` | prototype, local database only (`01_downstream_ids.sql` in the archive) | for each segment: the main-flow tree segment at its downstream node; else the next segment on its line; else, for a line's lowest segment, the path junction | a recursive query: look up the next segment, add its length, repeat (about 1,160 steps from a random origin to the sea, 5 within 1 km) | the same chain as option 3, segment by segment along the geometry |
+| 3 | **path walk** over `fwapg.blk_paths` | `extras/blue_line_paths` on the `newgraph` branch (tables); the walk is a query in the benchmark scripts, not a function | each line's parent and junction (codes, then touching mouths, then fallbacks), chained to the sea | the origin's line below the origin, then each line on its path below its junction: one index range per line (about 4 a random origin), then a sort for order and distance | the lines the water passes, in flow order, distance on every segment; stops where the paths stop |
+| 4 | **path predicate**: `fwapg.blk_on_or_upstream()` as a join condition | `extras/blue_line_paths` on the `newgraph` branch, function | `blk_paths` | evaluated against every segment of the province for each origin | option 3's set plus the segment starting at each junction (inclusive comparison) |
+| 5 | **`downstream_id` walk** over `fwapg.downstream_ids` | a prototype on no branch: built once in a local database by `01_downstream_ids.sql` in the archive | for each segment: the main-flow tree segment at its downstream node; else the next segment on its line; else, for a line's lowest segment, the path junction | a recursive query: look up the next segment, add its length, repeat (about 1,160 steps from a random origin to the sea, 5 within 1 km) | the same chain as option 3, segment by segment along the geometry |
 
 How the pieces depend on each other:
 
 ```
-FWA network (fwa_stream_networks_sp) ── watershed and local codes ──> options 1, 2 (upstream fwapg)
+FWA network (fwa_stream_networks_sp) ── watershed and local codes ──> options 1, 2 (fwapg)
         │
-        └─> extras/blue_line_paths: blk_parents, blk_paths (16.5 min, 228 MB) ──> options 3, 4; PCIC crosswalk
+        └─> extras/blue_line_paths, newgraph branch: blk_parents, blk_paths (16.5 min, 228 MB) ──> options 3, 4; PCIC crosswalk
                     │
-                    └─> extras/mainflow_tree: the main-flow tree (#2, 482 MB; it rebuilds the paths first)
+                    └─> extras/mainflow_tree, newgraph branch: the main-flow tree (#2, 482 MB; it rebuilds the paths first)
                                 │
-                                └─> downstream_ids (142 s, 385 MB; reads the tree and the paths) ──> option 5
+                                └─> downstream_ids, prototype (142 s, 385 MB; reads the tree and the paths) ──> option 5
 ```
 
 A change to the paths therefore reaches options 3, 4 and 5, the PCIC crosswalk and the tree; a change to the tree reaches option 5.
@@ -50,7 +50,7 @@ Accuracy is scored against the water's path along the segment geometry, on 4,000
 | **1,000 origins, 1 km** | no distance bound | no distance bound | 42 ms | no distance bound | 19 ms |
 | **parallel workers** | slow it 1.15 to 1.6 times | speed it 2 times | speed it 1.5 to 7.6 times | | none used |
 | **build** | none (code indexes 1.9 GB) | none | 16.5 min, 228 MB | the paths | paths, tree, then 142 s, 385 MB |
-| **ships** | fwapg | fwapg | fork extra (tables only) | fork | nowhere yet |
+| **ships** | fwapg | fwapg | `newgraph` branch extra (tables only) | `newgraph` branch | nowhere yet |
 
 ## Risks
 
@@ -69,18 +69,31 @@ Accuracy is scored against the water's path along the segment geometry, on 4,000
 
 **The measurement itself:** one machine (Docker Desktop on macOS, the database on a host mount), warm cache; absolute times may differ on a Linux host. Both walks slow per origin from 10,000 to 100,000 origins (about 1 to 2 ms an origin), not investigated. The ltree join's 100,000 and whole-group cells are single runs.
 
+## Known defects and where they are fixed
+
+One row per defect found so far. "Layer" says where a fix belongs; "fixed by" links to the fix, or to where it is offered or tracked.
+
+| # | defect | where it shows | layer | count | fixed by | status |
+|---|---|---|---|---|---|---|
+| 1 | A parent segment carries the tributary's own local code one segment below the tributary's mouth | the path walk drops that segment; so do the path predicate and the PCIC crosswalk | FWA source data (local codes) | 3 lines: MSKE (Skeena, 72 m), LFRA (152 m), LFRA (1.5 m) | a code correction at the source, offered on [#30](https://github.com/NewGraphEnvironment/fwapg/issues/30); on the `newgraph` branch, Open questions 2 and 9 | offered |
+| 2 | A line has no path although the water continues past its mouth | path-based walks stop early (up to 550 km in the sample) | not known until diagnosed: the path rules or the source data | 196 lines (83 in the main-flow tree) | Open questions 3 | open |
+| 3 | Local codes out of order, or nested more than one level (#3's shape) | the ltree join returns a wrong set or order | FWA source data | 2,013 candidate main-flow segments, found by query, not checked one by one | code corrections at the source, offered on [#30](https://github.com/NewGraphEnvironment/fwapg/issues/30) | offered |
+| 4 | Beaver River: one watershed code with two main lines, whose 6010 connectors leave one node (a split) | the main-flow tree | FWA source data | 1 segment (868144443) | [`extras/mainflow_tree/overrides.csv`](../extras/mainflow_tree/overrides.csv) on the `newgraph` branch | fixed on the `newgraph` branch |
+| 5 | The Hope total in the docs is stale: 308.54 km given, 309.70 km returned | `docs/03_functions.md` | upstream docs | 1 figure | a docs PR, offered on #30 | offered |
+
 ## Open questions and follow-ups
 
 | # | question or task | why it matters | how it gets settled | status |
 |---|---|---|---|---|
 | 1 | Which walk is the default for fresh, wet and link? | accuracy against speed | a decision: the `downstream_id` walk leads on accuracy, the two trade places on speed | **open, needs a decision** |
-| 2 | Fix the code junction one segment below the mouth (3 lines) | the path walk, the path predicate and the PCIC crosswalk drop or misplace a segment there | look at the 3 lines; prefer the node where the mouth touches the parent in `blue_line_paths.sql`'s code-junction step; re-run its QA and the comparison | open |
+| 2 | Correct the local codes that put a code junction one segment below the mouth (3 lines; Known defects, row 1) | the path walk, the path predicate and the PCIC crosswalk drop a segment there | a code correction at the source, offered upstream on #30; on the `newgraph` branch meanwhile, a rule or a per-line override in the path build (question 9) | offered upstream |
 | 3 | Why do 196 lines have no path although the water continues? | path-based walks stop early (up to 550 km lost in the sample) | list the 196 by why `blue_line_paths.sql` gave no parent (no code parent in BC, a gap in the touch rules, codes under 999 nearby); fix the paths or accept and document | open |
 | 4 | Which braid is right for the 3 origins that route differently? | the only differences not attributed to a defect | check the 3 by hand against imagery or the geometry | open |
-| 5 | Land `downstream_ids` as a fork extra | needed if 1 chooses it | build script, QA in the job, load file, published output under `fwapg/extras/`, rebuild order after paths and tree | waits on 1 |
+| 5 | Land `downstream_ids` as an extra on the `newgraph` branch | needed if 1 chooses it | build script, QA in the job, load file, published output under `fwapg/extras/`, rebuild order after paths and tree | waits on 1 |
 | 6 | Why both walks slow per origin at 100,000 origins | province-wide runs | EXPLAIN at 100,000 for a sort or tuplestore spilling past `work_mem` | open |
 | 7 | Re-time the headline cells on the production host | absolute times here are a Docker Desktop mount | re-run `bench.sh` cells there | open |
 | 8 | Offered upstream, the maintainer's call: the stale Hope figure in `docs/03_functions.md`; local-code corrections like #3 in the fixes file; a `downstream_id` table if useful in fwapg | his package | his reply on #30 | offered |
+| 9 | On the `newgraph` branch, while a source-data defect waits for a correction upstream: a general rule in the build, or a per-feature override file (as `extras/mainflow_tree/overrides.csv`)? | a rule fixes every matching case but changes the build for all; an override is explicit and retires when the source is corrected | decided when a fix is taken up | open |
 
 ## Detail
 
