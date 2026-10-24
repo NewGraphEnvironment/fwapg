@@ -12,3 +12,6 @@
   `fwa_indexpoint`; both carry the same tie in their own SQL. The bcfishobs sample is in findings.md
 - Created `39-indexpoint-tiebreak` off `origin/newgraph` for the PWF and the cherry-pick
 - Next: cherry-pick, the full bcfishobs count, issue edits, PR into newgraph
+- bcfishobs full tie count: 7,198 of 307,121 observations (2.34%) on an exact same-stream tie,
+  3,464 (1.13%) with differing localcodes; fresh#266 filed; #39 body rewritten to the as-built rule
+- Next: archive, PR into newgraph, show the upstream draft (not posted)

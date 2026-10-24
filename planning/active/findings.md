@@ -83,8 +83,24 @@ the upstream segment.
   Scaled to 375,962 observations, that is about 7,500–10,700 on a tie whose segment depends on row
   order, and 3,900–6,300 where the two segments' localcodes differ (a tributary junction). At such
   a junction the localcode decides whether bcfishpass's upstream/downstream joins count the
-  observation on the tributary's side. The full-population count is below once measured; the
-  first attempt over all rows timed out at 30 min on a slow plan, while the sample took 13 s.
+  observation on the tributary's side.
+
+  Full population, the same query over every observation whose source point is in the loaded
+  `fiss_fish_obsrvtn_pnt_sp` (4 min). 68,841 of the 375,962 observations have a
+  `fish_observation_point_id` the loaded point table no longer holds, so they are not measured:
+
+  | match type | obs | exact tie | tie, localcodes differ |
+  |---|---|---|---|
+  | A. | 153,959 | 2,724 | 1,383 |
+  | B. | 17,701 | 419 | 126 |
+  | C. | 28,426 | 496 | 190 |
+  | D. | 92,557 | 3,028 | 1,723 |
+  | E. | 14,478 | 531 | 42 |
+  | all | 307,121 | **7,198 (2.34%)** | **3,464 (1.13%)** |
+
+  These are the observations whose segment and localcode can differ between two runs of bcfishobs
+  over the same data. They are bcfishobs's own tie, which this fwapg change does not touch. (The
+  first attempt over all rows, without the sample's plan, timed out at 30 min.)
 
 ## Errors Encountered
 

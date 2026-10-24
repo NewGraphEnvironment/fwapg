@@ -35,8 +35,8 @@ cut, on the distance rounded to 3 decimals.
 
 - [x] PWF baseline on `39-indexpoint-tiebreak` off `origin/newgraph` (`d30b15e`)
 - [x] `git cherry-pick -x d955688` (`aa9f6a1`)
-- [ ] Measure bcfishobs and bcfishpass exposure (findings.md)
-- [ ] Edit #39's body: the tie rule and why, two branches, measurements, downstream exposure
+- [x] Measure bcfishobs and bcfishpass exposure (findings.md)
+- [x] Edit #39's body: the tie rule and why, two branches, measurements, downstream exposure
 - [x] File a fresh issue: `frs_point_snap()`'s lowest-id tie rule disagrees with fwapg's `[ds, us)` (fresh#266)
 
 ## Phase 3: PRs
