@@ -41,8 +41,8 @@ cut, on the distance rounded to 3 decimals.
 
 ## Phase 3: PRs
 
-- [ ] `/planning-archive`, then `/gh-pr-push` → PR into `newgraph`
-- [ ] Upstream PR draft and compare link shown to the user. **Not posted.**
+- [x] `/planning-archive`, then `/gh-pr-push` → PR into `newgraph` (PR opened right after this archive)
+- [x] Upstream PR draft and compare link shown to the user. **Not posted.**
 
 ## Owed at the end (reported, done after merge)
 
@@ -56,8 +56,8 @@ cut, on the distance rounded to 3 decimals.
 
 - [x] Tests pass (all 10 `t` with the migration in a rolled-back transaction; 2 `f` on the old function)
 - [x] `/code-check` clean
-- [ ] PWF checkboxes match landed work
-- [ ] `/planning-archive` on completion
+- [x] PWF checkboxes match landed work
+- [x] `/planning-archive` on completion
 
 **Verification** (all in transactions that roll back):
 
