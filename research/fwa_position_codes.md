@@ -1,6 +1,6 @@
 # Ordering positions on the FWA network
 
-Source: measured 2026-10-07/08 on a full provincial fwapg (`fresh-db`, 4.5M segments in `fwa_stream_networks_sp`, 1.78M blue lines) while building `extras/pcic_crosswalk` (NewGraphEnvironment/fwapg#5; six code-check rounds, findings in `planning/archive/2026-10-issue-5-pcic-crosswalk/review-round*.md`). Junction sections revised 2026-10-11 (fwapg#14; `planning/archive/2026-10-issue-14-junction-vertex/`).
+Source: measured 2026-10-07/08 on a full provincial fwapg (`fresh-db`, 4.5M segments in `fwa_stream_networks_sp`, 1.78M blue lines) while building `extras/pcic_crosswalk` (NewGraphEnvironment/fwapg#5; six code-check rounds, findings in `planning/archive/2026-10-issue-5-pcic-crosswalk/review-round*.md`). Junction sections revised 2026-10-11 (fwapg#14; `planning/archive/2026-10-issue-14-junction-vertex/`). Shared-vertex ties revised 2026-10-24 (fwapg#39; `planning/archive/2026-10-issue-39-indexpoint-tiebreak/`).
 
 ## Local codes are not a coordinate system
 
@@ -35,6 +35,8 @@ It returns the nearest segment per blue line and can exclude only edge type 6010
 ## A point on a shared vertex is equally near two segments
 
 *Measured 2026-10-10, fwapg#13.* About 1% of PCIC outlets (449 of 48,716) sit exactly on the vertex two segments of one blue line share, so "the nearest segment" is a tie, and an `ORDER BY ST_Distance` with no second key lets the plan choose. Two builds on two machines agreed on all but 2 only because their spatial indexes were built alike; a lowest-id tie-break moved 449. FWA measures run `[downstream_route_measure, upstream_route_measure)`, so the rule that follows the data is the segment *starting* at the vertex (`downstream_route_measure DESC`), the one above a tributary junction.
+
+*Revised 2026-10-24, fwapg#39.* The point does not have to sit on the vertex: any point whose nearest point on both segments is the vertex ties, which is every point in the wedge outside a bend. Old against new `fwa_indexpoint()` (5 streams) changed segment on 9 of 242 random BC points and 57 of 1,000 points near segment ends. All were exact float ties, half had differing local codes, and the stream set never changed. That is a floor, since it misses ties the old plan happened to resolve upward. `fwa_indexpoint()` itself had no second key until fwapg#39 (migration `202610240132__indexpoint_tiebreak.sql`, now `downstream_route_measure DESC, linear_feature_id`). Its old answer moved with the plan: with index scans off, 08EC013's gauge went from 5086970 to 5086038. When the lower segment won, the measure it returned (`downstream_route_measure + length_metre`) could fall short of the next segment's start, and `FWA_LocateAlong` returned no point (08KD006, 14040.005812552621 against 14040.0058125527). bcfishobs (`sql/process.sql:157-163`) and bcfishpass PSCIS snapping carry the same untied pick in their own SQL. 7,198 of 307,121 bcfishobs observations (2.34%) sit on such a tie, and 3,464 (1.13%) at a tie where the local codes differ. fresh's `frs_point_snap()` breaks ties on lowest id (fresh#266).
 
 ## Which side of a junction: water joining at a segment's start does not pass it
 
