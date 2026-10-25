@@ -18,3 +18,4 @@
 - Phase 6 verification: 26/26 tests, each of 8 one-change reverts red, comparisons in findings.md
 - Research: `research/fwa_position_codes.md` gains the measure-method and stream-head sections
 - Next: `/code-check` on the upstream diff, then commit there
+- `/code-check` round 1 (04:53-05:05Z): one fragile finding, two new tests that put the function in FROM and could not print `f`. Swept all new cases, and six of them had the shape: all wrapped, and the defaults case now also asserts a non-empty result. Docs head sentence narrowed; `docs/01_usage.md` example regenerated. 26/26, each revert red (formula and upper-bound reverts now also caught by the head round trip)
