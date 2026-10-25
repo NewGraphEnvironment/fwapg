@@ -26,6 +26,7 @@ What exploration added (probes against the loaded provincial fwapg, read-only, 2
 3. **Outside fwapg:** document the rule in fwapg docs. Draft, but do not post, notes for bcfishobs and bcfishpass.
 4. **channel_width:** both picks call `fwa_indexpoint(..., false, false)` instead of hand-rolled SQL.
 5. **Stream head (user, 2026-10-24, mid-run).** With the geometry-M measure, a point snapped to a stream's head has `downstream_route_measure` equal to its top segment's `upstream_route_measure`, which `FWA_LocateAlong`'s `round(upstream_route_measure, 4) > measure` rejects. `FWA_LocateAlong` takes `FWA_WatershedAtMeasure`'s rule instead: the highest `round(downstream_route_measure, 4) <= measure` on the blue line, with no upstream bound and the 4 dp rounding kept. Junction ties resolve as before, the head becomes locatable, and a measure in a gap or past the head still returns nothing.
+6. **The same rule in every function with the upper bound (user, 2026-10-25, mid-run, after code-check round 2).** At 90.7% of stream heads (1,616,885 of 1,783,289) the end m equals `upstream_route_measure`, so the geometry-M measure at a head failed every function requiring `upstream_route_measure > measure`: about 95% of heads, against about 50% with the formula. `FWA_UpstreamTrace`, `FWA_DownstreamTrace`, `FWA_WatershedHex`, `FWA_WatershedStream` (both schemas) take decision 5's selection. `FWA_UpstreamBorderCrossings` keeps its own selection (it deliberately takes both segments within 1 cm below a junction) and also accepts the top segment; its slice fraction is clamped to [0, 1], since a measure from m can run past `length_metre` and the deployed function errors there.
 
 Mechanics, chosen by me (amend at approval if wrong):
 
@@ -46,6 +47,8 @@ Mechanics, chosen by me (amend at approval if wrong):
 - [ ] Body changes: filters in the inner WHERE beside `edge_type != 6010`; no `ST_LineMerge`; XYZM point and its M as the measure; tie rule and the outer sort unchanged from d955688; header comment explaining all three changes
 - [ ] Recreate `postgisftw.fwa_indexpoint(x, y, srid, tolerance, num_features, include_disconnected, include_null_localcodes)` and both COMMENTs, after the whse function, its call qualified as `whse_basemapping.FWA_IndexPoint` (review G2)
 - [ ] `CREATE OR REPLACE` `whse_basemapping.fwa_locatealong` with decision 5's selection (same signature); header comment says why
+- [ ] Decision 6: the nine functions, from their deployed definitions (`pg_get_functiondef`; no migration touches them), each with its selection changed
+- [ ] `fwa_indexpoint`'s in-BC flag as an `EXISTS`: a point on a watershed-group boundary failed with "more than one row returned by a subquery" (round 2; pre-existing)
 
 ## Phase 3: Tests (`tests/test_FWA_IndexPoint.sql`)
 - [ ] Returned geom is XYZM, and `ST_M(geom) = downstream_route_measure`

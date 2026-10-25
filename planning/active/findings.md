@@ -123,6 +123,21 @@ All runs on the local fresh-db. The tests ran inside one transaction that rolled
 
 **Docs:** the example outputs in `docs/03_functions.md` and `README.md` were already stale against today's load (installed function: Sooke 350.300360 m against the documented 350.253054); regenerated from the new function (350.300397).
 
+## Code-check round 2 and decision 6 (2026-10-25 05:06-15:20 UTC)
+
+Round 2 (`review-round2.md`) found two real defects; both reproduced before acting.
+
+- **The geometry-M measure breaks every function with a strict upper bound at a stream's head, not just `FWA_LocateAlong`.** Of 1,783,289 blue lines, the top segment's end m equals `upstream_route_measure` at 1,616,885 (90.7%), is below it at 84,860 and above it (by at most 7.3e-12) at 81,544; the old formula fell below it at 892,297 (50.0%). So `round(upstream_route_measure, 4) > m` or `upstream_route_measure > m` rejected about 95% of new head measures against about 50% of old ones. Nine more functions carry the bound: `FWA_UpstreamTrace`, `FWA_DownstreamTrace`, `FWA_WatershedHex`, `FWA_WatershedStream` (both schemas), `FWA_UpstreamBorderCrossings` (whse). `FWA_LocateAlongInterval` and `FWA_SegmentAlongInterval` bound generated interval measures, not caller measures, and are left alone. The user chose the same rule in all nine (decision 6).
+- **A point on a watershed-group boundary fails `fwa_indexpoint`** (installed and new): the `pt` CTE joined the groups, so an exact BABL/BULK vertex gave two rows and `ORDER BY str.geom <-> (select geom from pt)` raised "more than one row returned by a subquery". The reviewer's printed coordinate was rounded and fell inside one group; the exact vertex (991961.3809999991, 1065362.4670000002) reproduces it. Fixed with an `EXISTS`; regression case first.
+
+**`FWA_UpstreamBorderCrossings`** is the exception to the uniform edit. It takes segments with `downstream_route_measure <= meas + .01`, so within 1 cm below a junction it takes both segments, and the upstream set includes the tributary joining there; reducing that to one segment would have dropped it. It keeps its selection and also accepts the top segment at the head. Its slice fraction `(meas - drm) / length_metre` exceeds 1 for a measure from m near a segment top, and the deployed function errors there (`line_interpolate_point: 2nd arg isn't within [0,1]`, 1 of 258 interior measures); clamped to [0, 1].
+
+**First version, no upper bound at all, was wrong for the traces.** The whse `FWA_DownstreamTrace` reads `whse_basemapping.fwa_streams`, which stops short of some network segments (blue line 360221829 ends at 92.75 there and runs to 185.13 in `fwa_stream_networks_sp`). At 142.13 the old filter returned nothing; "highest segment at or below" took the top `fwa_streams` segment and returned a 1,835-row trace starting 49 m downstream of the point, silently. `FWA_LocateAlong` and `FWA_WatershedHex` cannot do this (their `ST_LocateAlong` comes back empty), but the traces can. Every selection now also requires `round(upstream_route_measure, 4) >= round(m, 4)`: closed at the top, so the head is in and a measure past its segment is out. At 4 dp, because an exact `>=` would reject the 4.6% of heads whose end m sits 1e-12 above `upstream_route_measure`.
+
+**First comparison (no-upper-bound bodies, 400 interior measures, 1,138 heads):** nothing lost and nothing changed where both versions returned rows. Gains: downstream trace at 988 heads, watershed stream at all 1,138, upstream trace at 12, border crossings `NULL` → `USA_49` at 4 heads (streams cut at the border, whose head sits on it); interior gains were 36 head snaps (3 of them one ulp below `upstream_route_measure`) and the 2 `fwa_streams` gap cases above. The first attempt ran out of memory after 11.5 min (`string_agg` of whole traces with geometry over 1 GB); per-row hashing fixed it.
+
+**Tests after round 2:** 54 of 54 across five files (`test_FWA_IndexPoint`, `_LocateAlong`, `_UpstreamBorderCrossings`, `_DownstreamTrace`, `_UpstreamTrace`). New: boundary point, head through `FWA_WatershedStream`, `FWA_WatershedHex` and `FWA_LocateAlong` (blue line 356014037, end m = `upstream_route_measure`), border crossings at a head where the fraction exceeds 1, downstream trace at a head and one metre past it. Thirteen one-change reverts, each red: a 10, b 3, c 1, d 3, e 1, f 2, g (d955688) 24, h 1, i (group join) 1, j (watershed upper bound) 2, k (no clamp) 2, l (trace upper bound) 1, m (no closed top) 2.
+
 ## Errors Encountered
 
 | Error | Resolution |
@@ -131,3 +146,6 @@ All runs on the local fresh-db. The tests ran inside one transaction that rolled
 | Filter test pinned the default's `linear_feature_id` (44074756) from unrounded coordinates; the 0.1 m-rounded point picks 44074764 | Pin the property (default segment has no local code), not the id |
 | Appended LocateAlong cases fused with the existing last statement | The existing test had no closing `;` and no final newline; added the `;` |
 | Harness refused the migration: the bare `BEGIN` opening each plpgsql body matched its guard | Guard on statement-level `BEGIN;`/`COMMIT;`/`ROLLBACK;` only |
+| Comparison of the nine functions: out of memory after 11.5 min | `string_agg` of whole trace rows (with geometry) passed 1 GB; aggregate per-row md5s |
+| Revert builder stopped at `d_locate_urm` and left d-h as stale files from the previous migration, which then ran | Anchor text differed in `FWA_LocateAlong` (comment above the SELECT). Those results discarded; builder rerun with every anchor asserted, and the files listed before running |
+| `sed -i 's/…/' file` failed: "undefined label" | This machine's `sed` is BSD; `-i` takes the next argument as the suffix. Used python |
