@@ -83,7 +83,7 @@ Mechanics, chosen by me (amend at approval if wrong):
 - [x] Filters: on the PCIC outlets (150 m, 5 streams), compare streams recovered by `false, false` with filtering the defaults' output afterwards, against an independent count from a query using only these two filters before the pick, which must match exactly (review AC3: the 651 includes other causes)
 - [x] channel_width old against new on the FISS sites: distinct sites, rows, blue line, segment and measure, plus the `channel_width_measured.sql` join (its `(downstream, upstream]` match). The SQL is run with BEGIN/COMMIT stripped and `fwapg.` rewritten to the scratch schema. Explain every class of difference (tie, window, rows the old `ST_LocateAlong` dropped, rounded distance)
 - [x] Timing: old against new on 1,000 points, and the channel_width run
-- [ ] Revise `research/fwa_position_codes.md` (the indexpoint sections: ST_LineMerge drops M, the measure method, the filters) and `findings.md`; scratch FISS schema dropped
+- [x] Revise `research/fwa_position_codes.md` (the indexpoint sections: ST_LineMerge drops M, the measure method, the filters) and `findings.md`; scratch FISS schema dropped
 
 ## Phase 7: Commit upstream, drafts
 - [x] `/code-check` on the upstream diff (`upstream/main...indexpoint-tiebreak`), fixes folded in, then one commit on `indexpoint-tiebreak` with no `planning/`, no NGE numbers and no `Claude-Session:` (local only)
