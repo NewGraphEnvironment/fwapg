@@ -39,7 +39,7 @@ Mechanics, chosen by me (amend at approval if wrong):
 ## Phase 1: Baseline harness
 - [x] Worktree of `indexpoint-tiebreak` (confirm it equals `origin/indexpoint-tiebreak`, d955688) in the scratchpad
 - [x] Scratch SQL (scratchpad, not committed) that rebuilds #39's point sets deterministically (`setseed`): 242 random BC points and 1,000 points near segment ends. Record the current function's output (lfid, blk, measure, distance) and whether `FWA_LocateAlong(blk, measure)` returns a point
-- [ ] Load FISS sample sites with `bcdata bc2pg` into a scratch schema, then run the current channel_width SQL against them into a temp table, inside a transaction that rolls back
+- [x] Load FISS sample sites with `bcdata bc2pg` into a scratch schema, then run the current channel_width SQL against them into a temp table, inside a transaction that rolls back
 
 ## Phase 2: Migration (upstream branch)
 - [ ] Rewrite `db/migrations/202610240132__indexpoint_tiebreak.sql`: DROP both functions, then CREATE `whse_basemapping.fwa_indexpoint(point, tolerance, num_features, include_disconnected boolean DEFAULT true, include_null_localcodes boolean DEFAULT true)`
@@ -75,11 +75,11 @@ Mechanics, chosen by me (amend at approval if wrong):
 - [ ] `docs/03_functions.md` FWA_LocateAlong: state that the selection is the highest segment start at or below the measure, so a stream's head is included
 
 ## Phase 6: Verification and research
-- [ ] Tests run inside `BEGIN; <migration body with its own BEGIN/COMMIT stripped>; \i tests; ROLLBACK`; the strip is checked by grep before the run (review B2). All `t`; each premise case is shown to fail against d955688 or the one-change revert
-- [ ] Old against new, on Phase 1's point sets with default flags: same blue-line set and the same segment as d955688. Report the maximum measure difference. Count `FWA_LocateAlong` and `FWA_WatershedAtMeasure`-point misses old against new, and report every remaining miss by class (review AC4: the 4 dp band and ties by one ulp can remain)
-- [ ] Filters: on the PCIC outlets (150 m, 5 streams), compare streams recovered by `false, false` with filtering the defaults' output afterwards, against an independent count from a query using only these two filters before the pick, which must match exactly (review AC3: the 651 includes other causes)
-- [ ] channel_width old against new on the FISS sites: distinct sites, rows, blue line, segment and measure, plus the `channel_width_measured.sql` join (its `(downstream, upstream]` match). The SQL is run with BEGIN/COMMIT stripped and `fwapg.` rewritten to the scratch schema. Explain every class of difference (tie, window, rows the old `ST_LocateAlong` dropped, rounded distance)
-- [ ] Timing: old against new on 1,000 points, and the channel_width run
+- [x] Tests run inside `BEGIN; <migration body with its own BEGIN/COMMIT stripped>; \i tests; ROLLBACK`; the strip is checked by grep before the run (review B2). All `t`; each premise case is shown to fail against d955688 or the one-change revert
+- [x] Old against new, on Phase 1's point sets with default flags: same blue-line set and the same segment as d955688. Report the maximum measure difference. Count `FWA_LocateAlong` and `FWA_WatershedAtMeasure`-point misses old against new, and report every remaining miss by class (review AC4: the 4 dp band and ties by one ulp can remain)
+- [x] Filters: on the PCIC outlets (150 m, 5 streams), compare streams recovered by `false, false` with filtering the defaults' output afterwards, against an independent count from a query using only these two filters before the pick, which must match exactly (review AC3: the 651 includes other causes)
+- [x] channel_width old against new on the FISS sites: distinct sites, rows, blue line, segment and measure, plus the `channel_width_measured.sql` join (its `(downstream, upstream]` match). The SQL is run with BEGIN/COMMIT stripped and `fwapg.` rewritten to the scratch schema. Explain every class of difference (tie, window, rows the old `ST_LocateAlong` dropped, rounded distance)
+- [x] Timing: old against new on 1,000 points, and the channel_width run
 - [ ] Revise `research/fwa_position_codes.md` (the indexpoint sections: ST_LineMerge drops M, the measure method, the filters) and `findings.md`; scratch FISS schema dropped
 
 ## Phase 7: Commit upstream, drafts

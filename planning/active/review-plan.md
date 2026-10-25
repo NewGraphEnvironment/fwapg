@@ -4,7 +4,7 @@ Spawned 03:41Z, delivered 04:30Z. The agent returned its findings as reply text 
 
 | id | claim | verdict |
 |---|---|---|
-| B1 | `ST_LineLocatePoint(geom, pt)` errors on MultiPoint input (FISS loads as multi) | **Refuted** on PostGIS 3.5.2: the scratch new body returns 1 row for `ST_Multi(point)`. A MultiPoint test is added so an older PostGIS shows it |
+| B1 | `ST_LineLocatePoint(geom, pt)` errors on MultiPoint input (FISS loads as multi) | **Confirmed** (first marked refuted on a `count(*)` probe, which never computed the column: findings, Errors). Fixed with `ST_ClosestPoint`; MultiPoint test selects measure and geom |
 | B2 | Migration and channel_width SQL carry their own BEGIN/COMMIT, so an outer ROLLBACK harness commits; channel_width hardcodes `fwapg.` | **Accepted**: the harness strips both and rewrites the schema, checked by grep (Phase 6) |
 | G1 | DROP + CREATE resets grants; pg_featureserv caches function metadata | **Accepted**: PR note and an Owed item |
 | G2 | Wrapper's unqualified `FWA_IndexPoint` resolves against the migrating role's search_path at CREATE | **Accepted**: qualify it |

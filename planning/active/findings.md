@@ -84,7 +84,50 @@ Scratch schema `scratch41` on the local fresh-db (dropped at the end): `pts` (24
 - So the measure change fixes `FWA_WatershedAtMeasure` outright and unmasks `FWA_LocateAlong`'s exclusion of a stream's head, which went to the user (decision 5).
 - **Start and end M:** `ST_M(ST_StartPoint(geom)) = downstream_route_measure` on all 4,907,441 segments. The end M differs from `upstream_route_measure` on 306,883 (156,253 below, 149,630 above).
 
+## Verification of the final migration (Phase 6, 2026-10-25 04:30-04:50 UTC)
+
+All runs on the local fresh-db. The tests ran inside one transaction that rolled back (harness `run_tests.sh` in the session scratchpad strips the migration's own BEGIN/COMMIT, refusing if more than one of each is present or any other transaction control remains, and runs with `ON_ERROR_ROLLBACK`). The comparisons used scratch copies of the functions in `scratch41`, so no installed function changed.
+
+**Tests:** 26 of 26 `t` (21 in `test_FWA_IndexPoint.sql`, 5 in `test_FWA_LocateAlong.sql`). Each premise is shown to be load-bearing by reverting it alone:
+
+| revert | not `t` | cases that catch it |
+|---|---|---|
+| `ST_LineMerge` back | 6 | ZM/SRID, closest point, geometry-M measure, both round trips, MultiPoint |
+| formula measure | 2 | geometry-M measure (2 mm off), 08KD006 round trip |
+| filters after the pick | 1 | null-localcode stream comes back empty |
+| `FWA_LocateAlong` upper bound back | 1 | stream head |
+| tie-break removed | 1 | 08KD006 segment |
+| wrapper drops the flags | 2 | Teanook excluded; null-localcode case |
+| no `ST_ClosestPoint` before `ST_LineLocatePoint` | 1 | MultiPoint input |
+| d955688 as a whole | 19 | errors on 5/7-argument calls plus the above |
+
+**Point sets, new against d955688 (default flags, 5 streams):** identical blue line, segment and rounded distance on all 11,190 rows; measure moves by at most 3.0 mm; point within 2.3e-10 m of `ST_ClosestPoint`; every point ZM with m = measure.
+
+**`FWA_LocateAlong` old rule against new rule**, over every measure in `res` plus 7,218 sampled segment starts, ends and midpoints: never loses a point the old rule found and never moves one. With the new measure, found rises from 9,050 to 11,148 of 11,182; segment-end M values from 749 to 2,332 of 2,405. All 107 remaining misses are one class: the 4 dp rounding picks the next segment where this segment's end overlaps the next one's start by under 0.05 mm (precision, left alone).
+
+**`FWA_WatershedAtMeasure`'s point step:** misses 230 → 0 (`ends`), 156 → 0 (`random`), 929 → 0 (`tops`).
+
+**Filters, PCIC outlets (48,716; 150 m; 5 streams):** `false, false` returns 92,606 rows, identical to an independent query (all segments within 150 m passing both filters, nearest per stream, top 5): 0 rows differ either way. Filtering the default output afterwards keeps 91,879, so the filters before the pick recover 727 streams. (Not comparable to the research file's 651, which also counted segments missing from `fwa_streams_watersheds_lut` and edge 1425.) No segment has a NULL `wscode_ltree`; 328,961 have no local code and 208,189 are `999`.
+
+**Timing:** 1,000 `ends` points × 5 streams: d955688 2.2-2.4 s, new 1.9 s, new with both filters 2.0-2.1 s.
+
+**channel_width, FISS sites (68,842 MultiPoints, loaded with `bcdata bc2pg` into `scratch41`):** old 63,413 sites matched in 37 s, new 63,501 in 105 s (each site now searches a 100-segment window and repeats the watershed-group lookup). One row per site in both.
+- 60,499 same segment, measure and point moved by up to 4.6 mm: the old point came from `ST_LocateAlong` at the formula measure, so it was off the snap by the formula error.
+- 2,837 identical; 63 segment differs on the same stream (vertex ties).
+- 88 sites only in the new table, all rows the old code dropped because `ST_LocateAlong` at the formula measure was empty: 79 directly, 9 through a vertex tie that the old pass 2 gave to the lower segment.
+- 14 blue line differs: 8 from the window (the old 10 nearest *segments* filled with one or two streams; the new search finds a nearer stream with a matching code, e.g. site 1046 115 m → 52 m; 3 of them move from pass 2 to pass 1) and 6 exact ties between two streams.
+- 0 sites only in the old table.
+- Consumer `channel_width_measured.sql` joins events to segments on `(downstream, upstream]`, the opposite convention: 439 old and 450 new events match no segment (a vertex measure now sits exactly on the upper segment's start). Pre-existing, as is its leftover filter `e.localcode_ltree = '400.536025.503903.677855'`, which limits it to one stream. Reported for Simon, not changed.
+
+**Same upper-bound filter elsewhere:** `FWA_UpstreamTrace` and `FWA_DownstreamTrace` (both schemas) also require `round(upstream_route_measure, 4) > measure`, so they reject a stream-head start the same way. Out of scope (decision 5 covers `FWA_LocateAlong`); noted for Simon.
+
+**Docs:** the example outputs in `docs/03_functions.md` and `README.md` were already stale against today's load (installed function: Sooke 350.300360 m against the documented 350.253054); regenerated from the new function (350.300397).
+
 ## Errors Encountered
 
 | Error | Resolution |
 |-------|------------|
+| `count(*)` over the new function on a MultiPoint returned 1, read as "MultiPoint works" (review B1 marked refuted) | Wrong probe: the function is inlined and output columns the query does not read are never computed. FISS MultiPoints then raised `line_locate_point: 2nd arg isn't a point`. Test now selects measure and geom; fixed with `ST_ClosestPoint` before `ST_LineLocatePoint` |
+| Filter test pinned the default's `linear_feature_id` (44074756) from unrounded coordinates; the 0.1 m-rounded point picks 44074764 | Pin the property (default segment has no local code), not the id |
+| Appended LocateAlong cases fused with the existing last statement | The existing test had no closing `;` and no final newline; added the `;` |
+| Harness refused the migration: the bare `BEGIN` opening each plpgsql body matched its guard | Guard on statement-level `BEGIN;`/`COMMIT;`/`ROLLBACK;` only |
