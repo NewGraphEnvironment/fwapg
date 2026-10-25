@@ -4,30 +4,29 @@ Each of these goes out only on the user's word.
 
 ## 1. smnorris/fwapg#201 body (replaces the current one)
 
-Title: `FWA_IndexPoint: tie-break, measure from the stream's m, stream filters; FWA_LocateAlong at a stream's head`
+Title: `FWA_IndexPoint: tie-break, measure from the stream's m, stream filters; one segment rule for measure-taking functions`
 
 > **Bug.** A point nearest the vertex two segments of one stream share ties on distance, and `DISTINCT ON (blue_line_key)` took whichever segment the plan reached first. When that was the lower segment, the measure fell short of the next segment's start: `FWA_LocateAlong` and `FWA_WatershedAtMeasure` returned nothing (gauge 08KD006).
 >
 > **Change** (one migration, `202610240132__indexpoint_tiebreak.sql`):
-> - Ties go to the segment starting at the vertex, then `linear_feature_id`.
-> - The point is `ST_LineInterpolatePoint` on the segment, PointZM (#161), and the measure is its m. The old formula (`drm + fraction * length_metre`) differs from m by up to ~5 mm and can name a measure past the segment's m range. `ST_LineMerge` was dropping m.
-> - `include_disconnected`, `include_null_localcodes` (#86), applied before the per-stream pick; defaults keep today's rows.
-> - `FWA_LocateAlong` takes the highest segment starting at or below the measure (`FWA_WatershedAtMeasure`'s rule), so a stream's head is locatable.
+> - `FWA_IndexPoint`: ties go to the segment starting at the vertex, then `linear_feature_id`. The point is `ST_LineInterpolatePoint` on the segment, PointZM (#161), and the measure is its m. The old formula (`drm + fraction * length_metre`) differs from m by up to ~5 mm and can name a measure past the segment's m range. `ST_LineMerge` was dropping m. `include_disconnected` and `include_null_localcodes` (#86) apply before the per-stream pick; defaults keep today's rows. A point on a watershed-group boundary no longer errors.
+> - At a stream's head the m measure equals the top segment's `upstream_route_measure` (91% of blue lines), which `upstream_route_measure > measure` rejected. `FWA_LocateAlong`, `FWA_UpstreamTrace`, `FWA_DownstreamTrace`, `FWA_WatershedHex` and `FWA_WatershedStream` now take the highest segment whose range, closed at the top, holds the measure. `FWA_UpstreamBorderCrossings` accepts the head and clamps its slice fraction.
 > - `extras/channel_width` calls `FWA_IndexPoint` instead of its own pick.
 >
-> **Tests:** 26 cases, all `t`; reverting any one change turns at least one red.
+> **Tests:** 54 cases across five files, all `t`; each of 13 one-change reverts turns at least one red.
 >
-> | check (BC points, 5 streams) | before | after |
+> | check | before | after |
 > |---|---|---|
-> | `FWA_WatershedAtMeasure` point step misses, 1,190 random rows | 156 | 0 |
-> | `FWA_LocateAlong` misses, 11,182 indexed measures (incl. points just below segment tops) | 1,627 | 34 (4 dp band) |
-> | streams / segments changed with default flags | — | 0 / 0 |
+> | `FWA_WatershedAtMeasure` point step misses, 1,190 random-point rows | 156 | 0 |
+> | `FWA_LocateAlong` misses, 11,182 indexed measures | 1,627 | 34 (4 dp band) |
+> | streams / segments changed, default flags | — | 0 / 0 |
+> | trace / watershed results changed where both answer (558 measures) | — | 0 |
 >
-> **Deploy notes:** both `fwa_indexpoint` functions are dropped and recreated, so grants are reset and pg_featureserv needs a restart to see the new parameters. `geom` is now PointZM: wrap in `ST_Force2D` for a 2D column. A database that applied the earlier version of this migration will not re-run it.
+> **Deploy notes:** both `fwa_indexpoint` functions are dropped and recreated, so grants are reset and pg_featureserv needs a restart. `geom` is now PointZM: wrap in `ST_Force2D` for a 2D column. A database that applied the earlier version of this migration will not re-run it.
 >
 > 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-(Numbers from `findings.md`: `FWA_LocateAlong` before = old measure with the old rule, 11,182 − 9,555; after = new measure with the new rule, 11,182 − 11,148.)
+(Numbers from `findings.md`. `FWA_LocateAlong` before = old measure with the old rule, 11,182 − 9,555; after = new measure with the new rule, 11,182 − 11,148.)
 
 ## 2. Reply to Simon on #201
 
@@ -38,8 +37,9 @@ Title: `FWA_IndexPoint: tie-break, measure from the stream's m, stream filters; 
 >
 > The measure now comes from the stream geometry's m, the value `FWA_LocateAlong` and `FWA_WatershedAtMeasure` read. That is the narrow version of the precision question you raised. It does not try to fix rounding generally: `FWA_LocateAlong` keeps its 4 dp comparison. The one change there is that a stream's head is now locatable, because the m measure at a head equals the top segment's `upstream_route_measure`, which the old `<` excluded.
 >
+> The m measure made a stream's head show up as a gap in every function with `upstream_route_measure > measure`, so those now share one segment rule (closed at the top). `FWA_UpstreamBorderCrossings` keeps its 1 cm junction tolerance.
+>
 > Found along the way, not changed here:
-> - `FWA_UpstreamTrace` and `FWA_DownstreamTrace` have the same `upstream_route_measure >` filter, so they also reject a start at a stream's head.
 > - `channel_width_measured.sql` joins events to segments on `(downstream, upstream]`, which drops a measure sitting exactly on a segment start (~450 of 63,500 FISS sites). It also has what looks like a leftover filter, `e.localcode_ltree = '400.536025.503903.677855'`.
 > - The second pass of `fiss_stream_sample_sites_events.sql` can insert a site twice when it sits on a watershed-group boundary (the `INNER JOIN` to the groups).
 

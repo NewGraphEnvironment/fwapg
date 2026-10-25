@@ -138,6 +138,8 @@ Round 2 (`review-round2.md`) found two real defects; both reproduced before acti
 
 **Tests after round 2:** 54 of 54 across five files (`test_FWA_IndexPoint`, `_LocateAlong`, `_UpstreamBorderCrossings`, `_DownstreamTrace`, `_UpstreamTrace`). New: boundary point, head through `FWA_WatershedStream`, `FWA_WatershedHex` and `FWA_LocateAlong` (blue line 356014037, end m = `upstream_route_measure`), border crossings at a head where the fraction exceeds 1, downstream trace at a head and one metre past it. Thirteen one-change reverts, each red: a 10, b 3, c 1, d 3, e 1, f 2, g (d955688) 24, h 1, i (group join) 1, j (watershed upper bound) 2, k (no clamp) 2, l (trace upper bound) 1, m (no closed top) 2.
 
+**Final comparison (closed-top bodies, 15:19-15:35 UTC; 258 interior measures, 300 heads, the 2 `fwa_streams` gap cases):** no losses and no changed result wherever old and new both return rows, in any of the four functions compared. The gap cases are empty again, as with the old filter. Heads: watershed stream gained at all 300, downstream trace at 224 (the other 76 are streams missing from `fwa_streams`), upstream trace at 3. Interior: 36 trace and 38 watershed-stream gains, all head snaps (the extra 2 are heads on streams missing from `fwa_streams`); border crossings lost its one error. `FWA_LocateAlong` new: 1 row at the 356067104 head, 0 one metre past it.
+
 ## Errors Encountered
 
 | Error | Resolution |
