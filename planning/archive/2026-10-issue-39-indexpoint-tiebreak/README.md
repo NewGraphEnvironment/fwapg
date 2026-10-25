@@ -22,9 +22,9 @@ The ad hoc SQL ran from the session scratchpad and is not committed. Its results
 
 ## Owed
 
-- Post the upstream PR, **only on the user's go-ahead**, then link it in #39
+- Post the upstream PR, **only on the user's go-ahead**, then link it in #39 (done 2026-10-24: smnorris/fwapg#201, linked in #39. Simon asked for a wider revision, now #41.)
 - Close #39 by hand after the newgraph merge, with a comment naming the PRs
-- Apply to the local loaded fwapg **when the user says so**, with `cd db && DATABASE_URL=... ./migrate.sh`.
+- Apply to the local loaded fwapg **when the user says so**, with `cd db && DATABASE_URL=... ./migrate.sh`. (Held with #40 until #41 and the upstream review settle.)
 - Draft (not post) a note to Simon on the same tie in bcfishobs `process.sql` and bcfishpass PSCIS snapping, if the user wants one
 
 Closed by: PR into newgraph from `39-indexpoint-tiebreak` (cherry-pick `aa9f6a1` of upstream branch commit `d955688`)
