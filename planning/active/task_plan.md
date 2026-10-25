@@ -25,6 +25,7 @@ What exploration added (probes against the loaded provincial fwapg, read-only, 2
 2. **Measure and point:** drop `ST_LineMerge`; point = `ST_LineInterpolatePoint(geom, ST_LineLocatePoint(geom, pt))`, returned as XYZM; `downstream_route_measure = ST_M(point)`. This closes #161. Known break: a caller writing `geom` into a 2D-typed column needs `ST_Force2D`. The PR says so.
 3. **Outside fwapg:** document the rule in fwapg docs. Draft, but do not post, notes for bcfishobs and bcfishpass.
 4. **channel_width:** both picks call `fwa_indexpoint(..., false, false)` instead of hand-rolled SQL.
+5. **Stream head (user, 2026-10-24, mid-run).** With the geometry-M measure, a point snapped to a stream's head has `downstream_route_measure` equal to its top segment's `upstream_route_measure`, which `FWA_LocateAlong`'s `round(upstream_route_measure, 4) > measure` rejects. `FWA_LocateAlong` takes `FWA_WatershedAtMeasure`'s rule instead: the highest `round(downstream_route_measure, 4) <= measure` on the blue line, with no upstream bound and the 4 dp rounding kept. Junction ties resolve as before, the head becomes locatable, and a measure in a gap or past the head still returns nothing.
 
 Mechanics, chosen by me (amend at approval if wrong):
 
@@ -36,14 +37,15 @@ Mechanics, chosen by me (amend at approval if wrong):
 - **Pushing `indexpoint-tiebreak` to origin updates smnorris/fwapg#201 publicly, so it waits for your word.** The same goes for the #201 body edit, the comment to Simon and the bcfishobs/bcfishpass notes: drafted, not posted. Approving this plan covers everything up to the open newgraph PR, and not those pushes or posts.
 
 ## Phase 1: Baseline harness
-- [ ] Worktree of `indexpoint-tiebreak` (confirm it equals `origin/indexpoint-tiebreak`, d955688) in the scratchpad
-- [ ] Scratch SQL (scratchpad, not committed) that rebuilds #39's point sets deterministically (`setseed`): 242 random BC points and 1,000 points near segment ends. Record the current function's output (lfid, blk, measure, distance) and whether `FWA_LocateAlong(blk, measure)` returns a point
+- [x] Worktree of `indexpoint-tiebreak` (confirm it equals `origin/indexpoint-tiebreak`, d955688) in the scratchpad
+- [x] Scratch SQL (scratchpad, not committed) that rebuilds #39's point sets deterministically (`setseed`): 242 random BC points and 1,000 points near segment ends. Record the current function's output (lfid, blk, measure, distance) and whether `FWA_LocateAlong(blk, measure)` returns a point
 - [ ] Load FISS sample sites with `bcdata bc2pg` into a scratch schema, then run the current channel_width SQL against them into a temp table, inside a transaction that rolls back
 
 ## Phase 2: Migration (upstream branch)
 - [ ] Rewrite `db/migrations/202610240132__indexpoint_tiebreak.sql`: DROP both functions, then CREATE `whse_basemapping.fwa_indexpoint(point, tolerance, num_features, include_disconnected boolean DEFAULT true, include_null_localcodes boolean DEFAULT true)`
 - [ ] Body changes: filters in the inner WHERE beside `edge_type != 6010`; no `ST_LineMerge`; XYZM point and its M as the measure; tie rule and the outer sort unchanged from d955688; header comment explaining all three changes
-- [ ] Recreate `postgisftw.fwa_indexpoint(x, y, srid, tolerance, num_features, include_disconnected, include_null_localcodes)` and both COMMENTs
+- [ ] Recreate `postgisftw.fwa_indexpoint(x, y, srid, tolerance, num_features, include_disconnected, include_null_localcodes)` and both COMMENTs, after the whse function, its call qualified as `whse_basemapping.FWA_IndexPoint` (review G2)
+- [ ] `CREATE OR REPLACE` `whse_basemapping.fwa_locatealong` with decision 5's selection (same signature); header comment says why
 
 ## Phase 3: Tests (`tests/test_FWA_IndexPoint.sql`)
 - [ ] Returned geom is XYZM, and `ST_M(geom) = downstream_route_measure`
@@ -51,26 +53,38 @@ Mechanics, chosen by me (amend at approval if wrong):
 - [ ] `include_disconnected => false` drops a `999` stream (Teanook Lake, 354094227), and the default keeps it (the existing test)
 - [ ] `include_null_localcodes => false` drops a null-localcode stream at a point found by probe, where the next stream is recovered and not lost
 - [ ] Existing 10 cases still `t`; the 3-argument and 5-argument calls both resolve
+- [ ] Premise coverage (user, 2026-10-24: "Confirm tests sufficiently test the premise of the refactor. Make new ones if required to avoid issues found during refactor"). Each premise gets a case, and each case is shown to fail against d955688, or against a body with that one change reverted. The table goes in `findings.md`:
+  - M is kept (no `ST_LineMerge`): `ST_NDims(geom) = 4`, and `ST_M(geom)` equals the measure exactly
+  - The measure equals geometry M, not the formula: within 1e-9 of `ST_InterpolatePoint(segment.geom, input point)`
+  - The point near a segment's top round-trips: a probe-found point whose formula measure lands past `upstream_route_measure` (so `FWA_LocateAlong` returned nothing) now returns a point
+  - The filters apply before the per-stream pick: a point where a stream's nearest segment is excluded but another segment of that stream is within tolerance returns that stream on the usable segment, not nothing
+  - Defaults keep today's stream set: a 3-arg call and an explicit `true, true` call give identical rows
+  - The postgisftw wrapper passes the flags through (a 7-arg call differs from the 5-arg one where the filter bites)
+- [ ] Invariants that can fail (review AC1, AC2, AC4): `ST_Zmflag(geom) = 3` and SRID 3005; the measure lies within the returned segment's `[downstream_route_measure, upstream_route_measure]`; the point is within 1e-6 m of `ST_ClosestPoint`; the filter case asserts the stream comes back on its other `linear_feature_id`; the `999` case also asserts that some other stream is returned
+- [ ] `FWA_LocateAlong` cases in `tests/test_FWA_LocateAlong.sql`: a stream's head returns a point; a junction measure returns the upper segment's start; a measure in a gap and one past the head return nothing
+- [ ] The tests run with `-At -v ON_ERROR_STOP=0`, counting lines that are not `t` plus ERROR lines (review AC5), and include the 1-argument and named-argument calls
+- [ ] Any defect found while refactoring (in review or verification) gets a regression case in the same file before its fix lands
 
 ## Phase 4: channel_width onto fwa_indexpoint
-- [ ] Replace the 10-nearest/150 m pick with `CROSS JOIN LATERAL fwa_indexpoint(pts.geom, 150, 10, false, false)`. Keep the 20k→50k watershed-code match. `DISTINCT ON` the site, ordered by distance then `linear_feature_id`. Join back to the stream table for `waterbody_key`
-- [ ] Replace the second, 100 m single-stream pass with `fwa_indexpoint(pts.geom, 100, 1, false, false)`; geom taken from the function (already PointZM)
+- [ ] Replace the 10-nearest/150 m pick with `CROSS JOIN LATERAL fwa_indexpoint(pts.geom, 150, 10, false, false)`. Keep the 20k→50k watershed-code match. `DISTINCT ON` the site, ordered by the function's `WITH ORDINALITY` (review G5). Join back to the stream table for `waterbody_key`. Keep `wscode_ltree_lookup` and the column set
+- [ ] Replace the second, 100 m single-stream pass with `fwa_indexpoint(pts.geom, 100, 1, false, false)`; geom from the function, keeping the `::geometry(PointZM, 3005)` cast (review G3)
 
 ## Phase 5: Docs
 - [ ] `docs/03_functions.md` FWA_IndexPoint: both synopses with the new parameters and a parameter table. State the tie rule, the measure from geometry M, the XYZM point, and that the filters apply before the per-stream pick
-- [ ] `docs/01_usage.md`: check whether examples need an `ST_Force2D` note; edit only if they write to a 2D column
+- [ ] `docs/01_usage.md:185` casts `i.geom::geometry(Point, 3005)`, which errors on a ZM point: fix it. Also fix the stale types and example outputs at `docs/03_functions.md:196,224,241,270-275` and `README.md:52`, regenerated from the new function after Phase 6
+- [ ] `docs/03_functions.md` FWA_LocateAlong: state that the selection is the highest segment start at or below the measure, so a stream's head is included
 
 ## Phase 6: Verification and research
-- [ ] Tests run inside `BEGIN; <migration body>; \i tests; ROLLBACK`; all `t`; old function fails the new cases
-- [ ] Old against new, on Phase 1's point sets with default flags: same blue-line set and the same segment as d955688. Report the maximum measure difference. Count `FWA_LocateAlong` misses old against new (expect new = 0 except at a stream's top end), and the new point against the LocateAlong point
-- [ ] Filters: on the PCIC outlets (150 m, 5 streams), compare streams recovered by `false, false` with filtering the defaults' output afterwards, against the 651 in `research/fwa_position_codes.md`
-- [ ] channel_width old against new on the FISS sites: site count, blue line, segment and measure. Explain every class of difference (tie, wider window, M measure)
+- [ ] Tests run inside `BEGIN; <migration body with its own BEGIN/COMMIT stripped>; \i tests; ROLLBACK`; the strip is checked by grep before the run (review B2). All `t`; each premise case is shown to fail against d955688 or the one-change revert
+- [ ] Old against new, on Phase 1's point sets with default flags: same blue-line set and the same segment as d955688. Report the maximum measure difference. Count `FWA_LocateAlong` and `FWA_WatershedAtMeasure`-point misses old against new, and report every remaining miss by class (review AC4: the 4 dp band and ties by one ulp can remain)
+- [ ] Filters: on the PCIC outlets (150 m, 5 streams), compare streams recovered by `false, false` with filtering the defaults' output afterwards, against an independent count from a query using only these two filters before the pick, which must match exactly (review AC3: the 651 includes other causes)
+- [ ] channel_width old against new on the FISS sites: distinct sites, rows, blue line, segment and measure, plus the `channel_width_measured.sql` join (its `(downstream, upstream]` match). The SQL is run with BEGIN/COMMIT stripped and `fwapg.` rewritten to the scratch schema. Explain every class of difference (tie, window, rows the old `ST_LocateAlong` dropped, rounded distance)
 - [ ] Timing: old against new on 1,000 points, and the channel_width run
 - [ ] Revise `research/fwa_position_codes.md` (the indexpoint sections: ST_LineMerge drops M, the measure method, the filters) and `findings.md`; scratch FISS schema dropped
 
 ## Phase 7: Commit upstream, drafts
 - [ ] `/code-check` on the upstream diff (`upstream/main...indexpoint-tiebreak`), fixes folded in, then one commit on `indexpoint-tiebreak` with no `planning/`, no NGE numbers and no `Claude-Session:` (local only)
-- [ ] Draft the #201 body revision (~200 words: bug, change, test table, the 2D-column note) and a reply to Simon answering his two asks. Draft the bcfishobs `process.sql` and bcfishpass PSCIS/falls/dams notes with file:line and the fix. All in `planning/active/drafts.md`, none posted
+- [ ] Draft the #201 body revision (~200 words: bug, change, test table, the 2D-column note, that DROP resets grants, and that pg_featureserv needs a restart to see the new parameters; a database that applied d955688 will not re-run the same timestamp) and a reply to Simon answering his two asks. Draft the bcfishobs `process.sql` and bcfishpass PSCIS/falls/dams notes with file:line and the fix. All in `planning/active/drafts.md`, none posted
 
 ## Phase 8: newgraph side and PR
 - [ ] Cherry-pick the upstream commit(s) onto `41-…` (each with its checkbox flip)
@@ -82,6 +96,8 @@ Mechanics, chosen by me (amend at approval if wrong):
 
 - [ ] Push `indexpoint-tiebreak` and post the #201 body edit and reply, **on your word**
 - [ ] Post the bcfishobs/bcfishpass notes, **on your word**
+- [ ] Re-apply the fwa_indexpoint grants on our deployment after the migration (DROP resets them), and restart pg_featureserv
+- [ ] Open issues for the NGE picks still on the formula measure: this fork's `pcic_crosswalk02_candidates.sql` (`ST_LineMerge` and formula) and fresh's `frs_point_snap()` (review S1)
 - [ ] After upstream settles: merge the newgraph PR, close #39 and #41 by hand naming the PRs, then migrate the local fwapg (`cd db && DATABASE_URL=... ./migrate.sh`) **when you say so**
 
 ## Validation

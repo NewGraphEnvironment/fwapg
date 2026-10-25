@@ -73,6 +73,17 @@ Relates to #39, smnorris/fwapg#201, smnorris/fwapg#86, smnorris/fwapg#161.
 - PostGIS 3.5.2, GEOS 3.9.0, PostgreSQL 17.5 on the local fresh-db.
 - `fwa_locatealong(356360570, 14040.004934962686)` and `(…, 14040.005812552621)` both return 0 rows. Lower segment 703862843: drm 13543.8751554134, urm = end M = 14040.004934962686. Upper 703862887: drm = start M = 14040.0058125527.
 
+## Baseline on rebuilt point sets (Phase 1, 2026-10-25 UTC)
+
+Scratch schema `scratch41` on the local fresh-db (dropped at the end): `pts` (242 `random`, one per watershed group via `ST_GeneratePoints(..., 41)`; 1,000 `ends`, segment starts offset up to 30 m; 1,000 `tops`, on the line at fraction 1 - 1e-7 of a segment over 10 m), and `res` (`fwa_indexpoint(pt, 5000, 5)` from the installed pre-#39 function `orig`, the d955688 body and the new body). SQL in the session scratchpad, not committed.
+
+- **Formula against geometry M:** at most 3.0 mm apart (median 0.02 mm on `ends`, 0.13 mm on `random`), over 1 mm on 54 of 5,000 / 33 of 1,190 / 135 of 5,000 rows; never over 1 cm. `length_metre - ST_Length(geom)` reaches 4.2 mm.
+- **New against d955688 with default flags:** identical blue line, segment and rounded distance on every row of all three sets. The returned point is within 2.3e-10 m of `ST_ClosestPoint`, XYZM on every row, and `ST_M(geom)` equals the measure.
+- **`FWA_LocateAlong` misses** (d955688 → new): `ends` 251 → 488, `random` 171 → 311, `tops` 1,207 → 1,335. Every d955688 miss on `random` and `ends` is a snap to a stream's head (fraction 1 on the blue line's top segment). The new misses that d955688 did not have are the same class: there the new measure equals `upstream_route_measure` exactly, and `round(upstream_route_measure, 4) > measure` rejects it. The formula passed about half of these by luck, where `length_metre` < `ST_Length`. For the nearest stream only: `random` 25 → 42. The rest of `tops` is `FWA_LocateAlong`'s 4 dp rounding where a segment's `upstream_route_measure` overlaps the next one's start (149060446 ends at 4416.172501, 149060347 starts at 4416.172069).
+- **`FWA_WatershedAtMeasure`'s point step** (highest `downstream_route_measure <= m`, then `ST_LocateAlong`), d955688 → new: `ends` 230 → 0, `random` 156 → 0 (21 → 0 for the nearest stream), `tops` 929 → 0. The formula overshoots the segment's M range and no point exists; geometry M cannot.
+- So the measure change fixes `FWA_WatershedAtMeasure` outright and unmasks `FWA_LocateAlong`'s exclusion of a stream's head, which went to the user (decision 5).
+- **Start and end M:** `ST_M(ST_StartPoint(geom)) = downstream_route_measure` on all 4,907,441 segments. The end M differs from `upstream_route_measure` on 306,883 (156,253 below, 149,630 above).
+
 ## Errors Encountered
 
 | Error | Resolution |
