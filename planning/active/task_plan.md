@@ -84,7 +84,7 @@ Mechanics, chosen by me (amend at approval if wrong):
 
 ## Phase 7: Commit upstream, drafts
 - [ ] `/code-check` on the upstream diff (`upstream/main...indexpoint-tiebreak`), fixes folded in, then one commit on `indexpoint-tiebreak` with no `planning/`, no NGE numbers and no `Claude-Session:` (local only)
-- [ ] Draft the #201 body revision (~200 words: bug, change, test table, the 2D-column note, that DROP resets grants, and that pg_featureserv needs a restart to see the new parameters; a database that applied d955688 will not re-run the same timestamp) and a reply to Simon answering his two asks. Draft the bcfishobs `process.sql` and bcfishpass PSCIS/falls/dams notes with file:line and the fix. All in `planning/active/drafts.md`, none posted
+- [x] Draft the #201 body revision (~200 words: bug, change, test table, the 2D-column note, that DROP resets grants, and that pg_featureserv needs a restart to see the new parameters; a database that applied d955688 will not re-run the same timestamp) and a reply to Simon answering his two asks. Draft the bcfishobs `process.sql` and bcfishpass PSCIS/falls/dams notes with file:line and the fix. All in `planning/active/drafts.md`, none posted
 
 ## Phase 8: newgraph side and PR
 - [ ] Cherry-pick the upstream commit(s) onto `41-…` (each with its checkbox flip)
