@@ -107,7 +107,7 @@
 <p>This snaps the input point to the closest stream - it returns information about the closest stream, minimum distance from input point to the stream, and the geometry of the closest point on the stream to the point:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>linear_feature_id |  gnis_name  | wscode_ltree | localcode_ltree | blue_line_key | downstream_route_measure | distance_to_stream | bc_ind | geom
 -------------------+-------------+--------------+-----------------+---------------+--------------------------+--------------------+--------+
-         710513719 | Sooke River | 930.023810   | 930.023810      |     354153927 |        350.2530543284006 | 24.228 | t      |
+         710513719 | Sooke River | 930.023810   | 930.023810      |     354153927 |        350.3003966398525 | 24.232 | t      |
 </pre></div>
 </div>
 <p>This function is available via the <code class="docutils literal notranslate"><span class="pre">fwapg</span></code> <a class="reference external" href="https://features.hillcrestgeo.ca/fwa/functions/fwa_indexpoint.html">feature service</a> - you can experiment with it <a class="reference external" href="https://features.hillcrestgeo.ca/fwa/functions/fwa_indexpoint/items.html?x=-123.7028&amp;amp;y=48.3858&amp;amp;srid=4326">directly</a> without having to install anything other than a web browser (zoom out to see the context in the default web map).</p>
@@ -249,7 +249,7 @@
 <span class="w">  </span><span class="n">i</span><span class="p">.</span><span class="n">wscode_ltree</span><span class="p">,</span>
 <span class="w">  </span><span class="n">i</span><span class="p">.</span><span class="n">localcode_ltree</span><span class="p">,</span>
 <span class="w">  </span><span class="n">i</span><span class="p">.</span><span class="n">distance_to_stream</span><span class="p">,</span>
-<span class="w">  </span><span class="n">i</span><span class="p">.</span><span class="n">geom</span><span class="p">::</span><span class="n">geometry</span><span class="p">(</span><span class="n">Point</span><span class="p">,</span><span class="w"> </span><span class="mi">3005</span><span class="p">)</span>
+<span class="w">  </span><span class="n">ST_Force2D</span><span class="p">(</span><span class="n">i</span><span class="p">.</span><span class="n">geom</span><span class="p">)::</span><span class="n">geometry</span><span class="p">(</span><span class="n">Point</span><span class="p">,</span><span class="w"> </span><span class="mi">3005</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">geom</span>
 <span class="k">FROM</span>
 <span class="p">(</span>
 <span class="w">  </span><span class="k">SELECT</span><span class="w"> </span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">geom</span>
