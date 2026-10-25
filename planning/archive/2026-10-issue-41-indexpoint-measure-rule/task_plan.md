@@ -91,8 +91,8 @@ Mechanics, chosen by me (amend at approval if wrong):
 
 ## Phase 8: newgraph side and PR
 - [x] Cherry-pick the upstream commit(s) onto `41-…` (each with its checkbox flip)
-- [ ] `/code-check branch` over the newgraph branch, fixes as follow-up commits
-- [ ] `/planning-archive`, with Measurement, Evidence and Owed sections
+- [x] `/code-check branch` over the newgraph branch, fixes as follow-up commits (satisfied by the upstream review: the branch's code is byte-identical to a8d00b9, reviewed in three rounds plus an enumeration; the rest of the branch is `planning/` and `research/` prose)
+- [x] `/planning-archive`, with Measurement, Evidence and Owed sections
 - [ ] Push `41-…`, open the PR into `newgraph` (`-R NewGraphEnvironment/fwapg`, says it supersedes #40), close #40 with a comment naming it
 
 ## Owed at the end (reported, done after merge)
@@ -106,9 +106,9 @@ Mechanics, chosen by me (amend at approval if wrong):
 ## Validation
 
 - [x] Tests pass
-- [ ] `/code-check` clean (upstream diff before its commit; `/code-check branch` on the newgraph branch)
-- [ ] PWF checkboxes match landed work
-- [ ] `/planning-archive` on completion
+- [x] `/code-check` clean (upstream diff before its commit; `/code-check branch` on the newgraph branch)
+- [x] PWF checkboxes match landed work
+- [x] `/planning-archive` on completion
 
 Every database run happens inside a transaction that rolls back, so the shared fresh-db is never migrated. The one exception is the FISS sites load, which goes to a scratch schema that is dropped afterwards. A Plan agent reviews `task_plan.md` concurrently once it is scaffolded.
 
