@@ -140,6 +140,17 @@ Round 2 (`review-round2.md`) found two real defects; both reproduced before acti
 
 **Final comparison (closed-top bodies, 15:19-15:35 UTC; 258 interior measures, 300 heads, the 2 `fwa_streams` gap cases):** no losses and no changed result wherever old and new both return rows, in any of the four functions compared. The gap cases are empty again, as with the old filter. Heads: watershed stream gained at all 300, downstream trace at 224 (the other 76 are streams missing from `fwa_streams`), upstream trace at 3. Interior: 36 trace and 38 watershed-stream gains, all head snaps (the extra 2 are heads on streams missing from `fwa_streams`); border crossings lost its one error. `FWA_LocateAlong` new: 1 row at the 356067104 head, 0 one metre past it.
 
+## Code-check round 3 and the enumeration that ended the review (2026-10-25 15:36-16:00 UTC)
+
+Round 3 (`review-round3.md`), asked for the mechanism: every function taking (blue line, measure) decides for itself which segment a measure falls on and does its own arithmetic on it, each assuming the measures the old producer emitted (fraction at most 1, strictly below `upstream_route_measure` at a head). Nothing ties the producer's range to the consumers'. It found:
+- **`FWA_SliceWatershedAtPoint`** (called by `FWA_WatershedAtMeasure` on rivers) slices at `ROUND((meas - drm) / length_metre, 5)`, which rounds above 1 at 87,104 of 1,783,289 heads (13,438 on rivers). It errored at the head of blue line 360228283 (1255.8763650310827), and the deployed version errors just below it too (1255.876). Clamped to [0, 1]; regression case first.
+- **The border-crossings head clause had no test** (removing it left 54/54; the case asserted `IS NULL`, which no selection also satisfies). Added `FWA_UpstreamBorderCrossings(356364911, 1045.8644239278228) = 'USA_49'`, a side-channel head whose upstream crosses into the US.
+- Wording: the watershed functions compare the segment start unrounded; docs and migration comment corrected.
+
+**Enumeration (mechanical, over `pg_proc.prosrc` of the deployed database).** Consumers whose source has a strict upper bound on `upstream_route_measure` or divides by `length_metre`: 16. The migration covers 12: `FWA_LocateAlong`, `FWA_UpstreamTrace`, `FWA_DownstreamTrace`, `FWA_WatershedHex`, `FWA_WatershedStream` (both schemas each), `FWA_UpstreamBorderCrossings` and `FWA_SliceWatershedAtPoint`. The other 4 are `FWA_LocateAlongInterval` and `FWA_SegmentAlongInterval` (both schemas), whose bounds apply to integer interval measures they generate. Producers of a measure with the `length_metre` formula: 1, the old `fwa_indexpoint`, replaced. Nothing left above its source.
+
+**Tests:** 56 of 56 across five files. Fifteen one-change reverts, each red: a 10, b 3, c 1, d 3, e 1, f 2, g (d955688) 27, h 1, i 1, j 2, k 2, l 1, m 2, n (border head clause) 1, o (slice clamp) 2.
+
 ## Errors Encountered
 
 | Error | Resolution |
