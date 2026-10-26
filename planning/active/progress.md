@@ -7,6 +7,7 @@
 - Scaffolded PWF baseline from issue #42 with approved phases
 - Plan review run synchronously (`review-plan.md`, 18 findings, 23:32–23:43 UTC); all folded into `task_plan.md`, no gate decision changed
 - The plan parked in the issue body as `## Plan`
+- Commits: e7ec7ef (baseline, parked), pushed to origin
 - Next: parked 2026-10-26; resume with the command below, then "start Phase 1"
 
 ### Resume
