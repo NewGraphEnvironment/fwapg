@@ -84,3 +84,10 @@ Recommendation: (a), with (b)'s months derived from it as the QA check, since th
 Relates to #25, #28, #8, #20, NewGraphEnvironment/wet#122, NewGraphEnvironment/wet#118.
 
 
+
+## From the wet session (2026-10-26, cross-session message), for the resume
+
+wet#122's branch `122-pcic-per-year-routed-flow-keep-the-years` (`scripts/departure_pcic.R`, commit 5a67a46 there) already reads the decided layout: `pcic.subbasin_days.PNWNAmet_historical.<year>.parquet` (`subid int32, date date32, q_local float32, q_acc float32`) for 1951–2012, holding each file to its `pcic.series` row (`bytes`, `rows`, `subbasins`, both `floor(double(v)*1000+0.5)` sums) and to the 1951–2012 run's `crosswalk_md5`. Two consequences folded into `task_plan.md`:
+
+1. `pcic.series` names no commit, so wet takes it from `WET_FWAPG_DAYS_COMMIT`; a `commit` column is a pending gate decision (recommended: add it).
+2. The `qa_days.sql` tolerance: float32 rounding bounds each value's error relative to that value, so a bin mean's error is bounded by 2^-24 × mean|v|, not by |mean|. On a losing reach `q_local` changes sign across years and the mean can sit near 0 while the values are near 1 m³/s (error about 6e-8), which `1e-6 * greatest(abs(clim), 1e-3)` (floor 1e-9) would fail. The bound is now `2^-23 × mean|v| + 1e-9`, wet's parity bound; not yet measured on real data.
