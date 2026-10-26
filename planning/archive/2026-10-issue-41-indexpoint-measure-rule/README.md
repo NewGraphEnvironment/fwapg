@@ -33,7 +33,7 @@ Ad hoc SQL, the harness and the reverts were in the session scratchpad and are n
 
 ## Owed
 
-- Push `indexpoint-tiebreak` and post the #201 body edit and reply, **on your word**
+- Push `indexpoint-tiebreak` and post the #201 body edit and reply, **on your word** (the upstream commit is `a8d00b9`, parked on `origin/indexpoint-tiebreak-41`, which no PR uses: fast-forward `indexpoint-tiebreak` to it)
 - Post the bcfishobs/bcfishpass notes, **on your word**
 - Re-apply the fwa_indexpoint grants on our deployment after the migration (DROP resets them), and restart pg_featureserv
 - Open issues for the NGE picks still on the formula measure: this fork's `pcic_crosswalk02_candidates.sql` (`ST_LineMerge` and formula) and fresh's `frs_point_snap()` (review S1) (2026-10-26: fresh#266 widened, wet#127 and link#383 filed for the package side; the PCIC crosswalk is still open)
