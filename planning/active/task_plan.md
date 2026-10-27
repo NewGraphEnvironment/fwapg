@@ -63,8 +63,8 @@ Mechanism, chosen and stated (not asked):
 - [x] `DAYS=1 ./pcic_crosswalk.sh` (defaults) in the background with `date -u` at start and end, nothing it reads edited while it runs; the trace log kept under `planning/active/logs/` with `DATABASE_URL` scrubbed to the literal `$DATABASE_URL` before any commit (the trace prints `PSQL`'s URL on every line)
 - [x] The rebuilt run reproduces #25's fingerprints: `monthly_q_sum` 178035348.248310 over 40,524,444 rows and 3,377,037 segments, `daily_q_sum` 633459324.098216, so the 06 split changed nothing; 0 POSTs to `/hydromosaic/bulk-downloads` in the trace (grep), which is the issue's third check
 - [x] `qa_days.sql` passes (max deviation recorded); `qa_report_days.sql`'s table and the per-year timing in `findings.md`
-- [ ] Publish the 63 parquet files and `pcic.series.csv.gz` to `s3://fresh-bc/fwapg/extras/` (bytes and elapsed recorded; the user runs the bare `aws s3 cp` loop if auto mode refuses the write); `load/pcic.sql` into a scratch database loads the catalogue from fresh-bc
-- [ ] Read one published year over HTTP with R's duckdb (`httpfs`): rows, `bytes` and both sums reproduced from the catalogue, versions and elapsed recorded; the README's year-by-year window query for one watershed group runs against the published files
+- [x] Publish the 63 parquet files and `pcic.series.csv.gz` to `s3://fresh-bc/fwapg/extras/` (bytes and elapsed recorded; the user runs the bare `aws s3 cp` loop if auto mode refuses the write); `load/pcic.sql` into a scratch database loads the catalogue from fresh-bc
+- [x] Read one published year over HTTP with R's duckdb (`httpfs`): rows, `bytes` and both sums reproduced from the catalogue, versions and elapsed recorded; the README's year-by-year window query for one watershed group runs against the published files
 
 ## Phase 6: Documentation
 - [x] `extras/pcic_crosswalk/README.md`: `DAYS`, `FETCH_ONLY`, the kept NetCDF and what a rerun now needs, the per-year product and its catalogue with the fingerprint formula, the duckdb (and R) query for flow on a segment for one year or every year of a window, sizes, timings, the per-year clamp caveat, 1950 as the start-up year, `uv` in requirements and in the test paragraph
@@ -89,7 +89,7 @@ None. CMIP6 per-year builds are not in scope (the job takes them; nothing is bui
 
 ## Validation
 
-- [ ] Tests pass
+- [x] Tests pass
 - [x] `/code-check` clean (once over the branch with `/code-check branch`)
 - [ ] PWF checkboxes match landed work
 - [ ] `/planning-archive` on completion

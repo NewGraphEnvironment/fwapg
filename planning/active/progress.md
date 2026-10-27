@@ -30,3 +30,4 @@ The approval of 2026-10-26 covered the baseline only. The run-to-PR mandate star
 - Final `DAYS=1` build from ea9b199, 02:13:38–05:28:41 UTC (3 h 15 min), exit 0: #25's fingerprints reproduced, 0 hydromosaic requests, `qa_days.sql` all `t`, 63 files (9.21 GB) catalogued. Trace in `logs/20261027_days_build.log` (database URL scrubbed).
 - Direct closure on BULK: 360,424 of 360,444 segment-months equal to `pcic.discharge_monthly` at 5 decimals, the rest a rounding flip (`logs/closure_bulk.R`).
 - Next: publish (parquet first, then the `.csv.gz` files), load the catalogue from fresh-bc in a scratch database, read a year back over HTTP; issue body, wet#122 comment, archive, PR.
+- Published: 63 parquet files (9.21 GB, 21 min 47 s), then the 7 `.csv.gz` (68 s); catalogue loaded from fresh-bc in a scratch database; 1983 read back over HTTP equal to its catalogue row; the README's query run against the published files (201 s). `pcic_test.sh`: 162 pass.
