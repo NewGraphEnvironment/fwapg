@@ -27,7 +27,8 @@ A week is a fixed run of days in a 365-day year: `least((doy - 1) / 7 + 1, 52)`,
 Each FWA segment gets weights once, shared by every run:
 - the sub-basin it drains to (`subid`);
 - the share of that sub-basin's local runoff that passes it;
-- the placed outlets directly above it (`upstream_subids`).
+- the placed outlets directly above it (`upstream_subids`), and on a listed diversion's receiving
+  segment the diversion itself (NewGraphEnvironment/fwapg#24).
 
 Then for any set of days
 

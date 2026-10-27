@@ -95,6 +95,7 @@ for round in $(seq 1 10); do
   $PSQL -f "$JOB/sql/pcic_crosswalk04_select.sql"
   n=$($PSQL -tXA -v round=$round -f "$JOB/sql/pcic_crosswalk05_demote.sql")
   [ "$n" -eq 0 ] && break
+  [ "$round" -lt 10 ] || { echo "placement did not converge in 10 rounds" >&2; exit 1; }
 done
 qa 'every diversion is placed|Nechako Reservoir groups'
 echo "== done $(date -u +%H:%M:%SZ)"
