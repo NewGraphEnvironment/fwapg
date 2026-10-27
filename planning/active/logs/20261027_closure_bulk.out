@@ -1,0 +1,8 @@
+[1] 0
+[1] 30037
+[1] 360444
+   n_pub n_joined n_equal_5dp max_abs_rounded max_beyond_rounding      max_abs
+1 360444   360444      360424           1e-05        7.197683e-08 5.071977e-06
+  max_rel_floor max_abs_q_ge_1 max_rel_q_ge_1
+1     0.4989853   5.071977e-06   4.942869e-06
+duckdb 1.4.3, R 4.5.2, elapsed 0.4 s

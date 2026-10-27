@@ -49,7 +49,9 @@ staging tables and `fwapg.blk_paths`: run them one at a time.
 A monthly run took 1 h 15 min (2026-10-17, local Docker PostgreSQL 17.5 on a 128 GB machine): 4 min paging the network,
 19 min fetching the series, 32 min from the blue line paths to monthly flow, and 21 min for QA, the swap into `pcic` and the
 `.csv.gz` files. `WEEKLY=1` took 2 h 53 min, most of the difference being the swap of 175.6M weekly rows (79 min) and the
-fetch (27 min, network-bound). The job:
+fetch (27 min, network-bound). `DAYS=1` took 3 h 15 min (2026-10-27, same machine, from the kept NetCDF, with
+another job sharing the database server): about 1 h for the monthly run, 2 h 8 min for the 63 years four at once
+(a year's steps took 4.9 to 10.6 min, median 7.6), and 7 min for their QA and catalogue. The job:
 
 1. **Network.** Pages PCIC's `rivers` and `lakes` collections from `bbox-server` (BC Albers) into
    `data/`, and loads them. Each river segment's outlet is the end that touches its downstream feature
@@ -342,9 +344,9 @@ file a year: `pcic.subbasin_days.<model>_<scenario>.<year>.parquet` (e.g.
 in row groups of 1,000 sub-basins so that a reader filtering on `subid` reads only the groups it needs.
 The file's metadata names the crosswalk it was routed on (`fwapg.crosswalk_md5`) and the fwapg commit
 that built it (`fwapg.commit`). For PNWNAmet that is 63 files, 1950-2012 (1950 is the model's start-up
-year: kept so the series is whole, best left out), of about 146 MB each (37,667 sub-basins × 365 or 366
-days, about 10.6 bytes a row). The files are published beside the other outputs and never loaded into
-Postgres.
+year: kept so the series is whole, best left out), of 144.7 to 146.6 MB each and 9.2 GB in all (37,667
+sub-basins × 365 or 366 days, about 10.6 bytes a row). The files are published beside the other outputs and
+never loaded into Postgres.
 
 `pcic.series` lists each file with its fingerprint: `rows`, `subbasins`, `bytes` (the file's size, so a
 truncated download is caught before it is parsed) and two sums, each `sum(floor(double(v) * 1000 + 0.5))`
@@ -400,6 +402,15 @@ climatology this query and the Postgres window query above agree within float32 
 relative on all 30,037 BULK segments). Averaging the files over a run's years reproduces
 `pcic.subbasin_daily` to within float32 rounding, which `sql/qa_days.sql` checks on every build, and so
 `pcic.discharge_monthly` to about 1e-7 relative, not at 5 decimals row for row.
+
+The clamp comes last, so a mean over years of clamped per-year flows is not the clamped climatology: on a
+reach where some years' local flow is negative it is larger. To reproduce a climatology, average the days
+over the years and clamp once. Averaged that way over 1951-2012 and routed by month for BULK, the files
+give `pcic.discharge_monthly` at 5 decimals on 360,424 of 360,444 segment-months; the other 20 are a
+rounding flip in the 5th decimal. Single years clamp more often than the climatology: in mid-network
+segment-months (`sql/qa_report_days.sql`, printed by every `DAYS=1` build), 1,568 for the 1951-2012
+climatology, and from 1,174 (1968) to 2,011 (1974) for single years, median 1,616.5, nearly all of them
+April to June (the rising freshet), with some years adding a few hundred in July or September.
 
 Files are published to `https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/` as
 `pcic.<table>.csv.gz` for the shared tables and `pcic.<table>.<run>.csv.gz` for a run's rows. After a

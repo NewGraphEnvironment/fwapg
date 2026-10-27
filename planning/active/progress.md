@@ -26,3 +26,7 @@ The approval of 2026-10-26 covered the baseline only. The run-to-PR mandate star
 - Phase 1 fetch running (`DAYS=1 FETCH_ONLY=1`, from a frozen copy, since 00:16 UTC); first run killed after a mid-run edit (`findings.md`).
 - Phase 2 timing on a stand-in year: `06_daily` reproduces #25's daily fingerprint; the loop 259 s → 152 s (sorted, fillfactor 50); closure-table contingency measured slower; years built 4 at once.
 - Next: the fetch's elapsed and bytes; time `pcic_days.py rows` on the real files; the Phase 5 build.
+- Code-check over the branch: four rounds plus the plan review (five agents, the bound), ended on an enumeration (`findings.md`); fixes in 5c62a92, 2ed228a, ea9b199. README and research note: 0555f99, 31c275b.
+- Final `DAYS=1` build from ea9b199, 02:13:38–05:28:41 UTC (3 h 15 min), exit 0: #25's fingerprints reproduced, 0 hydromosaic requests, `qa_days.sql` all `t`, 63 files (9.21 GB) catalogued. Trace in `logs/20261027_days_build.log` (database URL scrubbed).
+- Direct closure on BULK: 360,424 of 360,444 segment-months equal to `pcic.discharge_monthly` at 5 decimals, the rest a rounding flip (`logs/closure_bulk.R`).
+- Next: publish (parquet first, then the `.csv.gz` files), load the catalogue from fresh-bc in a scratch database, read a year back over HTTP; issue body, wet#122 comment, archive, PR.

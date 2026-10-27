@@ -239,3 +239,18 @@ Launched 00:44:11 UTC from a worktree at 8d08a0e, stopped 02:11 UTC during the p
 - Twelve real years (1950–1961) were written: 144,698,369 to 146,405,560 bytes each, so about 9.2 GB for 63.
 
 A `DROP DATABASE` in `pcic_test.sh` waited 20+ minutes on a checkpoint behind the build's writes: run the tests between builds, not during one.
+
+### Phase 5, final build (commit ea9b199)
+
+`DAYS=1 ./pcic_crosswalk.sh` (defaults) from a worktree at ea9b199, launched 02:13:38 UTC, ended 05:28:41 UTC: **3 h 15 min 03 s**, exit 0, `PCIC crosswalk complete for PNWNAmet / historical / 1951-2012`. Another session's long queries shared the database server for the whole run, so the step times below are slower than the first build's.
+
+- The shared steps up to the days loop took about 59 min; the days loop about 2 h 08 min (first file 03:22:22 UTC, last 05:21:18 UTC); the QA, report and catalogue about 7 min.
+- Per year, four at once (63 years): rows and COPY 99–197 s (median 144), `06_daily` 180–432 s (median 291), months 8–24 s (median 14), parquet 9–20 s (median 14).
+- **#25's fingerprints reproduced exactly again** (`pcic.runs` built 02:57:31 UTC): `monthly_q_sum` 178035348.248310 over 40,524,444 rows and 3,377,037 segments, `daily_q_sum` 633459324.098216 over 13,786,122 rows and 37,667 sub-basins, `crosswalk_md5` b1a710836df2cafea0ef514b7ed1c338. `qa.sql`: all 83 `|t` lines in the log, no `|f`.
+- **0 requests to hydromosaic**: no `fetching … from hydromosaic` line, no `bulk-downloads` in the trace.
+- **`qa_days.sql` all `t`** (every calendar day once per year; mean `q_local` and `q_acc` equal to the climatology within `2^-23 × mean|v| + 1e-9`; with `ran_all=1`, the float64 monthly means equal `pcic_subbasins_monthly` to 1e-9). Max deviation: `q_local` 2.13e-5 m³/s, at 0.373 of its bin's tolerance; `q_acc` 8.65e-5 m³/s, at 0.426.
+- **63 files, 1950–2012, 9,207,962,213 bytes** (144,698,726 to 146,570,959 each), 866,755,337 rows (37,667 × 23,011). `pcic.series`: 63 rows, one crosswalk md5 (b1a71083…), one commit (ea9b199ea7e8ebc9b61e0f031ec81c7801044acc). The issue's 6.8 GB estimate came from 8 outlets' raw series; the sub-basin `q_acc` of large rivers compresses less.
+
+**Per-year clamp** (`qa_report_days.sql`, mid-network segment-months clamped): the climatology 1,568; the years 1951–2012 range 1,174 to 2,011, median 1,616.5, and 42 of the 62 clamp more than the climatology. Worst: 1974 (2,011), 1984 (1,989), 1983 (1,972). Best: 1968 (1,174), 1998 (1,215), 1973 (1,319). The clamped months are April to June in every year, as in the climatology (the rising freshet on mid-network reaches), with some years adding a few hundred in July (1976: 237; 1996: 265; 2001: 250) or September (1969: 206). So a mean over years of clamped per-year flows is at least the clamped climatology on those reaches, not equal to it: to reproduce the climatology, average the days over the years first and clamp once, as the closure below does.
+
+**Direct closure, BULK** (`closure_bulk.R` in `logs/`; duckdb 1.4.3, R 4.5.2): the 1951–2012 monthly mean of the 62 local files, routed through `pcic.segment_weights`, against `pcic.discharge_monthly`'s 1951–2012 run for BULK: 360,444 of 360,444 segment-months joined, **360,424 equal at 5 decimals**; the other 20 differ by one unit in the 5th decimal (a rounding flip), and no row differs from the published value by more than 7.2e-8 m³/s beyond the 5-decimal rounding (max |q − published| 5.07e-6). 0.4 s.
