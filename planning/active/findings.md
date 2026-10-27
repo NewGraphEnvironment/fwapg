@@ -81,3 +81,19 @@ After the undo of M1-M4 every test was `t` again. Not mutated, as there is nothi
 
 The old build's staging is gone, so the new tests cannot be run on it (plan review 8). Its "before" is the
 baseline above: exit 0.134 m³/s against PCIC's 156, 4 of 483 outlets with a candidate placed.
+
+## Code check (`/code-check branch`, ce4add3...HEAD)
+
+| Round | Findings | Fixed | Accepted | Inside previous fix? |
+|-------|----------|-------|----------|----------------------|
+| 1 | 0 (2 notes) | 2 notes | 0 | — |
+| 2 | 1 fragile (area test, flow-parent side, a proxy) + 3 notes | 1 + 2 notes | 1 note (sort order kept comparable) | n |
+| 3 | 2 fragile (area test, position-parent side; guard 2 message) | 2, plus a refusal for a line joining at the exit vertex | guard 3 stricter than needed (commented) | y (the other half of round 2's fix) |
+| 4 | 0 | — | README sentence looser than the refusals (tightened in Phase 4) | n |
+
+Ended by enumeration: round 3 listed every place the mechanism (checks validated against the Nechako's sizes,
+counts or geometry rather than the property) reaches, 20 rows; round 4 walked each row against the code after the
+fixes (`review-round4.md`): each holds for any listed diversion, refuses loudly, or is Nechako-specific by design.
+Round 4 added two rows: 06's cycle check reachable through a diversion placed above its own ancestor (loud, does not
+name the diversion), and the area test's inner joins (cannot drop a row today: every lut row has an area).
+Spend: five reviewer agents with the plan review, the per-task bound.
