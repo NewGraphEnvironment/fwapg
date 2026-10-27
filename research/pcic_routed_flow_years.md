@@ -34,7 +34,7 @@ Measured 2026-10-27 on the 128 GB build machine, on a stand-in year of the real 
 | monthly means | 8 s |
 | COPY out and the parquet write | 15 s |
 
-The accumulation is one UPDATE per level of the FWA tree of placed outlets (depth 538). As first written it read one page per row: the table was built in hash-aggregate order and every UPDATE moved its row. Built sorted by sub-basin with half of each page free, every update is heap-only and the loop takes 152 s. A closure table (every sub-basin joined to everything above it) is not faster: the closure is 5,383,218 pairs (mean depth 142), about 2 billion rows a year. Years are built four at once, each in tables of its own.
+The accumulation is one UPDATE per level of the FWA tree of placed outlets (depth 538). As first written it read one page per row: the table was built in hash-aggregate order and every UPDATE moved its row. Built sorted by sub-basin with half of each page free, every update is heap-only and the loop takes 152 s. A closure table (every sub-basin joined to everything above it) is not faster: the closure is 5,383,218 pairs (mean depth 142), about 2 billion rows a year. Years are built four at once, each in tables of its own. Four at once, each year's steps run about twice as slow (rows and COPY 144–147 s, `06_daily` 300–340 s, months 15–17 s, parquet 16–17 s; the first build, 2026-10-27), so the series takes about 2 h 15 min, not the 4 h 20 min of one at a time.
 
 ## Layout
 
