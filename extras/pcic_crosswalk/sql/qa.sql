@@ -155,6 +155,8 @@ WITH pairs AS (
   INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = p.linear_feature_id
   WHERE c.flag IS NULL
   AND c.blue_line_key != p.blue_line_key
+  -- a diversion's parent is where PCIC sends its water, not on its path (tested below)
+  AND NOT EXISTS (SELECT 1 FROM fwapg.pcic_diversions dv WHERE dv.subid = c.subid)
 )
 SELECT 'every FWA child on another blue line joins above the start of its parent''s segment' AS test,
   count(*) > 0 AND bool_and(ok) AS result
@@ -230,3 +232,72 @@ SELECT 'at most 400 placed outlets follow another river and 300 none, every meas
   AND count(*) FILTER (WHERE flag = 'follows_other') <= 400
   AND count(*) FILTER (WHERE flag = 'follows_none') <= 300 AS result
 FROM fwapg.pcic_qa_following;
+
+-- diversions (pcic_crosswalk03_diversions.sql, NewGraphEnvironment/fwapg#24): a
+-- listed outlet is placed at its listed FWA exit, its position parent is recorded,
+-- and its FWA parent is its nearest placed PCIC ancestor, where PCIC sends its water
+SELECT 'every diversion is placed at its exit, with its position and flow parents' AS test,
+  count(*) > 0 AND bool_and(
+    x.flag IS NULL
+    AND x.linear_feature_id = dv.linear_feature_id
+    AND abs(x.downstream_route_measure - dv.downstream_route_measure) < 0.001
+    AND dv.position_parent_subid IS NOT NULL
+    AND dv.position_parent_subid IS DISTINCT FROM x.fwa_parent_subid
+    AND x.fwa_parent_subid = (
+      WITH RECURSIVE up AS (
+        SELECT o.dowsubid AS subid, 1 AS n FROM fwapg.pcic_outlets o WHERE o.subid = x.subid
+        UNION ALL
+        SELECT o.dowsubid, up.n + 1 FROM up INNER JOIN fwapg.pcic_outlets o ON o.subid = up.subid
+        WHERE NOT EXISTS (SELECT 1 FROM fwapg.pcic_fwa_crosswalk a WHERE a.subid = up.subid AND a.flag IS NULL)
+      )
+      SELECT up.subid FROM up ORDER BY up.n DESC LIMIT 1
+    )
+  ) AS result
+FROM fwapg.pcic_diversions dv
+INNER JOIN fwapg.pcic_fwa_crosswalk x ON x.subid = dv.subid;
+
+-- the Nechako Reservoir (NewGraphEnvironment/fwapg#24): PCIC's tree sends it out
+-- through the Skins Lake spillway (outlet 1007550 to 1008709, then the Cheslatta),
+-- the FWA through Kenney Dam. Before the diversion was listed, 483 of the 487
+-- outlets in LEUT, UEUT, UNRS and LNRS were unplaced and the reservoir's segments
+-- carried about 0 m3/s. Measured after: see the README's caveats
+WITH outlets AS (
+  SELECT x.flag
+  FROM fwapg.pcic_fwa_crosswalk x
+  INNER JOIN fwapg.pcic_outlets o ON o.subid = x.subid
+  INNER JOIN whse_basemapping.fwa_watershed_groups_poly g ON ST_Intersects(g.geom, o.geom)
+  WHERE g.watershed_group_code IN ('LEUT', 'UEUT', 'UNRS', 'LNRS')
+)
+SELECT 'placed >= 90% of the Nechako Reservoir groups'' outlets with a candidate' AS test,
+  count(*) FILTER (WHERE flag IS NULL)::numeric / nullif(count(*) FILTER (WHERE flag IS DISTINCT FROM 'no_candidate'), 0) >= 0.9 AS result
+FROM outlets;
+
+-- the reservoir's water leaves on PCIC's route: Knewstubb Lake's exit segment
+-- carries outlet 1007550's PCIC outflow, the spillway outlet 1008709 its own
+-- (gauge 08JA013), and the Nechako canyon just below Kenney Dam only local runoff
+-- (0.13 m3/s before the diversion was listed)
+WITH pcic AS (
+  SELECT q.subid, avg(q.q_m3s) AS q FROM fwapg.pcic_outlet_monthly q
+  WHERE q.subid IN (1007550, 1008709) GROUP BY q.subid
+),
+seg AS (
+  SELECT l.label, avg(d.q_m3s) AS q
+  FROM (VALUES ('exit', 288852.5::float8), ('canyon', 288500)) AS l(label, measure)
+  CROSS JOIN LATERAL (
+    SELECT s.linear_feature_id FROM whse_basemapping.fwa_stream_networks_sp s
+    WHERE s.blue_line_key = 356362759 AND s.downstream_route_measure <= l.measure
+    ORDER BY s.downstream_route_measure DESC LIMIT 1
+  ) s
+  INNER JOIN fwapg.pcic_discharge_monthly d ON d.linear_feature_id = s.linear_feature_id
+  GROUP BY l.label
+),
+acc AS (
+  SELECT m.subid, avg(m.q_acc) AS q FROM fwapg.pcic_subbasins_monthly m
+  WHERE m.subid = 1008709 GROUP BY m.subid
+)
+SELECT 'Nechako Reservoir: exit carries 1007550''s PCIC flow, spillway 1008709 within 5%, canyon under 1 m3/s' AS test,
+  coalesce(
+    (SELECT abs(seg.q - pcic.q) <= 0.05 * pcic.q FROM seg, pcic WHERE seg.label = 'exit' AND pcic.subid = 1007550)
+    AND (SELECT abs(acc.q - pcic.q) <= 0.05 * pcic.q FROM acc, pcic WHERE pcic.subid = 1008709)
+    AND (SELECT seg.q < 1 FROM seg WHERE seg.label = 'canyon'),
+    false) AS result;

@@ -34,3 +34,25 @@ Relates to #6, #8.
 
 | Error | Resolution |
 |-------|------------|
+
+## Baseline (2026-10-27, crosswalk b1a710836df2cafea0ef514b7ed1c338, PNWNAmet 1951-2012)
+
+Produced by `logs/nechako_measure.sql` (`logs/20261027_baseline_1951-2012.out`); gauges from the build's
+`data/qa_gauges_*.csv` (`logs/20261027_baseline_gauges.csv`).
+
+- Outlets with their PCIC point in the group, placed: LEUT 0/72, UEUT 0/203 (4 no_candidate), UNRS 1/111,
+  LNRS 3/101, CHES 95/95. The 479 broken-chain outlets of the four groups are all anchored to 1007550.
+- Mean annual specific runoff over FWA upstream area, median per group: LEUT 0.3 mm/yr, UEUT 0.3, UNRS 0.2,
+  LNRS 0.3, CHES 131.1. Segments under 5 mm/yr: LEUT 100%, UEUT 100%, UNRS 100%, LNRS 97.3%, CHES 1.0%.
+  (5 mm/yr stands in for "under 1% of wet's water balance": the regional runoff is several hundred mm.)
+- Key points, mean annual m³/s: Whitesail Lake 0.003, Ootsa Lake 0.037, Natalkuz 0.045, Knewstubb mid 0.128,
+  Knewstubb exit segment 701799415 0.134, canyon below Kenney Dam 0.134, Nechako above the Cheslatta 0.365
+  (all sub-basin 1002307), Skins Lake spillway line top 156.365 (1007550), Cheslatta near its mouth 161.611,
+  Nechako below the Cheslatta 161.976.
+- Gauges, FWA against PCIC: 08JA013 (spillway) 156.365 vs 156.366; 08JA017 162.170 vs 162.170; 08JA015 0.001
+  vs 3.905; 08JA016 0.001 vs 0.684; 08JA028 0.024 vs 44.962; 08JA014 no PCIC outlet. Observed at 08JA013
+  95.5 and 08JA017 73.3 (1951-2012): PCIC models no Kemano diversion.
+- Other anchors collecting many unplaced outlets, all inside BC: Kootenay 5025228 (140), Pend-d'Oreille
+  5013906 (92), Fox 206008363 (44), KOTL 5014312 (32), Chilcotin 4007152 (31). Out of scope (Phase 7 issue).
+- The reservoir exit: segment 701799415 (edge 1200, Knewstubb Lake 329318438) at 288,852.348 m on
+  356362759, 70.7 km from PCIC's lake outlet point (on Ootsa Lake's shore at the spillway).

@@ -30,14 +30,14 @@ A committed list of diversions, `sql/pcic_crosswalk03_diversions.sql`, with one 
 
 ## Phase 1: Baseline and tests first
 
-- [ ] Record the baseline in `findings.md` and in a log under `extras/pcic_crosswalk/logs/` (CSV): placements per group, mean annual flow on the reservoir's FWA segments, near-zero segment counts per group, and the five Nechako gauges.
-- [ ] Add QA tests to `sql/qa.sql`, using ceilings where a count can vary:
+- [x] Record the baseline in `findings.md` and in a log under `extras/pcic_crosswalk/logs/` (CSV): placements per group, mean annual flow on the reservoir's FWA segments, near-zero segment counts per group, and the five Nechako gauges.
+- [x] Add QA tests to `sql/qa.sql`, using ceilings where a count can vary:
   - at least 90% of the four groups' outlets that have a candidate are placed
   - Knewstubb's exit segment carries 1007550's PCIC flow within 5%
   - the canyon segment below the exit carries under 1 m³/s
   - 08JA013's outlet 1008709 is within 5% of PCIC
   - each diversion's position parent and flow parent are both recorded
-- [ ] Exclude listed diversions from "every FWA child on another blue line joins above the start of its parent's segment".
+- [x] Exclude listed diversions from "every FWA child on another blue line joins above the start of its parent's segment".
 - [ ] Show the new tests fail. Run them against the current `pcic.*` tables in a scratch copy, and record the failures.
 
 ## Phase 2: Diversion list and placement
