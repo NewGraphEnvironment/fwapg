@@ -27,8 +27,7 @@ PostgreSQL/PostGIS extension of BC's Freshwater Atlas (FWA): extra tables, index
 # Agent Operating Rules
 
 How an agent session works here: clocks and waiting, subagents, evidence, and when to come
-back to the user. Sections 5–8 of `karpathy.md` until 2026-10-11. Worked commands
-and background, under the same headings, are in
+back to the user. Worked commands and background, under the same headings, are in
 soul's `conventions/reference/agent-operations.md`, which no `CLAUDE.md` loads.
 
 Citations sit in `<!-- evidence -->` blocks, which a repo's `CLAUDE.md` omits; the full text
@@ -461,11 +460,35 @@ unpublished.
 
 *4 lines of evidence for this rule are in `conventions/agent-operations.md`.*
 
-### An upstream PR is short, carries no session link, and needs no issue of its own
+### Upstream, we are guests: fork first, offer an issue, disclose AI
 
-Write it for a maintainer who knows the code (about 200 words: bug, repro, change, test table), and keep "Generated with Claude Code" but drop the session link and the commits' `Claude-Session:` trailers, which outsiders cannot open. File no upstream issue beside it: when we have the fix, the PR is the upstream report, and our own issue links it. Leave out the SRED cross-reference too. Posting it still needs the user's word (above).
+We build on other people's work: gratitude and humility in every step that touches it.
+Maintainers may read anything we write about their code, so describe what we saw rather than
+diagnose their design, offer rather than propose, and leave them every road to lead.
 
-*5 lines of evidence for this rule are in `conventions/agent-operations.md`.*
+- **Fix on our fork the same day,** one concern per branch from upstream's default branch,
+  no planning files and no `#N` in its commits, the draft in a fork issue labelled
+  `upstream-draft`. Pin our packages
+  to the fork's integration branch until upstream holds every fix on it, their way.
+- **Upstream gets a short issue that offers:** thanks, a reprex, the options as we see them,
+  and a pull request if it helps. Send one when asked, or first only where the history shows
+  outside pull requests merged routinely. One open item per maintainer, timed around their load.
+- **About 200 words, no session link, no SRED line.** A design change goes in as a question.
+- **Say plainly that Claude Code helped.** Commits keep `Co-Authored-By` and drop
+  `Claude-Session:`, and the pull request offers an `Assisted-by` reword. Where AI-assisted
+  contributions are unwelcome, send no code.
+- **Never ping by accident:** backtick upstream references in issues and pull requests in our repos,
+  and keep them out of commit messages. In a fork checkout `gh` targets upstream, so a write
+  meant for our fork passes `--repo`.
+- **Homework before, notes after:** who contributes, stated policy, AI use, current load,
+  response pace. Keep it in soul's `research/upstream-projects.md`, revised after every reply,
+  merge or silence; steps and wording are in the reference file.
+- Raise upstream only what would help their other users. If a maintainer would rather not
+  hear from us, keep the fork or move on.
+
+Posting still needs the user's word on the exact text (above).
+
+*22 lines of evidence for this rule are in `conventions/agent-operations.md`.*
 
 ### Auto mode refuses a production write whatever the chat says
 
@@ -477,9 +500,18 @@ bare command themselves (below). Do not retry, and do not suggest a restart.
 
 It is not the secret-read clamp (`newgraph.md`, "Reading a secret clamps the rest of the
 session"), which names *earlier conversation content* and needs a restart. This refusal
-names a **category** of action, such as "Production Deploy".
+names a **category** of action, such as "Production Deploy" — and the category need not
+describe a deploy: a plain `git push` of local commits has been refused as "Excess
+Sensitive Detail". In a cloud session "External System Writes" covers a `gh api -X POST`
+issue comment; the `mcp__github__*` write tool makes the same write unprompted.
 
-*10 lines of evidence for this rule are in `conventions/agent-operations.md`.*
+**It classifies the command text, so it also fires on a write the file tools can make
+safely.** Where what was refused is an edit to a tracked file rather than the publish
+itself, take that route first — Read and Edit, which the denial text offers as a safer
+method — and say the classification was wrong. Keep the two routes above for the command
+that really does publish.
+
+*23 lines of evidence for this rule are in `conventions/agent-operations.md`.*
 
 ### Hand the user bare commands
 
@@ -504,6 +536,13 @@ paths. Full Disk Access for the terminal app removes the block.
 
 *13 lines of evidence for this rule are in `conventions/agent-operations.md`.*
 
+### Read a name for what it sounds like: the user dictates
+
+Messages often arrive by voice, so names come spelled by sound ("maxxam creek" was Maxan
+Creek). Resolve a place name against BC Geographic Names or the Freshwater Atlas before it
+lands in an issue, code or a query, and read an odd phrase for the word it sounds like
+before asking about it.
+
 ### Link every issue and PR you name to the user
 
 When a message to the user names an issue or a PR, make the number a link the user can
@@ -516,7 +555,7 @@ click: `[repo#12](https://github.com/<owner>/<repo>/issues/12)`,
 - Before sending a report with many numbers, spot-check two or three through `gh`: the ones
   typed from memory or whose type you inferred.
 - Scope is messages to the user, and PR and issue bodies read from outside the repo; commit
-  messages autolink already.
+  messages autolink already. An upstream item in our repos' GitHub text is backticked, never linked.
 
 *7 lines of evidence for this rule are in `conventions/agent-operations.md`.*
 
@@ -529,7 +568,7 @@ every other consumer. Same instinct as `newgraph.md`'s "install missing packages
 workaround", applied to a *broken* dependency.
 
 **How to apply:** reproduce it minimally, file an issue in the owning repo with the
-repro and the exact lines, report it, and carry on if it is not blocking. The rule is
+repro and the exact lines (a third party's: a fork issue first, above), report it, and carry on if it is not blocking. The rule is
 *do not hide it*, not *do not continue*.
 
 *10 lines of evidence for this rule are in `conventions/agent-operations.md`.*
@@ -578,16 +617,14 @@ git fetch -q origin gh-pages && git log -1 --format='%s' FETCH_HEAD
 ```
 
 GitHub can create a workflow run minutes after the push that triggered it, and
-out of order with a later push. Observed 2026-08-26 in `fly`: `7a7700c` built and
-deployed at 17:21, then its own *parent* `be77eca` had its run created at 17:22:52
-— twelve minutes after that push — and deployed over it. Both runs green, `gh run
-list` all success, published site one commit stale.
+out of order with a later push, so a parent commit's run can deploy over its child's with
+both runs green and the published site one commit stale.
 
 Things that do **not** fix this, so don't reach for them:
 
-- `cancel-in-progress: true` — cancels an *overlapping* run. Here the runs never
-  overlapped (`created == started` on both, second created after first finished),
-  so there was nothing to cancel.
+- `cancel-in-progress: true` — cancels an *overlapping* run. In the measured case the
+  runs never overlapped (`created == started` on both, second created after first
+  finished), so there was nothing to cancel.
 - A `concurrency:` group — the r-lib pkgdown template already sets one at the job
   level (`group: pkgdown-${{ github.event_name != 'pull_request' || github.run_id }}`).
   Grepping for a top-level `concurrency:` key misses it and invites a redundant
@@ -599,7 +636,7 @@ exists. The remedy is detection: check the deploy provenance, and re-dispatch
 commit changed nothing the site publishes — confirm via `.Rbuildignore` / `_pkgdown.yml`
 rather than assuming.
 
-*2 lines of evidence for this rule are in `conventions/ci-monitoring.md`.*
+*5 lines of evidence for this rule are in `conventions/ci-monitoring.md`.*
 
 ## Don't push to the default branch between a merge and its CI settling
 
@@ -614,14 +651,13 @@ push: a `CLAUDE.md` drift sync, a typo fix, a `.gitignore` line. `/compact-prep`
 runs `claude_md_drift.sh apply`, which **pushes**, and after `/gh-pr-merge` that lands
 seconds after the merge.
 
-Order them: watch the merge's runs to completion, *then* push anything else. Measured
-2026-09-08 in gq — the merge's pkgdown and R-CMD-check were allowed to finish green and
-the deploy provenance checked before the sync went out, and the sync's own runs then went
-green on their own SHA. Holding it cost about three minutes.
+Order them: watch the merge's runs to completion, *then* push anything else.
 
 Where a push has already gone out and cancelled something, `/gh-pr-merge` step 10 has the
 reading: `cancelled`/`skipped` is `⊘ superseded`, not `✗ failed`, and the thing to confirm
 is that the newest **non-bot** SHA's run passed. Do not re-dispatch the cancelled one.
+
+*3 lines of evidence for this rule are in `conventions/ci-monitoring.md`.*
 
 ## Don't use `gh run watch` to wait
 
@@ -692,22 +728,10 @@ which `/gh-pr-merge` step 10 correctly reads as `⊘ superseded` — so two plat
 never ran look like two platforms that were superseded by a newer push. Nothing is red and
 nothing says the coverage was lost.
 
-The decisive evidence is GitHub's own context-availability table: `matrix` is listed for
-`jobs.<job_id>.concurrency` and **not** for the top-level `concurrency`. If it were not
-evaluated per job, the context could not be in scope there.
-
-```bash
-curl -s https://raw.githubusercontent.com/github/docs/main/content/actions/reference/workflows-and-actions/contexts.md \
-  | grep 'concurrency'
-```
-
-Cheapest confirmation on a live workflow: the first run's job list. Three jobs
-`in_progress` at once is the pass; one running while two read `cancelled` is this.
-
 The entries above concern cancellation **between pushes**, which is the behaviour you
 want. This is cancellation **within one push**, which is never what you want.
 
-*4 lines of evidence for this rule are in `conventions/ci-monitoring.md`.*
+*10 lines of evidence for this rule are in `conventions/ci-monitoring.md`.*
 
 
 ## A push `paths:` filter skips an empty commit, and dispatch and schedule run only from the default branch
@@ -729,6 +753,13 @@ With `cancel-in-progress: false`, GitHub keeps one running and one pending run p
 
 ## A deploy commit on `gh-pages` is not yet a served page
 Before telling anyone a Pages URL is live, fetch it and compare the bytes with the source: the deploy commit lands on `gh-pages` before the `pages-build-deployment` run publishes it, and until that run finishes the URL still answers 404.
+
+*1 line of evidence for this rule is in `conventions/ci-monitoring.md`.*
+
+## `gh run list --commit` needs the full SHA, and `--workflow` cannot name the Pages run
+Key a CI waiter on `gh run list --commit "$(git rev-parse <ref>)"` and pick a run by name in `--jq`: a short SHA returns an empty list with exit 0, and `--workflow 'pages build and deployment'` fails, because GitHub's built-in Pages run has no workflow file.
+
+Both fail quietly in a waiter: an empty list reads as "no runs yet", so the loop runs to its cap, and a failed `--workflow` lookup leaves the run id empty.
 
 *1 line of evidence for this rule is in `conventions/ci-monitoring.md`.*
 
@@ -843,6 +874,9 @@ Write `!override` to replace a list from the base file; `!reset` followed by a l
 
 ### `COPY ... HEADER` skips the first line unread, so a reordered CSV loads into the wrong columns
 Load a CSV with `COPY ... (format csv, header match)`, which refuses a header that does not name the table's columns in order.
+
+### Benchmark Postgres with a SELECT on an idle server, settings interleaved
+Consume rows under one aggregate, check `pg_stat_activity` first, and run settings A B B A with a control.
 
 ## Tailscale
 
@@ -1702,6 +1736,9 @@ Pass `shape = "bbox"` (or a polygon) to `rasterize_terrain()` when the DTM must 
 
 ### A plain difference of two DEMs can hide a half-cell shift between them
 Before calling two DEMs the same surface, regress their difference on the reference's gradient, or difference them at each half-cell shift.
+
+### A nodata value written to PNG comes back from magick as alpha
+Read a PNG that terra or GDAL wrote with `magick::image_convert(magick::image_read(f), matte = FALSE)`: their nodata becomes a tRNS chunk, which magick reads as alpha.
 
 # Code Check Conventions
 Structured checklist for reviewing diffs before commit.
