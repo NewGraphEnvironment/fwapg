@@ -52,7 +52,9 @@ SELECT 'no negative flow' AS test, NOT EXISTS (
 -- mean annual flow rarely drops by more than 10% from one segment to the next
 -- going down any blue line, main stem or side channel (where it is over 10 m3/s).
 -- Measured at 10 of 89,251 pairs (0.01%); the ceiling is 0.1%. Misplaced outlets
--- and position comparisons that misread local codes showed as hundreds.
+-- and position comparisons that misread local codes showed as hundreds. Since the
+-- Nechako Reservoir was listed as a diversion (NewGraphEnvironment/fwapg#24),
+-- Kenney Dam is one more: its water leaves by the spillway, not the canyon.
 WITH annual AS (
   SELECT s.blue_line_key, s.downstream_route_measure, avg(d.q_m3s) AS q
   FROM whse_basemapping.fwa_stream_networks_sp s
@@ -331,3 +333,29 @@ SELECT 'Nechako Reservoir weights: canyon share under 0.1 without 1007550, spill
      INNER JOIN fwapg.pcic_fwa_crosswalk x ON x.linear_feature_id = w.linear_feature_id
      WHERE x.subid = 1008709),
     false) AS result;
+
+-- a diversion's flow enters the network once: at its PCIC ancestor's own segment
+SELECT 'each diversion is in exactly one segment''s upstream_subids, its PCIC ancestor''s' AS test,
+  count(*) > 0 AND bool_and(n = 1 AND on_receiving) AS result
+FROM (
+  SELECT dv.subid, count(w.linear_feature_id) AS n,
+    coalesce(bool_and(w.linear_feature_id = r.linear_feature_id), false) AS on_receiving
+  FROM fwapg.pcic_diversions dv
+  INNER JOIN fwapg.pcic_fwa_crosswalk x ON x.subid = dv.subid
+  INNER JOIN fwapg.pcic_fwa_crosswalk r ON r.subid = x.fwa_parent_subid
+  LEFT JOIN fwapg.pcic_segment_weights w ON dv.subid = ANY(w.upstream_subids)
+  GROUP BY dv.subid
+) d;
+
+-- inside the reservoir: the Eutsuk River at the outlet of Eutsuk Lake (gauge
+-- 08JA028, PCIC outlet 1001917, 45 m3/s) was broken_chain and carried 0.024 m3/s
+WITH annual AS (
+  SELECT m.subid, avg(m.q_acc) AS q_acc, avg(q.q_m3s) AS q_pcic
+  FROM fwapg.pcic_subbasins_monthly m
+  INNER JOIN fwapg.pcic_outlet_monthly q ON q.subid = m.subid AND q.month = m.month
+  WHERE m.subid = 1001917
+  GROUP BY m.subid
+)
+SELECT 'Eutsuk outlet 1001917 is placed and within 5% of PCIC' AS test,
+  coalesce(bool_and(abs(q_acc - q_pcic) <= 0.05 * q_pcic), false) AS result
+FROM annual;

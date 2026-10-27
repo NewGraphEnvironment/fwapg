@@ -64,6 +64,8 @@ A committed list of diversions, `sql/pcic_crosswalk03_diversions.sql`, with one 
 
 ## Phase 5: Rebuild and measure
 
+- [ ] Dev build (monthly, 1951-2012) from a scratch worktree whose `qa.sql` ends in a failing line, so it stops at QA with staging kept; run the mutation checks on that staging (plan review 8: the old build's staging is gone, so the baseline numbers are the before evidence)
+- [ ] After the dev build, delete the old crosswalk's other run before the first real build, or its export is refused (plan review 1): the 1951-2012 rows of `pcic.runs`, `pcic.subbasin_daily`, `pcic.discharge_monthly` and `pcic.discharge_weekly`, and the PNWNAmet rows of `pcic.series`
 - [ ] Commit, then run `YEARS=1981/2010 WEEKLY=1 ./pcic_crosswalk.sh`, then `DAYS=1 ./pcic_crosswalk.sh`, from committed trees. Export `DATABASE_URL` and `PGSERVER` for the session, and keep the URL out of committed logs.
 - [ ] Measure against the Phase 1 baseline:
   - placements in the four groups
@@ -99,7 +101,7 @@ Verification:
 
 - The new QA tests fail on the old build and pass on the new one.
 - The reservoir's segments carry flow that rises toward Knewstubb's exit and equals 1007550's PCIC outflow there.
-- The canyon below the exit carries about 0.36 m³/s.
-- The spillway and Cheslatta flows are unchanged within 5%.
-- The fingerprints of every run outside the four groups and CHES/Nechako move only where the weights changed. This is checked by diffing `segment_weights` by group against the published files.
+- The canyon just below the exit carries about 0 (share 0, the dam and the exit share one fundamental watershed); flow rises to about 0.36 m³/s only at 1002307's own segment.
+- Outside 1007550's subtree nothing changes (plan review 6): `pcic.fwa_crosswalk` rows identical; `subbasin_daily` `q_local`/`q_acc` equal within 1e-9; `segment_weights` unchanged outside CHES, LNRS, LEUT, UEUT and UNRS (`upstream_subids` compared as sets). Compared against the published files of the old build.
+- pcic_test.sh covers none of steps 03-07 (plan review 9): their coverage is qa.sql on a build plus the mutation checks.
 

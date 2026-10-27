@@ -32,7 +32,7 @@ CREATE TABLE fwapg.pcic_fwa_crosswalk (
   subid integer PRIMARY KEY,
   dowsubid integer,
   anchor_subid integer,          -- nearest placed outlet downstream in PCIC's tree (NULL for a root)
-  fwa_parent_subid integer,      -- nearest placed outlet downstream on the FWA (set by pcic_crosswalk06_subbasins.sql)
+  fwa_parent_subid integer,      -- nearest placed outlet downstream on the FWA, or a diversion's PCIC ancestor (set by pcic_crosswalk06_subbasins.sql)
   islake boolean,
   depth integer,
   linear_feature_id bigint,

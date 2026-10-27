@@ -181,6 +181,31 @@ BEGIN
   IF bad IS NOT NULL THEN
     RAISE EXCEPTION 'diversions % are unplaced or have no placed PCIC ancestor to pass their water to', bad;
   END IF;
+  -- with no placed outlet below the exit, the area would come off the flow parent;
+  -- with the same outlet on both routes, its flow would be added there twice
+  SELECT string_agg(dv.subid::text, ', ') INTO bad
+  FROM fwapg.pcic_diversions dv
+  INNER JOIN fwapg.pcic_fwa_crosswalk x ON x.subid = dv.subid
+  WHERE dv.position_parent_subid IS NULL OR dv.position_parent_subid = x.anchor_subid;
+  IF bad IS NOT NULL THEN
+    RAISE EXCEPTION 'diversions % have no placed outlet below their exit, or reach their PCIC ancestor on the FWA too: nothing to divert', bad;
+  END IF;
+  -- the diverted flow enters at the receiving outlet's own segment
+  -- (pcic_crosswalk07_segments.sql), which it owns only as the highest placed outlet on it
+  SELECT string_agg(dv.subid::text, ', ') INTO bad
+  FROM fwapg.pcic_diversions dv
+  INNER JOIN fwapg.pcic_fwa_crosswalk x ON x.subid = dv.subid
+  INNER JOIN fwapg.pcic_fwa_crosswalk r ON r.subid = x.anchor_subid
+  WHERE EXISTS (
+    SELECT 1 FROM fwapg.pcic_fwa_crosswalk y
+    WHERE y.flag IS NULL
+    AND y.linear_feature_id = r.linear_feature_id
+    AND y.subid != dv.subid
+    AND (y.downstream_route_measure, y.depth, y.subid) > (r.downstream_route_measure, r.depth, r.subid)
+  );
+  IF bad IS NOT NULL THEN
+    RAISE EXCEPTION 'diversions %: their PCIC ancestor is not the highest placed outlet on its segment', bad;
+  END IF;
 END $$;
 
 UPDATE fwapg.pcic_fwa_crosswalk x

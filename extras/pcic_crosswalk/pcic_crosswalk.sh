@@ -493,9 +493,11 @@ if [ "$DAYS" = 1 ]; then
   export_table pcic.series "SELECT * FROM pcic.series ORDER BY model, scenario, year"
 fi
 
-$PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_qa_outlets, fwapg.pcic_qa_candidates"
+$PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_qa_outlets, fwapg.pcic_qa_candidates, fwapg.pcic_qa_diversions"
 $PSQL -c "ALTER TABLE fwapg.pcic_outlets RENAME TO pcic_qa_outlets"
 $PSQL -c "ALTER TABLE fwapg.pcic_candidates RENAME TO pcic_qa_candidates"
+# the diversions with their position parents, which pcic.fwa_crosswalk does not hold
+$PSQL -c "ALTER TABLE fwapg.pcic_diversions RENAME TO pcic_qa_diversions"
 # stamp the crosswalk and run the kept pcic_qa_* tables belong to (their flows are
 # the run's), once all of them are in place, so review_build.sh can tell it from
 # one placed by another run or loaded by load.sh
@@ -505,7 +507,7 @@ $PSQL -c "CREATE TABLE fwapg.pcic_qa_build AS
   FROM pcic.fwa_crosswalk x, pcic.runs r
   WHERE (r.model, r.scenario, r.period) = ('$MODEL', '$SCENARIO', '$PERIOD')
   GROUP BY r.model, r.scenario, r.period, r.monthly_rows, r.monthly_q_sum"
-$PSQL -c "DROP TABLE fwapg.pcic_rivers, fwapg.pcic_lakes, fwapg.pcic_voters, fwapg.pcic_demoted, fwapg.pcic_diversions, fwapg.pcic_fwa_crosswalk,
+$PSQL -c "DROP TABLE fwapg.pcic_rivers, fwapg.pcic_lakes, fwapg.pcic_voters, fwapg.pcic_demoted, fwapg.pcic_fwa_crosswalk,
   fwapg.pcic_day_bins, fwapg.pcic_outlet_daily, fwapg.pcic_subbasins, fwapg.pcic_subbasins_daily, fwapg.pcic_segment_weights"
 for st in $STEPS; do
   $PSQL -c "DROP TABLE fwapg.pcic_outlet_${st#*:}, fwapg.pcic_subbasins_${st#*:}, fwapg.pcic_discharge_${st#*:}"

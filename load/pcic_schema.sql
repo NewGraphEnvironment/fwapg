@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS pcic.fwa_crosswalk (
   subid integer PRIMARY KEY,
   dowsubid integer,
   anchor_subid integer,          -- nearest placed outlet downstream in PCIC's tree (NULL for a root)
-  fwa_parent_subid integer,      -- nearest placed outlet downstream on the FWA
+  fwa_parent_subid integer,      -- nearest placed outlet downstream on the FWA, or a diversion's PCIC ancestor
   islake boolean,
   depth integer,
   linear_feature_id bigint,
