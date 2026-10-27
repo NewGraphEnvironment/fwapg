@@ -306,8 +306,8 @@ SELECT 'Nechako Reservoir: exit carries 1007550''s PCIC flow, spillway 1008709 w
 
 -- a diversion's area is taken off the sub-basin its exit drains to on the FWA (its
 -- position parent) and not off the one its flow goes to (pcic_crosswalk06_subbasins.sql):
--- the flow parent's local area is its upstream area less that of the outlets whose
--- position drains to it, and the position parent's has the diversion's taken off
+-- the local areas of both are their upstream area less that of the outlets whose
+-- position drains to them, which counts the diversion under its position parent
 WITH kids AS (
   SELECT coalesce(dv.position_parent_subid, x.fwa_parent_subid) AS parent, sum(sb.upstream_area_ha) AS area
   FROM fwapg.pcic_fwa_crosswalk x
@@ -317,15 +317,16 @@ WITH kids AS (
 )
 SELECT 'a diversion''s area comes off its position parent''s sub-basin, not its flow parent''s' AS test,
   count(*) > 0 AND bool_and(
-    abs(r.local_area_ha - (r.upstream_area_ha - coalesce(k.area, 0))) <= 0.01
-    AND p.local_area_ha <= p.upstream_area_ha - t.upstream_area_ha + 0.01
+    abs(r.local_area_ha - (r.upstream_area_ha - coalesce(kr.area, 0))) <= 0.01
+    AND abs(p.local_area_ha - (p.upstream_area_ha - coalesce(kp.area, 0))) <= 0.01
   ) AS result
 FROM fwapg.pcic_diversions dv
 INNER JOIN fwapg.pcic_fwa_crosswalk x ON x.subid = dv.subid
 INNER JOIN fwapg.pcic_subbasins t ON t.subid = dv.subid
 INNER JOIN fwapg.pcic_subbasins r ON r.subid = x.fwa_parent_subid
 INNER JOIN fwapg.pcic_subbasins p ON p.subid = dv.position_parent_subid
-LEFT JOIN kids k ON k.parent = r.subid;
+LEFT JOIN kids kr ON kr.parent = r.subid
+LEFT JOIN kids kp ON kp.parent = p.subid;
 
 -- and in the weights (pcic_crosswalk07_segments.sql): the Nechako canyon just below
 -- Kenney Dam takes the reservoir's area off its share and not its flow, and the

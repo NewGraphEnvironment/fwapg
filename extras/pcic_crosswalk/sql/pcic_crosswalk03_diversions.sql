@@ -90,6 +90,17 @@ BEGIN
   IF bad IS NOT NULL THEN
     RAISE EXCEPTION 'diversions % have no usable exit: the waterbody is not on the blue line, or its lowest segment is unusable', bad;
   END IF;
+
+  -- a line joining at the exit vertex would be parented below the diversion
+  -- (pcic_crosswalk06_subbasins.sql, step > 0), and a diversion is never moved off
+  -- its exit, so qa.sql's confluence test could not be cleared
+  SELECT string_agg(DISTINCT dv.subid::text, ', ') INTO bad
+  FROM fwapg.pcic_diversions dv
+  INNER JOIN fwapg.blk_paths bp ON bp.path_blks[1] = dv.blue_line_key
+  WHERE abs(bp.path_measures[1] - dv.downstream_route_measure) < 0.001;
+  IF bad IS NOT NULL THEN
+    RAISE EXCEPTION 'diversions %: another blue line joins at their exit vertex', bad;
+  END IF;
 END $$;
 
 SELECT subid, blue_line_key, waterbody_key, linear_feature_id, downstream_route_measure, watershed_group_code,

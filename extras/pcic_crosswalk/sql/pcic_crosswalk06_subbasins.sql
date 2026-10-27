@@ -188,10 +188,13 @@ BEGIN
   INNER JOIN fwapg.pcic_fwa_crosswalk x ON x.subid = dv.subid
   WHERE dv.position_parent_subid IS NULL OR dv.position_parent_subid = x.anchor_subid;
   IF bad IS NOT NULL THEN
-    RAISE EXCEPTION 'diversions % have no placed outlet below their exit, or reach their PCIC ancestor on the FWA too: nothing to divert', bad;
+    RAISE EXCEPTION 'diversions % have no placed outlet below their exit, or their exit reaches their PCIC ancestor on the FWA as well: a diversion needs a placed outlet on each route (one listed only for placement would be added twice in pcic_crosswalk07_segments.sql)', bad;
   END IF;
   -- the diverted flow enters at the receiving outlet's own segment
-  -- (pcic_crosswalk07_segments.sql), which it owns only as the highest placed outlet on it
+  -- (pcic_crosswalk07_segments.sql), which it owns only as the highest placed outlet on it.
+  -- Stricter than flow needs (below a stacked outlet the flow would still reach the
+  -- segments under it through the receiving outlet), but qa.sql's one-segment test
+  -- relies on it
   SELECT string_agg(dv.subid::text, ', ') INTO bad
   FROM fwapg.pcic_diversions dv
   INNER JOIN fwapg.pcic_fwa_crosswalk x ON x.subid = dv.subid

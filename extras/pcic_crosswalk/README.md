@@ -111,8 +111,9 @@ another job sharing the database server): about 1 h for the monthly run, 2 h 8 m
    Where PCIC's water leaves a lake by another route than the FWA's, no outlet above the lake's outlet can
    hold the chain. Such an outlet is listed by hand in `sql/pcic_crosswalk03_diversions.sql`, and placed at
    the FWA's exit from the lake (its lowest segment on the line that drains it) whatever its anchor, and
-   never demoted. The outlets above then place against the FWA as usual. One is listed: the Nechako
-   Reservoir (below).
+   never demoted. The outlets above then place against the FWA as usual. A listing needs a placed outlet
+   on each route below the lake, and no other line joining at the exit vertex; the job refuses one that
+   has not. One is listed: the Nechako Reservoir (below).
 5. **Flow at outlets.** Per calendar day. PCIC's network and the FWA do not always join streams at the same place, so
    PCIC's outflows are not used as they stand. Each PCIC outlet's local runoff (its outflow minus its PCIC
    children's) is given to the sub-basin of the outlet, or of its nearest placed PCIC ancestor if it is
