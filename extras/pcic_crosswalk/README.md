@@ -333,6 +333,74 @@ WHERE w.watershed_group_code = 'BULK';
 
 (Feb 29 is put on Feb 28, so a window that includes Feb 28 includes it too.)
 
+### Per-year days
+
+A `DAYS=1` run keeps every day of every year of the model's series, per placed sub-basin, as one parquet
+file a year: `pcic.subbasin_days.<model>_<scenario>.<year>.parquet` (e.g.
+`pcic.subbasin_days.PNWNAmet_historical.1983.parquet`), with columns `subid` (int32), `date` (date32),
+`q_local` and `q_acc` (float32, m³/s, as in `pcic.subbasin_daily`), sorted by `subid` and `date`, zstd,
+in row groups of 1,000 sub-basins so that a reader filtering on `subid` reads only the groups it needs.
+The file's metadata names the crosswalk it was routed on (`fwapg.crosswalk_md5`) and the fwapg commit
+that built it (`fwapg.commit`). For PNWNAmet that is 63 files, 1950-2012 (1950 is the model's start-up
+year: kept so the series is whole, best left out), of about 146 MB each (37,667 sub-basins × 365 or 366
+days, about 10.6 bytes a row). The files are published beside the other outputs and never loaded into
+Postgres.
+
+`pcic.series` lists each file with its fingerprint: `rows`, `subbasins`, `bytes` (the file's size, so a
+truncated download is caught before it is parsed) and two sums, each `sum(floor(double(v) * 1000 + 0.5))`
+as a 64-bit integer over the file's float32 values `v`. `double(v) * 1000` is exact for a float32, so
+every reader reproduces the sums bit for bit: in Postgres `q::real::double precision`, in duckdb
+`CAST(q AS DOUBLE)`, in R `as.double(q)`.
+
+A segment's flow on any day, window or year is the weights applied to the days, as for the climatology
+(step 6), clamped at zero after averaging. With duckdb (1.1 or later) over HTTP, the mean flow of each
+segment of one watershed group over Jul 15 - Sep 7 of each year, 1951-2012:
+
+```sql duckdb
+INSTALL httpfs; LOAD httpfs;
+SET VARIABLE base = 'https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/';
+SET VARIABLE files = (
+  SELECT list(getvariable('base') || 'pcic.subbasin_days.PNWNAmet_historical.' || y || '.parquet')
+  FROM range(1951, 2013) t(y)
+);
+CREATE OR REPLACE TEMP TABLE weights AS
+SELECT linear_feature_id, subid, share,
+  list_transform(list_filter(string_split(trim(upstream_subids, '{}'), ','), x -> x != ''), x -> x::INTEGER) AS upstream_subids
+FROM read_csv(getvariable('base') || 'pcic.segment_weights.csv.gz', header = true,
+  columns = {'linear_feature_id': 'BIGINT', 'watershed_group_code': 'VARCHAR', 'subid': 'INTEGER', 'share': 'DOUBLE', 'upstream_subids': 'VARCHAR'})
+WHERE watershed_group_code = 'BULK';
+WITH needed AS (
+  SELECT subid FROM weights UNION SELECT unnest(upstream_subids) FROM weights
+),
+days AS (
+  SELECT subid, year(date) AS year, avg(q_local) AS q_local, avg(q_acc) AS q_acc
+  FROM read_parquet(getvariable('files'))
+  WHERE subid IN (SELECT subid FROM needed)
+  AND strftime(date, '%m-%d') BETWEEN '07-15' AND '09-07'
+  GROUP BY subid, year
+),
+up AS (
+  SELECT u.linear_feature_id, d.year, sum(d.q_acc) AS q_acc
+  FROM (SELECT linear_feature_id, unnest(upstream_subids) AS subid FROM weights) u
+  INNER JOIN days d ON d.subid = u.subid
+  GROUP BY u.linear_feature_id, d.year
+)
+SELECT w.linear_feature_id, s.year,
+  greatest(coalesce(up.q_acc, 0) + s.q_local * w.share, 0) AS q_m3s
+FROM weights w
+INNER JOIN days s ON s.subid = w.subid
+LEFT JOIN up ON up.linear_feature_id = w.linear_feature_id AND up.year = s.year
+ORDER BY w.linear_feature_id, s.year;
+```
+
+For one year, list one file; for one segment, filter `weights` by `linear_feature_id`. From R, run the
+same statements through `DBI::dbExecute()` (all but the last) and `DBI::dbGetQuery()` (the last) on
+`DBI::dbConnect(duckdb::duckdb())`. Each day counts once, Feb 29 included in a leap year. On the 1951-2012
+climatology this query and the Postgres window query above agree within float32 rounding (1.1e-8
+relative on all 30,037 BULK segments). Averaging the files over a run's years reproduces
+`pcic.subbasin_daily` to within float32 rounding, which `sql/qa_days.sql` checks on every build, and so
+`pcic.discharge_monthly` to about 1e-7 relative, not at 5 decimals row for row.
+
 Files are published to `https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/` as
 `pcic.<table>.csv.gz` for the shared tables and `pcic.<table>.<run>.csv.gz` for a run's rows. After a
 rerun, upload them again (`../README.md`). `load.sh` loads the shared tables (`../../load/pcic.sql`) and,
