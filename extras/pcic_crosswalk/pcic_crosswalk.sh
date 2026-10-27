@@ -189,6 +189,9 @@ fetch_batch() {
   fi
   [ -e "$out" ] && [ "$DAYS" = 0 ] && return 0
   n=$(wc -l < "$ids")
+  # one line per request, since xargs' children are not traced: a run from kept
+  # files prints none
+  echo "fetching $b from hydromosaic" >&2
   for try in 1 2 3; do
     code=$(jq -R -s -c --arg model "$MODEL" --arg scenario "$SCENARIO" \
         '{subids: (split("\n") | map(select(length > 0))), model: $model, scenario: $scenario, variable: "streamflow", format: "netcdf"}' "$ids" \

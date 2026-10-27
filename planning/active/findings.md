@@ -136,3 +136,13 @@ Measured 2026-10-27 in a scratch database holding the staging tables (`pcic_fwa_
 | `pcic_days.py rows` printed `np.float64(0.229…)` | numpy 2's repr; format `tolist()` values |
 | `means` would have held every year in memory (~20 GB) | Accumulate per calendar-day bin file by file |
 | `declare -F name` prints the bare name | Test compares the bare names |
+
+### Phase 1 measured: the fetch
+
+`DAYS=1 FETCH_ONLY=1` for PNWNAmet historical, relaunched 00:15:22 UTC, done 00:40:45 UTC: **25 min 23 s**, including the network step (PCIC pages from cache, `ogr2ogr`, 00_outlets). 244 leaf batches: **216 NetCDF files kept, 7,586,628,940 bytes (7.1 GiB; `du` 7.6 GiB)**, every one holding exactly its batch's outlets (48,688 in all), and 28 outlets with no series in `missing.txt` (as in #25). The fetch log cannot count POSTs (`xargs`' children are not traced), so `fetch_batch` now prints one `fetching <batch> from hydromosaic` line per request for Phase 5's count.
+
+A probe of the kept files first reported 0 leaves: the interactive shell's profile defines `grep` as a function and colours `ls`. The job runs in a clean bash and saw 244; the probe was rerun with `command ls`/`command grep`.
+
+### Phase 2 measured: `pcic_days.py rows` on the real files
+
+`rows 1952` over the 216 files: 17,819,808 rows (48,688 outlets × 366 days) in **17 s**; piped into COPY with the primary key added, **75 s**. With the stand-in's other steps a year is about 75 + 152 + 8 + 15 ≈ 250 s, under the plan's 5-min gate, so the loop is committed as is.
