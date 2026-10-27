@@ -125,3 +125,10 @@ so flows compare in kind, not to the third decimal (the 1951-2012 rebuild compar
   `t` on 06's areas (position parent 1002307 local 3,117.1 ha, flow parent 1008709 local 84.2 ha); `f` with the
   diversion's area off its flow parent, off neither, and off both.
 - `pcic_test.sh`: all pcic tests pass (162 ok).
+- Outside the reservoir, against the published files (old crosswalk b1a71083; `logs/compare_published.sh`,
+  `logs/20261027_compare_published_1981-2010.out`): crosswalk rows differ for the 484 outlets of 1007550's PCIC
+  subtree and no other; sub-basin days (1981-2010) differ beyond 1e-9 m³/s for 480 subtree sub-basins and no other.
+  Weights: outside the five groups one segment changed, 832491663 in CHIL, the top of an unnamed line (356252763)
+  that drains into the reservoir across the group boundary, now in newly placed 1000213's sub-basin (was 1002307's);
+  1,204 more differ only in the order of `upstream_subids` (07's `array_agg` has no ORDER BY, so the order is the
+  plan's; the sum is not affected). In the five groups: 60,520 segments changed sub-basin, 4,768 their upstream set.
