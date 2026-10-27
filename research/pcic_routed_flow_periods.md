@@ -2,6 +2,8 @@
 
 **Verified:** 2026-10-17 · **Issues:** NewGraphEnvironment/fwapg#6 (the first, monthly build), #9 (its publication), #25 (runs, daily climatology, weights, weekly flow), #23 (the `pcic` schema); cited by #28 (whether to route on the FWA instead) · **Produced by:** `extras/pcic_crosswalk/pcic_crosswalk.sh` run for PNWNAmet historical 1981-2010 with `WEEKLY=1` and for 1951-2012; `sql/qa_report_clamped.sql`; the probes and builds recorded in `planning/archive/2026-10-issue-25-pcic-crosswalk-run-parameters/`
 
+For flow in one year rather than over a climatology, see [pcic_routed_flow_years.md](pcic_routed_flow_years.md) (NewGraphEnvironment/fwapg#42).
+
 ## One daily climatology gives every period
 
 PCIC's hydromosaic serves daily streamflow per outlet. The job keeps a daily climatology instead of

@@ -1,0 +1,16 @@
+[1] 0
+  year     rows subbasins q_local_sum    q_acc_sum     bytes
+1 1983 13748455     37667  7607608735 558608867548 146385818
+                     crosswalk_md5                                   commit
+1 b1a710836df2cafea0ef514b7ed1c338 ea9b199ea7e8ebc9b61e0f031ec81c7801044acc
+      rows subbasins q_local_sum    q_acc_sum      first       last
+1 13748455     37667  7607608735 558608867548 1983-01-01 1983-12-31
+                  key                                    value
+1 fwapg.crosswalk_md5         b1a710836df2cafea0ef514b7ed1c338
+2        fwapg.commit ea9b199ea7e8ebc9b61e0f031ec81c7801044acc
+content-length 146385818 
+         rows     subbasins         bytes   q_local_sum     q_acc_sum 
+         TRUE          TRUE          TRUE          TRUE          TRUE 
+crosswalk_md5        commit 
+         TRUE          TRUE 
+duckdb 1.4.3, R 4.5.2, curl 8.0.0, elapsed 28.6 s

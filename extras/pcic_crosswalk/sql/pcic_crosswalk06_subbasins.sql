@@ -1,6 +1,7 @@
 -- Per placed PCIC outlet (a sub-basin on the FWA): its FWA parent, its local FWA
--- area and, per calendar day of the run's climatology, the flow generated inside
--- it and the flow accumulated at it.
+-- area, its depth in the FWA tree of placed outlets and, per calendar day of the
+-- run's climatology, the flow generated inside it and the flow accumulated at it
+-- (the last two by pcic_crosswalk06_daily.sql, which the per-year days run too).
 --
 -- PCIC's network and the FWA do not always join streams at the same place: a
 -- tributary can enter the mainstem below a PCIC outlet in PCIC's network and
@@ -187,43 +188,10 @@ GROUP BY s.subid, s.linear_feature_id, s.upstream_area_ha;
 
 ALTER TABLE fwapg.pcic_subbasins ADD PRIMARY KEY (subid);
 
--- flow generated inside each placed outlet's sub-basin, per calendar day. Every
--- step below is linear in the flows, so a period's mean of q_local or q_acc
--- (pcic_crosswalk08_periods.sql) equals the same steps run on the period's mean
--- outlet flows.
-DROP TABLE IF EXISTS fwapg.pcic_subbasins_daily;
-
-CREATE TABLE fwapg.pcic_subbasins_daily AS
-WITH runoff AS (
-  SELECT
-    o.subid,
-    q.month,
-    q.day,
-    q.q_m3s - coalesce(sum(qc.q_m3s), 0) AS q_runoff
-  FROM fwapg.pcic_outlets o
-  INNER JOIN fwapg.pcic_outlet_daily q ON o.subid = q.subid
-  LEFT JOIN fwapg.pcic_outlets c ON c.dowsubid = o.subid
-  LEFT JOIN fwapg.pcic_outlet_daily qc ON qc.subid = c.subid AND qc.month = q.month AND qc.day = q.day
-  GROUP BY o.subid, q.month, q.day, q.q_m3s
-)
-SELECT
-  sb.subid,
-  r.month,
-  r.day,
-  sum(r.q_runoff) AS q_local,
-  sum(r.q_runoff) AS q_acc
-FROM runoff r
-INNER JOIN fwapg.pcic_fwa_crosswalk x ON r.subid = x.subid
-INNER JOIN fwapg.pcic_subbasins sb
-  ON sb.subid = CASE WHEN x.flag IS NULL THEN x.subid ELSE x.anchor_subid END
-GROUP BY sb.subid, r.month, r.day;
-
-ALTER TABLE fwapg.pcic_subbasins_daily ADD PRIMARY KEY (subid, month, day);
-
--- flow accumulated at each placed outlet: its own local flow plus the
--- accumulated flow of the outlets directly above it, resolved from the top of the
--- FWA tree down. Every placed outlet must be reachable from a root, or the parent
--- relation has a cycle and accumulation would never finish.
+-- each placed outlet's depth in the FWA tree of placed outlets, from its roots
+-- (pcic_crosswalk06_daily.sql accumulates flow down it). Every placed outlet must
+-- be reachable from a root, or the parent relation has a cycle and accumulation
+-- would never finish.
 ALTER TABLE fwapg.pcic_subbasins ADD COLUMN fwa_depth integer;
 
 WITH RECURSIVE tree AS (
@@ -242,39 +210,19 @@ SET fwa_depth = t.fwa_depth
 FROM tree t
 WHERE sb.subid = t.subid;
 
-ANALYZE fwapg.pcic_subbasins;
-ANALYZE fwapg.pcic_subbasins_daily;
-
--- q_acc starts as q_local. The outlets directly above an outlet at FWA depth d
--- are all at depth d + 1, so going up from the deepest level, each level adds its
--- children's finished totals.
 DO $$
 DECLARE
-  d integer;
-  maxdepth integer;
   unreached integer;
 BEGIN
   SELECT count(*) INTO unreached FROM fwapg.pcic_subbasins WHERE fwa_depth IS NULL;
   IF unreached > 0 THEN
     RAISE EXCEPTION '% placed outlets are not reachable from a root of the FWA parent tree (a cycle)', unreached;
   END IF;
-
-  SELECT max(fwa_depth) INTO maxdepth FROM fwapg.pcic_subbasins;
-  FOR d IN REVERSE maxdepth - 1..0 LOOP
-    UPDATE fwapg.pcic_subbasins_daily m
-    SET q_acc = m.q_acc + c.q_acc
-    FROM (
-      SELECT x.fwa_parent_subid AS subid, cm.month, cm.day, sum(cm.q_acc) AS q_acc
-      FROM fwapg.pcic_subbasins sb
-      INNER JOIN fwapg.pcic_fwa_crosswalk x ON x.subid = sb.subid
-      INNER JOIN fwapg.pcic_subbasins_daily cm ON cm.subid = sb.subid
-      WHERE sb.fwa_depth = d + 1
-      GROUP BY x.fwa_parent_subid, cm.month, cm.day
-    ) c
-    WHERE m.subid = c.subid
-    AND m.month = c.month
-    AND m.day = c.day;
-  END LOOP;
 END $$;
 
-ANALYZE fwapg.pcic_subbasins_daily;
+ANALYZE fwapg.pcic_subbasins;
+
+-- flow per calendar day of the run's climatology
+\set src pcic_outlet_daily
+\set dst pcic_subbasins_daily
+\ir pcic_crosswalk06_daily.sql

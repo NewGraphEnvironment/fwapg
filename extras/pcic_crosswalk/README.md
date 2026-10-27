@@ -7,7 +7,9 @@ PCIC's own river network (`subid` / `dowsubid`), which shares no key with the FW
 
 This job crosswalks PCIC's outlets onto FWA streams and derives a flow climatology (per calendar day,
 month and, optionally, week) for every FWA stream segment below or within PCIC's network, for one PCIC run
-at a time: a model, a scenario and the years averaged. Unlike `extras/discharge` (annual, three basins, unrouted
+at a time: a model, a scenario and the years averaged. With `DAYS=1` it also keeps every day of every
+year of the model's series, per sub-basin, as one parquet file a year, so that flow on any segment can be
+read for one year, or each year of a window. Unlike `extras/discharge` (annual, three basins, unrouted
 gridded runoff accumulated on the FWA), flow here is PCIC's routed flow at placed outlets wherever PCIC's
 network and the FWA agree, with only the flow generated between outlets distributed by FWA drainage area.
 
@@ -17,6 +19,8 @@ network and the FWA agree, with only the flow generated between outlets distribu
 - `curl`, `jq`
 - `ogr2ogr` (GDAL)
 - `cdo` and `ncdump` (netCDF)
+- `uv`, for `DAYS=1` and `pcic_test.sh` (`pcic_days.py` declares its Python dependencies inline:
+  netCDF4, numpy, pyarrow)
 - an fwapg database with `fwa_streams_watersheds_lut` and `fwa_watersheds_upstream_area` loaded
 
 
@@ -25,6 +29,8 @@ network and the FWA agree, with only the flow generated between outlets distribu
     ./pcic_crosswalk.sh                                   # PNWNAmet, historical, 1951-2012, monthly
     YEARS=1981/2010 WEEKLY=1 ./pcic_crosswalk.sh          # 1981-2010, monthly and weekly
     MODEL=CNRM-ESM2-1 SCENARIO="historical, ssp245" YEARS=2041/2070 ./pcic_crosswalk.sh
+    DAYS=1 ./pcic_crosswalk.sh                            # also the per-year days, 1950-2012
+    FETCH_ONLY=1 ./pcic_crosswalk.sh                      # fetch and keep the series only
 
 The run is set by the environment:
 
@@ -34,6 +40,8 @@ The run is set by the environment:
 | `SCENARIO` | `historical` | `historical` for PNWNAmet; `historical, ssp245` or `historical, ssp585` for a GCM |
 | `YEARS`    | `1951/2012`  | the years averaged, first/last. Day 1 of a run is a model start-up artefact, so avoid 1950 |
 | `WEEKLY`   | `0`          | `1` also builds weekly flow. Monthly flow is always built, and is what the QA tests |
+| `DAYS`     | `0`          | `1` also writes the per-year sub-basin days of every year of the model's series, and their catalogue `pcic.series` (step 8). Needs a committed tree: the catalogue names the commit |
+| `FETCH_ONLY` | `0`        | `1` stops once every batch's series is fetched and kept, building nothing |
 
 The job checks that hydromosaic lists the model and scenario before fetching. Runs share the `fwapg.pcic_*`
 staging tables and `fwapg.blk_paths`: run them one at a time.
@@ -41,7 +49,9 @@ staging tables and `fwapg.blk_paths`: run them one at a time.
 A monthly run took 1 h 15 min (2026-10-17, local Docker PostgreSQL 17.5 on a 128 GB machine): 4 min paging the network,
 19 min fetching the series, 32 min from the blue line paths to monthly flow, and 21 min for QA, the swap into `pcic` and the
 `.csv.gz` files. `WEEKLY=1` took 2 h 53 min, most of the difference being the swap of 175.6M weekly rows (79 min) and the
-fetch (27 min, network-bound). The job:
+fetch (27 min, network-bound). `DAYS=1` took 3 h 15 min (2026-10-27, same machine, from the kept NetCDF, with
+another job sharing the database server): about 1 h for the monthly run, 2 h 8 min for the 63 years four at once
+(a year's steps took 4.9 to 10.6 min, median 7.6), and 7 min for their QA and catalogue. The job:
 
 1. **Network.** Pages PCIC's `rivers` and `lakes` collections from `bbox-server` (BC Albers) into
    `data/`, and loads them. Each river segment's outlet is the end that touches its downstream feature
@@ -51,10 +61,14 @@ fetch (27 min, network-bound). The job:
    endpoint (NetCDF, 500 outlets per request, one domain per request; batches are halved on a
    mixed-domain 422, or on repeated failure while above 50 outlets). Each batch is reduced to the mean
    flow of each calendar day over `YEARS` with `cdo ydaymean`, which bins by month and day (Feb 29 is a
-   bin of its own), and the NetCDF is deleted. The climatology is cached per run in `data/daily/<run>/`
-   (`<run>` is e.g. `pnwnamet_historical_1981-2010`) and the batch lists in `data/series/<run>/`, so a
-   run resumes where it stopped. A series with a missing day in `YEARS` stops the job, as do more than
-   100 outlets with no series (28 for PNWNAmet, listed in `data/series/<run>/missing.txt`). Months and
+   bin of its own). Each batch's NetCDF (every day of the model's series, about 180 KB per outlet) is
+   kept in `data/nc/<model>_<scenario>/` (e.g. `data/nc/PNWNAmet_historical/`), so another period, or
+   the per-year days (`DAYS=1`), derive from it without fetching again. The climatology is cached per
+   run in `data/daily/<run>/` (`<run>` is e.g. `pnwnamet_historical_1981-2010`), and the batch lists,
+   with their split and missing-outlet markers, in `data/series/<model>_<scenario>/`, so a run resumes
+   where it stopped. A series with a missing day in `YEARS` stops the job, as do more than 100 outlets
+   with no series (28 for PNWNAmet, listed in `data/series/<model>_<scenario>/missing.txt`).
+   `FETCH_ONLY=1` stops the job once every batch is fetched. Months and
    weeks are averages of the calendar days, each day weighted by how often it occurs in `YEARS`
    (`sql/pcic_crosswalk01_days.sql`), which reproduces `cdo ymonmean` to float precision.
 3. **Snapping.** Up to 5 FWA candidates per outlet within 150 m, one per blue line: `FWA_IndexPoint`'s
@@ -121,23 +135,47 @@ fetch (27 min, network-bound). The job:
    stops, keeping the staging tables, if any fails; then prints `sql/qa_report.sql` and the clamped rows
    per period (`sql/qa_report_clamped.sql`), swaps the run into the `pcic` schema in one transaction
    (`sql/pcic_export.sql`, below), writes each table to `.csv.gz`, and drops the `fwapg.pcic_*` staging
-   tables. Kept for review: the QA tables `fwapg.pcic_qa_drainage` and `fwapg.pcic_qa_following`
+   tables (after step 8). Kept for review: the QA tables `fwapg.pcic_qa_drainage` and `fwapg.pcic_qa_following`
    (the drainage and line-following checks below), `fwapg.pcic_qa_flow` (mean annual flow at each placed
    outlet, PCIC's and accumulated on the FWA) and `fwapg.pcic_qa_gauges` (`qa_gauges.sh`), and the
    staging tables `fwapg.pcic_qa_outlets` and `fwapg.pcic_qa_candidates` (outlet and probe points, every
    FWA candidate), which `review_build.sh` reads. `fwapg.pcic_qa_build` holds the md5 of the crosswalk
    they were built with, and the run their flows are from; the job drops it and `pcic_qa_gauges` when it
    starts. Build the reference run (the defaults) last before a review: the review's strata use flow.
+8. **Per-year days** (`DAYS=1`). For each year of the model's series (1950-2012 for PNWNAmet; 1950 is
+   the model's start-up year, kept so the series is whole, and best left out of an analysis),
+   `days_build.sh` reads the year from the kept NetCDF (`pcic_days.py rows`), runs it through the
+   climatology's own steps (`sql/pcic_crosswalk06_daily.sql`: local runoff, then accumulation down the FWA
+   tree) and writes `data/days/<model>_<scenario>/pcic.subbasin_days.<model>_<scenario>.<year>.parquet`
+   (`pcic_days.py parquet`), with the md5 of the crosswalk and the fwapg commit in the file's metadata.
+   Four years are built at once, each in tables of its own. A year's file is kept, so a rerun resumes,
+   only while it was routed on this crosswalk by the same per-year code and is newer than every NetCDF;
+   otherwise it is rebuilt. The job runs a copy of its SQL and scripts taken at the start, so an edit
+   during a run does not reach it. `sql/qa_days.sql` then reads the files back and checks that
+   their mean over `YEARS` is the run's climatology, `fwapg.pcic_subbasins_daily`, within float32
+   rounding (`2^-23` of the bin's mean magnitude, plus 1e-9 m³/s), and, when every year was built in the
+   run, that the years' float64 monthly means average to the run's monthly sub-basin flow at 1e-9; a
+   failure stops the job before the catalogue is written. `sql/qa_report_days.sql` prints the closeness
+   and, per year, the mid-network segment-months clamped at zero. The catalogue, `pcic.series`, lists each
+   file with its fingerprint (`sql/pcic_export_days.sql`), refusing a year with no file, a file of another
+   year, and a crosswalk unlike the runs'.
 
 `./pcic_test.sh` tests the steps from the sub-basin daily flow and the weights on, on a fixture of four
-sub-basins and seven segments, in under 30 seconds and with no download: the day bins and weeks, monthly
+sub-basins and seven segments, in about 35 seconds and with no download: the day bins and weeks, monthly
 and weekly flow against the mean of every day's routed flow, the window query below, what the export
-writes, and the refusals in the export and the loads. The steps before it (placement, accumulation and
-the weights) are not tested here; `sql/qa.sql` checks them on a build. It needs a PostgreSQL 15+ server
-in `PGSERVER`, a URL with no database (e.g. `postgresql://postgres:postgres@localhost:5432`), and creates
-and drops the scratch databases `pcic_test` and `pcic_test_load` on it. Run it after changing
-`sql/pcic_crosswalk01_days.sql`, `08`, `09` or `sql/pcic_export.sql`, `../../load/pcic_schema.sql`,
-`pcic.sql` or `pcic_run.sql`, or the window query.
+writes, and the refusals in the export and the loads. On a second fixture (five outlets in two synthetic
+NetCDF files in hydromosaic's layout, 2001-2003) it tests the per-year days: the job's own NetCDF
+reduction against `pcic_days.py rows`, accumulation (`06_daily`) against flows computed by hand on a PCIC
+and an FWA tree that disagree, each year's file against its flows by hand at float32, the catalogue line,
+`sql/qa_days.sql` passing and failing, `sql/qa_report_days.sql`'s clamp count against
+`pcic_crosswalk09_discharge.sql`'s formula, and the refusals of `pcic_days.py` and
+`sql/pcic_export_days.sql`. Placement and the weights are not tested here; `sql/qa.sql` checks them on a
+build. It needs `uv`, `cdo`, `ncdump` and a PostgreSQL 15+ server in `PGSERVER`, a URL with no database
+(e.g. `postgresql://postgres:postgres@localhost:5432`), and creates and drops the scratch databases
+`pcic_test`, `pcic_test_load` and `pcic_test_days` on it. Run it after changing
+`sql/pcic_crosswalk01_days.sql`, `06_daily`, `08`, `09`, `sql/pcic_export.sql`,
+`sql/pcic_export_days.sql`, `sql/qa_days.sql`, `sql/qa_report_days.sql`, `pcic_days.py`, `days_build.sh`,
+`../../load/pcic_schema.sql`, `pcic.sql` or `pcic_run.sql`, or the window query.
 
 To check against every Water Survey of Canada gauge in BC with discharge in the run's years (needs the
 run in `pcic.discharge_monthly` and the job's `data/` cache; writes `data/qa_gauges.csv`; the run is set
@@ -252,6 +290,9 @@ shares:
 - `pcic.day_bins`: `month`, `day`, `week` for each of the 366 calendar days.
 - `pcic.runs`: one row per run (`model`, `scenario`, `period`), with the md5 of the crosswalk it was built
   on and the rows, keys and flow sum of each of its tables, which the loads check.
+- `pcic.series`: one row per year of a model and scenario's per-year days (`DAYS=1`, below): `model`,
+  `scenario`, `year`, `crosswalk_md5`, `rows`, `subbasins`, `q_local_sum`, `q_acc_sum`, `bytes`, `commit`
+  (the fwapg commit that built the files) and `built_at`. Empty until a `DAYS=1` run.
 
 Per run, keyed by `model`, `scenario` and `period` (e.g. `PNWNAmet`, `historical`, `1981-2010`):
 
@@ -293,6 +334,83 @@ WHERE w.watershed_group_code = 'BULK';
 ```
 
 (Feb 29 is put on Feb 28, so a window that includes Feb 28 includes it too.)
+
+### Per-year days
+
+A `DAYS=1` run keeps every day of every year of the model's series, per placed sub-basin, as one parquet
+file a year: `pcic.subbasin_days.<model>_<scenario>.<year>.parquet` (e.g.
+`pcic.subbasin_days.PNWNAmet_historical.1983.parquet`), with columns `subid` (int32), `date` (date32),
+`q_local` and `q_acc` (float32, m³/s, as in `pcic.subbasin_daily`), sorted by `subid` and `date`, zstd,
+in row groups of 1,000 sub-basins so that a reader filtering on `subid` reads only the groups it needs.
+The file's metadata names the crosswalk it was routed on (`fwapg.crosswalk_md5`) and the fwapg commit
+that built it (`fwapg.commit`). For PNWNAmet that is 63 files, 1950-2012 (1950 is the model's start-up
+year: kept so the series is whole, best left out), of 144.7 to 146.6 MB each and 9.2 GB in all (37,667
+sub-basins × 365 or 366 days, about 10.6 bytes a row). The files are published beside the other outputs and
+never loaded into Postgres.
+
+`pcic.series` lists each file with its fingerprint: `rows`, `subbasins`, `bytes` (the file's size, so a
+truncated download is caught before it is parsed) and two sums, each `sum(floor(double(v) * 1000 + 0.5))`
+as a 64-bit integer over the file's float32 values `v`. `double(v) * 1000` is exact for a float32, so
+every reader reproduces the sums bit for bit: in Postgres `q::real::double precision`, in duckdb
+`CAST(q AS DOUBLE)`, in R `as.double(q)`.
+
+A segment's flow on any day, window or year is the weights applied to the days, as for the climatology
+(step 6), clamped at zero after averaging. With duckdb (1.1 or later) over HTTP, the mean flow of each
+segment of one watershed group over Jul 15 - Sep 7 of each year, 1951-2012:
+
+```sql duckdb
+INSTALL httpfs; LOAD httpfs;
+SET VARIABLE base = 'https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/';
+SET VARIABLE files = (
+  SELECT list(getvariable('base') || 'pcic.subbasin_days.PNWNAmet_historical.' || y || '.parquet')
+  FROM range(1951, 2013) t(y)
+);
+CREATE OR REPLACE TEMP TABLE weights AS
+SELECT linear_feature_id, subid, share,
+  list_transform(list_filter(string_split(trim(upstream_subids, '{}'), ','), x -> x != ''), x -> x::INTEGER) AS upstream_subids
+FROM read_csv(getvariable('base') || 'pcic.segment_weights.csv.gz', header = true,
+  columns = {'linear_feature_id': 'BIGINT', 'watershed_group_code': 'VARCHAR', 'subid': 'INTEGER', 'share': 'DOUBLE', 'upstream_subids': 'VARCHAR'})
+WHERE watershed_group_code = 'BULK';
+WITH needed AS (
+  SELECT subid FROM weights UNION SELECT unnest(upstream_subids) FROM weights
+),
+days AS (
+  SELECT subid, year(date) AS year, avg(q_local) AS q_local, avg(q_acc) AS q_acc
+  FROM read_parquet(getvariable('files'))
+  WHERE subid IN (SELECT subid FROM needed)
+  AND strftime(date, '%m-%d') BETWEEN '07-15' AND '09-07'
+  GROUP BY subid, year
+),
+up AS (
+  SELECT u.linear_feature_id, d.year, sum(d.q_acc) AS q_acc
+  FROM (SELECT linear_feature_id, unnest(upstream_subids) AS subid FROM weights) u
+  INNER JOIN days d ON d.subid = u.subid
+  GROUP BY u.linear_feature_id, d.year
+)
+SELECT w.linear_feature_id, s.year,
+  greatest(coalesce(up.q_acc, 0) + s.q_local * w.share, 0) AS q_m3s
+FROM weights w
+INNER JOIN days s ON s.subid = w.subid
+LEFT JOIN up ON up.linear_feature_id = w.linear_feature_id AND up.year = s.year
+ORDER BY w.linear_feature_id, s.year;
+```
+
+For one year, list one file; for one segment, filter `weights` by `linear_feature_id`. From R, run the
+same statements through `DBI::dbExecute()` (all but the last) and `DBI::dbGetQuery()` (the last) on
+`DBI::dbConnect(duckdb::duckdb())`. Each day counts once, Feb 29 included in a leap year. On the 1951-2012
+climatology this query and the Postgres window query above agree within float32 rounding (1.1e-8
+relative on all 30,037 BULK segments). Averaging the files over a run's years reproduces
+`pcic.subbasin_daily` to within float32 rounding, which `sql/qa_days.sql` checks on every build, and so
+`pcic.discharge_monthly` to about 1e-7 relative, not at 5 decimals row for row.
+
+The clamp comes last, so a mean over years of clamped per-year flows is not the clamped climatology: on a
+reach where some years' local flow is negative it is larger. To reproduce a climatology, average the days
+over the years and clamp once. Averaged that way over 1951-2012 and routed by month for BULK, the files
+give `pcic.discharge_monthly` at 5 decimals on 360,424 of 360,444 segment-months; the other 20 are a
+rounding flip in the 5th decimal. Single years clamp more often than the climatology: in mid-network
+segment-months (`sql/qa_report_days.sql`, printed by every `DAYS=1` build), 1,568 for the 1951-2012
+climatology, and from 1,174 (1968) to 2,011 (1974) for single years, median 1,616.5, nearly all of them
+April to June (the rising freshet), with some years adding a few hundred in July or September.
 
 Files are published to `https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/` as
 `pcic.<table>.csv.gz` for the shared tables and `pcic.<table>.<run>.csv.gz` for a run's rows. After a

@@ -1,0 +1,6 @@
+5 statements; 1862294 rows, 30037 segments, years 1951-2012, q_m3s NA 0, q_m3s == 0 8882, median 0.005946
+        linear_feature_id year      q_m3s
+1862233         868144543 1951 0.02234261
+1862234         868144543 1952 0.04888190
+1862235         868144543 1953 0.02961944
+duckdb 1.4.3, R 4.5.2, elapsed 201.2 s
