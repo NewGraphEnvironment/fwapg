@@ -97,3 +97,31 @@ fixes (`review-round4.md`): each holds for any listed diversion, refuses loudly,
 Round 4 added two rows: 06's cycle check reachable through a diversion placed above its own ancestor (loud, does not
 name the diversion), and the area test's inner joins (cannot drop a row today: every lut row has an area).
 Spend: five reviewer agents with the plan review, the per-task bound.
+
+## Rebuild 1 (2026-10-27, 1981-2010 with weekly flow, crosswalk 901d1271ff2a1fb1f2594be52042871e)
+
+From the worktree at 9fde5e0, 16:38:17Z to 20:51:15Z (4 h 13 min; the weekly export alone took 50 min). Every QA
+test `t` (38), exported (`logs/20261027_build_1981-2010.log`, URL and temp paths scrubbed). Measured with
+`logs/nechako_measure.sql -v period=1981-2010` (`logs/20261027_rebuild_1981-2010.out`); the baseline is 1951-2012,
+so flows compare in kind, not to the third decimal (the 1951-2012 rebuild compares exactly).
+
+- Placed: CHES 95/95, LEUT 72/72, LNRS 101/101, UEUT 199/203 (the 4 no_candidate), UNRS 111/111. No broken_chain
+  or demoted outlet left in the five groups (baseline: 0/72, 0/203, 1/111, 3/101).
+- Median specific runoff: LEUT 353.3 mm/yr, UEUT 357.9, UNRS 385.5, LNRS 139.6, CHES 125.3 (baseline 0.3, 0.3,
+  0.2, 0.3, 131.1). Segments under 5 mm/yr: 0.4%, 0.2%, 0.1%, 0.3%, 0.5% (baseline 100, 100, 100, 97.3, 1.0).
+- Key points, m³/s: Whitesail 7.114, Ootsa 60.926, Natalkuz 67.715, Knewstubb mid 152.819, Knewstubb exit 155.832
+  (all sub-basin 1007550), the canyon below Kenney Dam 0.000 (its segment shares the exit's fundamental watershed,
+  so its share is 0), Nechako above the Cheslatta 0.350 (1002307's local runoff), the spillway line top 155.832
+  (1008709), Cheslatta near its mouth 160.880, Nechako below the Cheslatta 161.231.
+- Gauges (`qa_gauges.sh`, YEARS=1981/2010; `logs/20261027_qa_gauges_1981-2010.csv`), FWA against PCIC:
+  08JA013 155.832 / 155.832, 08JA015 3.899 / 3.899, 08JA016 0.683 / 0.683, 08JA017 161.416 / 161.416, 08JA028
+  45.125 / 45.126. Before (the old build's 1981-2010, #25's logs): 08JA015 0.001, 08JA016 0.001, 08JA028 0.023.
+  Observed 08JA013 65.7 and 08JA017 69.4: PCIC is 2.4 and 2.3 times high there, no Kemano diversion in its model.
+- Province-wide gauge summary: 431 compared, within 10% of PCIC 85/104, 168/169, 119/122, 32/36 by area class.
+  08KH006 (Quesnel near Quesnel) reads FWA 0.276 against PCIC 221.4: the same 0.276 is in #25's logs, so it
+  predates this branch and is outside the Nechako tree.
+- Area test re-proved by mutation (`logs/mutation_area_test.sh`, `logs/20261027_mutation_area_test.out`), on a
+  scratch schema rebuilt from `pcic.fwa_crosswalk` and `fwapg.pcic_qa_diversions` with 06's own area statement:
+  `t` on 06's areas (position parent 1002307 local 3,117.1 ha, flow parent 1008709 local 84.2 ha); `f` with the
+  diversion's area off its flow parent, off neither, and off both.
+- `pcic_test.sh`: all pcic tests pass (162 ok).

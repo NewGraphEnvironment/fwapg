@@ -12,3 +12,6 @@
 - Plan review delivered (review-plan.md): no design blocker; export refusal on the first rebuild (fixed in the plan); refusals for a missing position parent, a doubled route and an unowned receiving segment added to 06; the diversions kept as fwapg.pcic_qa_diversions; two more QA tests (one segment per diversion, Eutsuk 1001917)
 - Dev build 1 failed at 03_diversions (findings, Errors); fixed and probed on its staging; dev build 2 relaunched
 - Dev build 2 passed every QA test (36 min 41 s); mutation checks M1-M5 each caught by the intended test
+- Deleted the old crosswalk's 1951-2012 rows from pcic.* before rebuild 1 (plan review 1)
+- Code check rounds 1-4 (findings: Code check); ended by enumeration
+- Rebuild 1 (1981-2010, weekly) passed QA and exported, 4 h 13 min; measured, gauges, area test re-proved by mutation, pcic_test.sh passes (findings: Rebuild 1)
