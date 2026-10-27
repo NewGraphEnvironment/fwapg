@@ -11,8 +11,8 @@
 -- Skins Lake spillway and the Cheslatta River (its ancestor 1008709, at the
 -- spillway gauge 08JA013); the FWA through Kenney Dam at the foot of Knewstubb
 -- Lake, into the Nechako canyon. The canyon has carried almost no water since the
--- dam closed in 1952. Unlisted, every outlet above 1007550 broke the chain (479),
--- and the reservoir's segments carried about 0 m3/s.
+-- dam closed in 1952. Unlisted, every outlet above 1007550 with a candidate broke
+-- the chain (479; 4 have none), and the reservoir's segments carried about 0 m3/s.
 
 DROP TABLE IF EXISTS fwapg.pcic_diversions;
 

@@ -62,7 +62,7 @@ FROM seg
 LEFT JOIN pcic.segment_weights w ON w.linear_feature_id = seg.linear_feature_id
 LEFT JOIN pcic.discharge_monthly d ON d.linear_feature_id = seg.linear_feature_id
   AND (d.model, d.scenario, d.period) = ('PNWNAmet', 'historical', :'period')
-GROUP BY 1, 2, 3, 4 ORDER BY min(seg.label) = seg.label, 1;
+GROUP BY 1, 2, 3, 4 ORDER BY 1;
 
 \echo == outlets of the diversion
 SELECT x.subid, x.flag, x.blue_line_key, round(x.downstream_route_measure::numeric, 1) AS measure, x.fwa_parent_subid, x.anchor_subid
