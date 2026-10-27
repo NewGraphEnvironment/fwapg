@@ -60,7 +60,7 @@ A committed list of diversions, `sql/pcic_crosswalk03_diversions.sql`, with one 
   - a Nechako Reservoir caveat: the spillway route, the dry canyon, no Kemano in PCIC (08JA013 and 08JA017 high)
   - the Cheslatta regulated-flow flag checked against the result
   - the drainage and review counts updated after the rebuild
-- [ ] `research/pcic_crosswalk_diversions.md`: the reservoir case, the measurements and the mechanism. Add a row to `research/README.md`.
+- [x] `research/pcic_crosswalk_diversions.md`: the reservoir case, the measurements and the mechanism. Add a row to `research/README.md`.
 
 ## Phase 5: Rebuild and measure
 

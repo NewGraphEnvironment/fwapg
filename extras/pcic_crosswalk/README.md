@@ -111,9 +111,11 @@ another job sharing the database server): about 1 h for the monthly run, 2 h 8 m
    Where PCIC's water leaves a lake by another route than the FWA's, no outlet above the lake's outlet can
    hold the chain. Such an outlet is listed by hand in `sql/pcic_crosswalk03_diversions.sql`, and placed at
    the FWA's exit from the lake (its lowest segment on the line that drains it) whatever its anchor, and
-   never demoted. The outlets above then place against the FWA as usual. A listing needs a placed outlet
-   on each route below the lake, and no other line joining at the exit vertex; the job refuses one that
-   has not. One is listed: the Nechako Reservoir (below).
+   never demoted. The outlets above then place against the FWA as usual. The job refuses a listing that
+   is not a PCIC lake outlet with a series, whose exit placement could not use or has another line joining
+   at its vertex, whose two routes reach the same placed outlet first (its exit must drain to one placed
+   outlet on the FWA, and its water reach another in PCIC's tree), or whose receiving outlet is not the
+   highest placed outlet on its segment. One is listed: the Nechako Reservoir (below).
 5. **Flow at outlets.** Per calendar day. PCIC's network and the FWA do not always join streams at the same place, so
    PCIC's outflows are not used as they stand. Each PCIC outlet's local runoff (its outflow minus its PCIC
    children's) is given to the sub-basin of the outlet, or of its nearest placed PCIC ancestor if it is
@@ -499,6 +501,21 @@ These are frozen: the job no longer writes them. They will be dropped once their
   above a junction carries flow of its own (a stub, a connector, a side channel), the segment above it
   carries none: 135 segments in the 2026-10 build, which until then carried the tributary's flow (one,
   a 144 m construction line in THOM, carried 734 m³/s).
+- The Nechako Reservoir (NewGraphEnvironment/fwapg#24). Since Kenney Dam closed in 1952 the reservoir
+  leaves through the Skins Lake spillway and the Cheslatta River, and through the Kemano tunnel to the
+  coast; the FWA routes it the natural way, out of Knewstubb Lake through the dam and the Nechako canyon.
+  PCIC has one lake outlet for the whole reservoir (1007550, on Ootsa Lake's shore at the spillway) and
+  sends it down the Cheslatta. The job follows PCIC: 1007550 is a listed diversion, placed at Knewstubb
+  Lake's exit 70.7 km away, and its flow joins at the spillway outlet 1008709. The reservoir's segments
+  carry its routed flow, about 156 m³/s at the exit; the canyon below the dam carries only its own runoff
+  (none on its first segment, which shares the exit's fundamental watershed; 0.35 m³/s above the
+  Cheslatta); the Cheslatta and the Nechako below it carry the reservoir. PCIC models no Kemano
+  diversion, so its flow is high below the reservoir, and the crosswalk matches PCIC: over 1951-2012,
+  156 m³/s against 96 observed at 08JA013 (Skins Lake spillway), 162 against 73 at 08JA017 (Nechako
+  below Cheslatta Falls). The drainage check flags the spillway outlets (1008709, 1001496: the reservoir
+  on 0.8 km² of FWA area) and the Cheslatta's mouth `big`, and the canyon outlet 1002307 `small`, by
+  design. Before the listing, 479 outlets above the reservoir were unplaced and its segments carried
+  about 0 m³/s.
 - Streams that leave BC before reaching their parent have no path, so their flow does not reach the
   parent in BC: the Okanagan, Kettle and Similkameen join the Columbia in the US, and their flow is not
   on the Columbia in BC (PCIC routes it through the US too).

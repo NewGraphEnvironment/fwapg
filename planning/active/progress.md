@@ -15,3 +15,4 @@
 - Deleted the old crosswalk's 1951-2012 rows from pcic.* before rebuild 1 (plan review 1)
 - Code check rounds 1-4 (findings: Code check); ended by enumeration
 - Rebuild 1 (1981-2010, weekly) passed QA and exported, 4 h 13 min; measured, gauges, area test re-proved by mutation, pcic_test.sh passes (findings: Rebuild 1)
+- Phase 4: README refusal sentence tightened to the code's refusals (round 4), Nechako caveat; research/pcic_crosswalk_diversions.md and its index row. Rebuild 2 (1951-2012, DAYS=1) started 21:01:34Z at 26d7582
