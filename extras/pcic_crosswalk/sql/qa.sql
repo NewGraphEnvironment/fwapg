@@ -301,3 +301,33 @@ SELECT 'Nechako Reservoir: exit carries 1007550''s PCIC flow, spillway 1008709 w
     AND (SELECT abs(acc.q - pcic.q) <= 0.05 * pcic.q FROM acc, pcic WHERE pcic.subid = 1008709)
     AND (SELECT seg.q < 1 FROM seg WHERE seg.label = 'canyon'),
     false) AS result;
+
+-- a diversion's area is taken off the sub-basin its exit drains to on the FWA (its
+-- position parent) and not off the one its flow goes to (pcic_crosswalk06_subbasins.sql)
+SELECT 'a diversion''s area comes off its position parent''s sub-basin, not its flow parent''s' AS test,
+  count(*) > 0 AND bool_and(
+    r.local_area_ha > r.upstream_area_ha - t.upstream_area_ha
+    AND p.local_area_ha <= p.upstream_area_ha - t.upstream_area_ha + 0.01
+  ) AS result
+FROM fwapg.pcic_diversions dv
+INNER JOIN fwapg.pcic_fwa_crosswalk x ON x.subid = dv.subid
+INNER JOIN fwapg.pcic_subbasins t ON t.subid = dv.subid
+INNER JOIN fwapg.pcic_subbasins r ON r.subid = x.fwa_parent_subid
+INNER JOIN fwapg.pcic_subbasins p ON p.subid = dv.position_parent_subid;
+
+-- and in the weights (pcic_crosswalk07_segments.sql): the Nechako canyon just below
+-- Kenney Dam takes the reservoir's area off its share and not its flow, and the
+-- spillway outlet's own segment takes the reservoir's flow
+SELECT 'Nechako Reservoir weights: canyon share under 0.1 without 1007550, spillway segment with it' AS test,
+  coalesce(
+    (SELECT w.share < 0.1 AND NOT 1007550 = ANY(w.upstream_subids)
+     FROM fwapg.pcic_segment_weights w
+     WHERE w.linear_feature_id = (
+       SELECT s.linear_feature_id FROM whse_basemapping.fwa_stream_networks_sp s
+       WHERE s.blue_line_key = 356362759 AND s.downstream_route_measure <= 288500
+       ORDER BY s.downstream_route_measure DESC LIMIT 1))
+    AND (SELECT 1007550 = ANY(w.upstream_subids)
+     FROM fwapg.pcic_segment_weights w
+     INNER JOIN fwapg.pcic_fwa_crosswalk x ON x.linear_feature_id = w.linear_feature_id
+     WHERE x.subid = 1008709),
+    false) AS result;
