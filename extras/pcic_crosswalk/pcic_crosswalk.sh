@@ -44,6 +44,12 @@ if [ "$DAYS" = 1 ] && [ "$FETCH_ONLY" = 0 ]; then
     || { echo "DAYS=1 records the commit that built the files: commit the changes under extras/pcic_crosswalk and load first" >&2; exit 1; }
   COMMIT=$(git rev-parse HEAD)
 fi
+# the code the per-year files are built with is read again for each year, so the
+# tree must still be at $COMMIT when they are catalogued
+same_commit() {
+  [ "$(git rev-parse HEAD)" = "$COMMIT" ] && git diff --quiet HEAD -- . ../../load \
+    || { echo "the tree moved from $COMMIT during the run: the files cannot be catalogued under it" >&2; exit 1; }
+}
 PERIOD=${YEARS/\//-}
 # the run's name in cache directories and export files, e.g. pnwnamet_historical_1981-2010
 RUN=$(printf '%s_%s_%s' "$MODEL" "$SCENARIO" "$PERIOD" | tr 'A-Z' 'a-z' | tr -cs 'a-z0-9.\n-' _)
@@ -187,7 +193,7 @@ fetch_batch() {
     [ -e "$out" ] || reduce_batch "$nc" "$out"
     return
   fi
-  [ -e "$out" ] && [ "$DAYS" = 0 ] && return 0
+  [ -e "$out" ] && [ "$DAYS" = 0 ] && [ "$FETCH_ONLY" = 0 ] && return 0
   n=$(wc -l < "$ids")
   # one line per request, since xargs' children are not traced: a run from kept
   # files prints none
@@ -224,7 +230,7 @@ fetch_batch() {
   fetch_batch "${ids%.txt}a.txt" && fetch_batch "${ids%.txt}b.txt"
 }
 export -f nc_outlets reduce_batch fetch_batch
-export PCIC MODEL SCENARIO YEARS NDAYS SERIES NC DAILY DAYS
+export PCIC MODEL SCENARIO YEARS NDAYS SERIES NC DAILY DAYS FETCH_ONLY
 
 # the batch lists that were not halved (the ones with a series, or a missing
 # outlet), from the batch lists given
@@ -253,8 +259,9 @@ $PSQL -tXA -F ' ' -c "SELECT root_subid / 1000000, subid FROM fwapg.pcic_outlets
 ls "$SERIES"/batch_*.txt | grep -E '_[0-9]{4}\.txt$' | xargs -P 3 -I {} bash -c 'fetch_batch "$1"' _ {}
 # the batch lists of this network, halved where hydromosaic needed it
 LEAVES=$(batch_leaves $(ls "$SERIES"/batch_*.txt | grep -E '_[0-9]{4}\.txt$'))
-# the per-year days are read from the kept files: every batch with a series has one
-if [ "$DAYS" = 1 ]; then
+# the per-year days are read from the kept files, and a fetch-only run is for
+# keeping them: every batch with a series has one
+if [ "$DAYS" = 1 ] || [ "$FETCH_ONLY" = 1 ]; then
   n=0
   for f in $LEAVES; do
     [ -e "${f%.txt}.missing" ] || [ -e "$NC/$(basename "$f" .txt).nc" ] || { echo "no NetCDF kept for $f" >&2; n=$((n + 1)); }
@@ -388,6 +395,10 @@ export_table pcic.runs "SELECT * FROM pcic.runs ORDER BY model, scenario, period
 export_table pcic.day_bins "SELECT * FROM pcic.day_bins ORDER BY month, day"
 export_table pcic.fwa_crosswalk "SELECT * FROM pcic.fwa_crosswalk ORDER BY subid"
 export_table pcic.segment_weights "SELECT * FROM pcic.segment_weights ORDER BY linear_feature_id"
+# the catalogue as the export left it (pcic_export.sql may have dropped this
+# model's rows built on an old crosswalk), so that it never sits beside runs on
+# another crosswalk; written again after step 6 when DAYS=1
+export_table pcic.series "SELECT * FROM pcic.series ORDER BY model, scenario, year"
 export_table "pcic.subbasin_daily.$RUN" "SELECT * FROM pcic.subbasin_daily WHERE $RUNSQL ORDER BY subid, month, day"
 export_table "pcic.discharge_monthly.$RUN" "SELECT * FROM pcic.discharge_monthly WHERE $RUNSQL ORDER BY linear_feature_id, month"
 [ "$WEEKLY" = 1 ] && export_table "pcic.discharge_weekly.$RUN" "SELECT * FROM pcic.discharge_weekly WHERE $RUNSQL ORDER BY linear_feature_id, week"
@@ -400,9 +411,9 @@ export_table "pcic.discharge_monthly.$RUN" "SELECT * FROM pcic.discharge_monthly
 # $DAYDIR (days_build.sh), routed to segments by whoever reads
 # it, through pcic.segment_weights (README). Every year is also kept as monthly
 # means in fwapg.pcic_subbasins_months for sql/qa_report_days.sql. A year whose
-# file is kept, routed on this crosswalk (its metadata says), is not rebuilt, so a
-# re-run resumes; its months are read back from the file. A kept file routed on
-# another crosswalk is rebuilt. DAYS_JOBS years are built at once, each in tables
+# file is kept, routed on this crosswalk by the same code (its metadata says), is
+# not rebuilt, so a re-run resumes; its months are read back from the file. A kept
+# file routed on another crosswalk, or built by other code, is rebuilt. DAYS_JOBS years are built at once, each in tables
 # of its own.
 DAYDIR=data/days/$MS
 if [ "$DAYS" = 1 ]; then
@@ -416,9 +427,16 @@ if [ "$DAYS" = 1 ]; then
   TODO=
   for y in $SERIES_YEARS; do
     f=$DAYDIR/pcic.subbasin_days.$MS.$y.parquet
-    if [ -e "$f" ] && [ "$(uv run -q --script pcic_days.py meta "$f" | cut -d, -f1)" != "$CROSSWALK_MD5" ]; then
-      echo "$f was routed on another crosswalk: rebuilding it"
-      rm "$f"
+    if [ -e "$f" ]; then
+      meta=$(uv run -q --script pcic_days.py meta "$f")
+      if [ "${meta%,*}" != "$CROSSWALK_MD5" ]; then
+        echo "$f was routed on another crosswalk: rebuilding it"
+        rm "$f"
+      elif ! git cat-file -e "${meta#*,}^{commit}" 2> /dev/null \
+        || ! git diff --quiet "${meta#*,}" "$COMMIT" -- days_build.sh pcic_days.py sql/pcic_crosswalk06_daily.sql; then
+        echo "$f was built by other code than $COMMIT: rebuilding it"
+        rm "$f"
+      fi
     fi
     if [ -e "$f" ]; then
       RAN_ALL=0
@@ -447,15 +465,14 @@ if [ "$DAYS" = 1 ]; then
   $PSQL -f sql/qa_report_days.sql
 
   # the catalogue: one row per file, every year of the series
+  same_commit
   $PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_series_files" \
     -c "CREATE TABLE fwapg.pcic_series_files (year integer, rows bigint, subbasins bigint, q_local_sum bigint, q_acc_sum bigint, bytes bigint, crosswalk_md5 text, commit text)"
   uv run -q --script pcic_days.py fingerprint "$DAYDIR"/pcic.subbasin_days."$MS".*.parquet \
     | $PSQL -c "\copy fwapg.pcic_series_files FROM STDIN WITH (FORMAT csv)"
   $PSQL -v model="$MODEL" -v scenario="$SCENARIO" -v years="$(echo $SERIES_YEARS | tr ' ' ,)" -f sql/pcic_export_days.sql
+  export_table pcic.series "SELECT * FROM pcic.series ORDER BY model, scenario, year"
 fi
-# every run writes the catalogue as the database holds it (empty until a DAYS=1
-# run), since the upload takes every pcic.*.csv.gz and load/pcic.sql reads it
-export_table pcic.series "SELECT * FROM pcic.series ORDER BY model, scenario, year"
 
 $PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_qa_outlets, fwapg.pcic_qa_candidates"
 $PSQL -c "ALTER TABLE fwapg.pcic_outlets RENAME TO pcic_qa_outlets"

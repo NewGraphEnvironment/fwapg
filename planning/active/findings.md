@@ -159,3 +159,12 @@ Four findings (`review-round1.md`), all reproduced on reading; three fixed, one 
 Mutation: removing the own-model exemption fails "with DAYS=1 the export goes ahead" and "deletes them"; removing the file-crosswalk refusal fails "a file routed on another crosswalk is refused". `pcic_test.sh` 154 → 162.
 
 Consequence for Phase 5: the build launched at 00:44 UTC (commit 8d08a0e) writes files without the metadata. It is kept running for its real-data measurements (#25 fingerprints, per-year timing, `qa_days.sql` on the real files), and a final `DAYS=1` run from the reviewed commit rebuilds every file before the publish.
+
+### Code-check round 2
+
+Four fragile findings (`review-round2.md`), two of them inside round 1's fixes:
+
+1. (inside fix 1) A `DAYS=1` export that dropped this model's stale catalogue rows left `pcic.series.csv.gz` on the old crosswalk beside the new `pcic.runs.csv.gz` until the days step finished; a failed days step would publish a pair `load/pcic.sql` refuses. The catalogue is now also written with the shared tables.
+2. `COMMIT` was taken once while the per-year code is re-read for every year; the tree is now re-checked (`same_commit`) before the catalogue. Untracked files are left out of the check on purpose: tracked code reads only tracked files, and the build worktree's `data` symlink is untracked.
+3. (inside fix 2) Resume kept a file built by older code at the same crosswalk; a kept file is now rebuilt when its commit is unknown or `days_build.sh`, `pcic_days.py` or `06_daily.sql` differ between its commit and this one.
+4. `FETCH_ONLY=1` without `DAYS=1` skipped every batch whose climatology was cached, keeping no NetCDF; it now fetches them and checks they are kept.
