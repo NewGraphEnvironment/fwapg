@@ -43,17 +43,22 @@ SET
   wscode_ltree = e.wscode_ltree,
   localcode_ltree = e.localcode_ltree,
   watershed_group_code = e.watershed_group_code,
-  distance_to_stream = ST_Distance(e.geom, o.probe_geom)
-FROM fwapg.pcic_outlets o,
-LATERAL (
-  SELECT s.*
-  FROM whse_basemapping.fwa_stream_networks_sp s
-  WHERE s.blue_line_key = dv.blue_line_key
-  AND s.waterbody_key = dv.waterbody_key
-  ORDER BY s.downstream_route_measure
-  LIMIT 1
+  distance_to_stream = e.distance_to_stream
+FROM (
+  SELECT d.subid, s.linear_feature_id, s.downstream_route_measure, s.wscode_ltree, s.localcode_ltree,
+    s.watershed_group_code, ST_Distance(s.geom, o.probe_geom) AS distance_to_stream
+  FROM fwapg.pcic_diversions d
+  INNER JOIN fwapg.pcic_outlets o ON o.subid = d.subid
+  CROSS JOIN LATERAL (
+    SELECT s.*
+    FROM whse_basemapping.fwa_stream_networks_sp s
+    WHERE s.blue_line_key = d.blue_line_key
+    AND s.waterbody_key = d.waterbody_key
+    ORDER BY s.downstream_route_measure
+    LIMIT 1
+  ) s
 ) e
-WHERE o.subid = dv.subid;
+WHERE e.subid = dv.subid;
 
 -- refuse a listed outlet that is not a PCIC lake outlet with a series, and an exit
 -- that is not on the line or that placement could not use (as pcic_crosswalk02_candidates.sql

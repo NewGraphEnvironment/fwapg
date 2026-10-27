@@ -34,6 +34,7 @@ Relates to #6, #8.
 
 | Error | Resolution |
 |-------|------------|
+| Dev build 1 (46fcf91) stopped at step 3 after 23 min: `invalid reference to FROM-clause entry for table "dv"` (an `UPDATE ... FROM x, LATERAL (... dv ...)` cannot see the target table) | Exit derived in a subquery that joins `pcic_diversions` itself; refusals probed with a non-lake subid and a wrong blue line, both raise |
 
 ## Baseline (2026-10-27, crosswalk b1a710836df2cafea0ef514b7ed1c338, PNWNAmet 1951-2012)
 
