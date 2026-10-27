@@ -44,12 +44,12 @@ if [ "$DAYS" = 1 ] && [ "$FETCH_ONLY" = 0 ]; then
     || { echo "DAYS=1 records the commit that built the files: commit the changes under extras/pcic_crosswalk and load first" >&2; exit 1; }
   COMMIT=$(git rev-parse HEAD)
 fi
-# the code the per-year files are built with is read again for each year, so the
-# tree must still be at $COMMIT when they are catalogued
-same_commit() {
-  [ "$(git rev-parse HEAD)" = "$COMMIT" ] && git diff --quiet HEAD -- . ../../load \
-    || { echo "the tree moved from $COMMIT during the run: the files cannot be catalogued under it" >&2; exit 1; }
-}
+# the job's own SQL and scripts, copied once and run from the copy: a run reads
+# them for hours, so an edit or checkout during it must not reach it (and DAYS=1
+# stamps every file with the commit the copy was taken at)
+CODE=$(mktemp -d "${TMPDIR:-/tmp}/pcic_crosswalk.XXXXXX")
+trap 'rm -rf "$CODE"' EXIT
+cp -R sql days_build.sh pcic_days.py "$CODE"/
 PERIOD=${YEARS/\//-}
 # the run's name in cache directories and export files, e.g. pnwnamet_historical_1981-2010
 RUN=$(printf '%s_%s_%s' "$MODEL" "$SCENARIO" "$PERIOD" | tr 'A-Z' 'a-z' | tr -cs 'a-z0-9.\n-' _)
@@ -100,7 +100,7 @@ for coll in rivers lakes; do
 done
 
 # outlet point per sub-basin, flow direction, root and depth of each tree
-$PSQL -f sql/pcic_crosswalk00_outlets.sql
+$PSQL -f "$CODE"/sql/pcic_crosswalk00_outlets.sql
 
 # ----------
 # 2. The run's streamflow, reduced to a daily climatology per outlet
@@ -125,8 +125,11 @@ $PSQL -f sql/pcic_crosswalk00_outlets.sql
 # $DAILY/<batch>.csv (subid,month,day,q_m3s; empty only for a missing outlet), and
 # in $SERIES a <batch>.split marker for a batch that was halved or a
 # <batch>.missing marker for an outlet with no series, so a re-run resumes where it
-# stopped. Remove $DAILY to reduce the run again from the kept files; remove $NC and
-# $SERIES to fetch the model and scenario again.
+# stopped. A climatology older than its batch's NetCDF is reduced again, and a
+# per-year file older than any NetCDF is rebuilt (step 6). Remove $DAILY to reduce
+# the run again from the kept files. To fetch the model and scenario again, remove
+# $NC and $SERIES and run with DAYS=1 or FETCH_ONLY=1 (with neither, a batch whose
+# climatology is cached is not fetched).
 
 # the outlets of a NetCDF, comma-separated, in its basin_name order
 nc_outlets() {
@@ -188,9 +191,10 @@ fetch_batch() {
     [ -e "$out" ] || : > "$out"
     return
   fi
-  # a kept file of this batch's outlets: reduce it if the run has not
+  # a kept file of this batch's outlets: reduce it if the run has not since it
+  # was fetched
   if [ -e "$nc" ] && [ "$(nc_outlets "$nc" | tr , '\n' | sort)" = "$(sort "$ids")" ]; then
-    [ -e "$out" ] || reduce_batch "$nc" "$out"
+    { [ -e "$out" ] && [ ! "$nc" -nt "$out" ]; } || reduce_batch "$nc" "$out"
     return
   fi
   [ -e "$out" ] && [ "$DAYS" = 0 ] && [ "$FETCH_ONLY" = 0 ] && return 0
@@ -210,7 +214,7 @@ fetch_batch() {
   done
   if [ "$code" = 200 ]; then
     mv "$nc.tmp" "$nc" || return 255
-    [ -e "$out" ] || reduce_batch "$nc" "$out"
+    reduce_batch "$nc" "$out"
     return
   fi
   rm -f "$nc.tmp"
@@ -274,7 +278,7 @@ if [ "$FETCH_ONLY" = 1 ]; then
 fi
 
 # the days of YEARS by calendar day, with each day's count and week
-$PSQL -v y1="${YEARS%/*}" -v y2="${YEARS#*/}" -f sql/pcic_crosswalk01_days.sql
+$PSQL -v y1="${YEARS%/*}" -v y2="${YEARS#*/}" -f "$CODE"/sql/pcic_crosswalk01_days.sql
 $PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_outlet_daily"
 $PSQL -c "CREATE TABLE fwapg.pcic_outlet_daily (subid integer, month integer, day integer, q_m3s double precision, PRIMARY KEY (subid, month, day))"
 # the climatology of this network's batches only: a batch halved since an earlier
@@ -299,12 +303,12 @@ n=$($PSQL -tXA -c "SELECT count(*) FROM fwapg.pcic_outlets o WHERE NOT EXISTS (S
 # ----------
 # downstream path of every FWA blue line, used for every position comparison
 ../blue_line_paths/blue_line_paths.sh
-$PSQL -v tolerance=150 -v num_features=5 -f sql/pcic_crosswalk02_candidates.sql
-$PSQL -f sql/pcic_crosswalk03_prepare.sql
+$PSQL -v tolerance=150 -v num_features=5 -f "$CODE"/sql/pcic_crosswalk02_candidates.sql
+$PSQL -f "$CODE"/sql/pcic_crosswalk03_prepare.sql
 # place, then demote outlets that misplaced the chain above them, until stable
 for round in $(seq 1 10); do
-  $PSQL -f sql/pcic_crosswalk04_select.sql
-  n=$($PSQL -q -tXA -v round=$round -f sql/pcic_crosswalk05_demote.sql)
+  $PSQL -f "$CODE"/sql/pcic_crosswalk04_select.sql
+  n=$($PSQL -q -tXA -v round=$round -f "$CODE"/sql/pcic_crosswalk05_demote.sql)
   [ "$n" -eq 0 ] && break
   # demotions from the last round have not been applied to a placement
   [ "$round" -lt 10 ] || { echo "placement did not converge in 10 rounds" >&2; exit 1; }
@@ -314,7 +318,7 @@ done
 # 4. Flow per FWA stream segment
 # ----------
 # sub-basins and their flow per calendar day
-$PSQL -f sql/pcic_crosswalk06_subbasins.sql
+$PSQL -f "$CODE"/sql/pcic_crosswalk06_subbasins.sql
 # each segment's sub-basin, share and outlets above (no flow), per group: a group
 # with no placed outlet below it inserts nothing
 $PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_segment_weights"
@@ -326,7 +330,7 @@ $PSQL -c "CREATE TABLE fwapg.pcic_segment_weights (
   upstream_subids integer[]
 )"
 WSGS=$($PSQL -tXA -c "SELECT watershed_group_code FROM whse_basemapping.fwa_watershed_groups_poly ORDER BY 1")
-echo "$WSGS" | xargs -P 4 -I {} $PSQL -q -v wsg={} -f sql/pcic_crosswalk07_segments.sql
+echo "$WSGS" | xargs -P 4 -I {} $PSQL -q -v wsg={} -f "$CODE"/sql/pcic_crosswalk07_segments.sql
 $PSQL -c "ANALYZE fwapg.pcic_segment_weights"
 # per period: mean outlet and sub-basin flow, then segment flow from the weights.
 # Monthly is always built, and is what qa.sql tests.
@@ -335,7 +339,7 @@ STEPS="month:monthly"
 for st in $STEPS; do
   step=${st%:*}
   table=${st#*:}
-  $PSQL -v step=$step -v table=$table -f sql/pcic_crosswalk08_periods.sql
+  $PSQL -v step=$step -v table=$table -f "$CODE"/sql/pcic_crosswalk08_periods.sql
   $PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_discharge_$table"
   $PSQL -c "CREATE TABLE fwapg.pcic_discharge_$table (
     linear_feature_id bigint,
@@ -345,7 +349,7 @@ for st in $STEPS; do
     q_m3s double precision,
     PRIMARY KEY (linear_feature_id, $step)
   )"
-  echo "$WSGS" | xargs -P 4 -I {} $PSQL -q -v wsg={} -v step=$step -v table=$table -f sql/pcic_crosswalk09_discharge.sql
+  echo "$WSGS" | xargs -P 4 -I {} $PSQL -q -v wsg={} -v step=$step -v table=$table -f "$CODE"/sql/pcic_crosswalk09_discharge.sql
   $PSQL -c "ANALYZE fwapg.pcic_discharge_$table"
 done
 
@@ -353,10 +357,10 @@ done
 # 5. QA, export, clean up
 # ----------
 # drainage size at every placed outlet (fwapg#7), tested in qa.sql
-$PSQL -f sql/qa_drainage.sql
+$PSQL -f "$CODE"/sql/qa_drainage.sql
 $PSQL -c "\copy (SELECT * FROM fwapg.pcic_qa_drainage ORDER BY subid) TO 'data/qa_drainage.csv' WITH (FORMAT csv, HEADER)"
 # does each placed outlet's PCIC segment follow the FWA line it is on (fwapg#8), tested in qa.sql
-$PSQL -f sql/qa_following.sql
+$PSQL -f "$CODE"/sql/qa_following.sql
 $PSQL -c "\copy (SELECT * FROM fwapg.pcic_qa_following ORDER BY subid) TO 'data/qa_following.csv' WITH (FORMAT csv, HEADER)"
 # mean annual flow at each placed outlet, PCIC's and accumulated on the FWA, kept
 # with the outlets and candidates for the review in fwapg#8 (review_build.sh)
@@ -369,21 +373,21 @@ $PSQL -c "CREATE TABLE fwapg.pcic_qa_flow AS
 
 # keep the staging tables for debugging when a test fails; a NULL result (a test
 # over no rows) prints "name|" and fails too
-qa=$($PSQL -tXA -f sql/qa.sql)
-[ "$WEEKLY" = 1 ] && qa="$qa"$'\n'"$($PSQL -tXA -f sql/qa_weekly.sql)"
+qa=$($PSQL -tXA -f "$CODE"/sql/qa.sql)
+[ "$WEEKLY" = 1 ] && qa="$qa"$'\n'"$($PSQL -tXA -f "$CODE"/sql/qa_weekly.sql)"
 echo "$qa"
 if [ -z "$qa" ] || grep -qv '|t$' <<< "$qa"; then
   echo "QA failed, see sql/qa.sql and sql/qa_weekly.sql; nothing exported, staging tables kept" >&2
   exit 1
 fi
-$PSQL -f sql/qa_report.sql
-[ "$WEEKLY" = 1 ] && $PSQL -v step=week -v table=weekly -f sql/qa_report_clamped.sql
-$PSQL -v step=month -v table=monthly -f sql/qa_report_clamped.sql
+$PSQL -f "$CODE"/sql/qa_report.sql
+[ "$WEEKLY" = 1 ] && $PSQL -v step=week -v table=weekly -f "$CODE"/sql/qa_report_clamped.sql
+$PSQL -v step=month -v table=monthly -f "$CODE"/sql/qa_report_clamped.sql
 
 # into the pcic schema: the crosswalk and weights shared by every run, and this
 # run's rows, swapped in one transaction (sql/pcic_export.sql)
 $PSQL -f ../../load/pcic_schema.sql
-$PSQL -v model="$MODEL" -v scenario="$SCENARIO" -v period="$PERIOD" -v weekly="$WEEKLY" -v days="$DAYS" -f sql/pcic_export.sql
+$PSQL -v model="$MODEL" -v scenario="$SCENARIO" -v period="$PERIOD" -v weekly="$WEEKLY" -v days="$DAYS" -f "$CODE"/sql/pcic_export.sql
 # one file per table, and per table and run for the run's rows. pcic.runs lists
 # every run in this database, with the fingerprints load/pcic_*.sql check.
 export_table() {
@@ -411,9 +415,9 @@ export_table "pcic.discharge_monthly.$RUN" "SELECT * FROM pcic.discharge_monthly
 # $DAYDIR (days_build.sh), routed to segments by whoever reads
 # it, through pcic.segment_weights (README). Every year is also kept as monthly
 # means in fwapg.pcic_subbasins_months for sql/qa_report_days.sql. A year whose
-# file is kept, routed on this crosswalk by the same code (its metadata says), is
-# not rebuilt, so a re-run resumes; its months are read back from the file. A kept
-# file routed on another crosswalk, or built by other code, is rebuilt. DAYS_JOBS years are built at once, each in tables
+# file is kept, routed on this crosswalk by the same code (its metadata says) and
+# newer than every NetCDF, is not rebuilt, so a re-run resumes; its months are
+# read back from the file. Any other kept file is rebuilt. DAYS_JOBS years are built at once, each in tables
 # of its own.
 DAYDIR=data/days/$MS
 if [ "$DAYS" = 1 ]; then
@@ -428,49 +432,51 @@ if [ "$DAYS" = 1 ]; then
   for y in $SERIES_YEARS; do
     f=$DAYDIR/pcic.subbasin_days.$MS.$y.parquet
     if [ -e "$f" ]; then
-      meta=$(uv run -q --script pcic_days.py meta "$f")
+      meta=$(uv run -q --script "$CODE"/pcic_days.py meta "$f")
       if [ "${meta%,*}" != "$CROSSWALK_MD5" ]; then
         echo "$f was routed on another crosswalk: rebuilding it"
         rm "$f"
       elif ! git cat-file -e "${meta#*,}^{commit}" 2> /dev/null \
-        || ! git diff --quiet "${meta#*,}" "$COMMIT" -- days_build.sh pcic_days.py sql/pcic_crosswalk06_daily.sql; then
+        || ! git diff --quiet "${meta#*,}" "$COMMIT" -- days_build.sh pcic_days.py sql/pcic_crosswalk06_daily.sql sql/pcic_crosswalk06_subbasins.sql; then
         echo "$f was built by other code than $COMMIT: rebuilding it"
+        rm "$f"
+      elif [ -n "$(find "$NC" -name '*.nc' -newer "$f" | head -1)" ]; then
+        echo "$f is older than the series it is read from: rebuilding it"
         rm "$f"
       fi
     fi
     if [ -e "$f" ]; then
       RAN_ALL=0
-      uv run -q --script pcic_days.py months "$f" | $PSQL -c "\copy fwapg.pcic_subbasins_months FROM STDIN WITH (FORMAT csv)"
+      uv run -q --script "$CODE"/pcic_days.py months "$f" | $PSQL -c "\copy fwapg.pcic_subbasins_months FROM STDIN WITH (FORMAT csv)"
     else
       TODO="$TODO $y"
     fi
   done
   # shellcheck disable=SC2086
   [ -z "$TODO" ] || printf '%s\n' $TODO \
-    | xargs -P $DAYS_JOBS -I {} ./days_build.sh {} "$DAYDIR/pcic.subbasin_days.$MS.{}.parquet" "$CROSSWALK_MD5" "$COMMIT" $NCS
+    | xargs -P $DAYS_JOBS -I {} "$CODE"/days_build.sh {} "$DAYDIR/pcic.subbasin_days.$MS.{}.parquet" "$CROSSWALK_MD5" "$COMMIT" $NCS
 
   # the published files' mean over YEARS against the climatology, and (when every
   # year ran here) the float64 monthly means against the run's; a failure keeps the
   # staging tables, as qa.sql's does
   $PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_days_means" \
     -c "CREATE TABLE fwapg.pcic_days_means (subid integer, month integer, day integer, q_local double precision, q_acc double precision, abs_local double precision, abs_acc double precision, n integer, PRIMARY KEY (subid, month, day))"
-  uv run -q --script pcic_days.py means "${YEARS%/*}" "${YEARS#*/}" "$DAYDIR"/pcic.subbasin_days."$MS".*.parquet \
+  uv run -q --script "$CODE"/pcic_days.py means "${YEARS%/*}" "${YEARS#*/}" "$DAYDIR"/pcic.subbasin_days."$MS".*.parquet \
     | $PSQL -c "\copy fwapg.pcic_days_means FROM STDIN WITH (FORMAT csv)"
-  qa=$($PSQL -tXA -v ran_all=$RAN_ALL -v y1="${YEARS%/*}" -v y2="${YEARS#*/}" -f sql/qa_days.sql)
+  qa=$($PSQL -tXA -v ran_all=$RAN_ALL -v y1="${YEARS%/*}" -v y2="${YEARS#*/}" -f "$CODE"/sql/qa_days.sql)
   echo "$qa"
   if [ -z "$qa" ] || grep -qv '|t$' <<< "$qa"; then
     echo "QA of the per-year days failed, see sql/qa_days.sql; the catalogue is not exported, staging tables kept" >&2
     exit 1
   fi
-  $PSQL -f sql/qa_report_days.sql
+  $PSQL -f "$CODE"/sql/qa_report_days.sql
 
   # the catalogue: one row per file, every year of the series
-  same_commit
   $PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_series_files" \
     -c "CREATE TABLE fwapg.pcic_series_files (year integer, rows bigint, subbasins bigint, q_local_sum bigint, q_acc_sum bigint, bytes bigint, crosswalk_md5 text, commit text)"
-  uv run -q --script pcic_days.py fingerprint "$DAYDIR"/pcic.subbasin_days."$MS".*.parquet \
+  uv run -q --script "$CODE"/pcic_days.py fingerprint "$DAYDIR"/pcic.subbasin_days."$MS".*.parquet \
     | $PSQL -c "\copy fwapg.pcic_series_files FROM STDIN WITH (FORMAT csv)"
-  $PSQL -v model="$MODEL" -v scenario="$SCENARIO" -v years="$(echo $SERIES_YEARS | tr ' ' ,)" -f sql/pcic_export_days.sql
+  $PSQL -v model="$MODEL" -v scenario="$SCENARIO" -v years="$(echo $SERIES_YEARS | tr ' ' ,)" -f "$CODE"/sql/pcic_export_days.sql
   export_table pcic.series "SELECT * FROM pcic.series ORDER BY model, scenario, year"
 fi
 

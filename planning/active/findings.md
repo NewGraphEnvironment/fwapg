@@ -168,3 +168,31 @@ Four fragile findings (`review-round2.md`), two of them inside round 1's fixes:
 2. `COMMIT` was taken once while the per-year code is re-read for every year; the tree is now re-checked (`same_commit`) before the catalogue. Untracked files are left out of the check on purpose: tracked code reads only tracked files, and the build worktree's `data` symlink is untracked.
 3. (inside fix 2) Resume kept a file built by older code at the same crosswalk; a kept file is now rebuilt when its commit is unknown or `days_build.sh`, `pcic_days.py` or `06_daily.sql` differ between its commit and this one.
 4. `FETCH_ONLY=1` without `DAYS=1` skipped every batch whose climatology was cached, keeping no NetCDF; it now fetches them and checks they are kept.
+
+### Code-check round 3: the mechanism, and the enumeration that ends the review
+
+Round 3 (`review-round3.md`) named the mechanism behind rounds 1 and 2: the job decides "is this step done?" and "do these two artifacts agree?" by whether a file exists at a name, not by an identity the file carries. Each earlier fix widened one check on one axis. Its four findings, one inside round 2's fix:
+
+1. (inside R2-2) `same_commit` checked only the end state, while the per-year code was re-read for hours. Replaced: the job copies `sql/`, `days_build.sh` and `pcic_days.py` to a temporary directory right after the clean-tree check and runs every step from the copy, so the stamped commit is the code that ran.
+2. The catalogue and the files could be published out of step. `extras/README.md` now says to upload only after `PCIC crosswalk complete`, parquet first and the `.csv.gz` files last.
+3. Refetched NetCDF left every derived cache in place. A climatology CSV older than its batch's NetCDF is reduced again; a per-year file older than any NetCDF is rebuilt; the comment on how to refetch now says which mode fetches.
+4. `sql/pcic_crosswalk06_subbasins.sql` was missing from the code a kept file is checked against. Added.
+
+The enumeration, every cached or published artifact the job reads back or publishes, against what it depends on (round 3's table, re-checked against the code after these fixes):
+
+| artifact | depends on | kept only while | status |
+|---|---|---|---|
+| PCIC network pages (`data/rivers`, `data/lakes`) | PCIC's network at fetch | present | pre-existing; frozen network by design |
+| top-level batch lists | `pcic_outlets` | regenerated every run | handled |
+| split children, `.split`, `.missing`, `missing.txt` | the parent's outlets at split time | present | pre-existing; stale only after the network pages are refetched |
+| `$NC/<batch>.nc` | model, scenario, batch outlets, a whole transfer | outlets equal the batch's; moved into place after `ncdump -h` | handled; PCIC's data version not tracked, by design (one fetch) |
+| `$DAILY/<batch>.csv` | the NetCDF, `YEARS`, `reduce_batch` | newer than its NetCDF; only current leaves read | handled (R1-3, R3-3); `reduce_batch` code changes not tracked, as before #42 |
+| per-year parquet | NetCDF, crosswalk, `days_build.sh`, `pcic_days.py`, `06_daily`, `06_subbasins` | md5 equal, code unchanged since its commit, newer than every NetCDF | handled (R1-2, R2-3, R3-3, R3-4) |
+| code run | the tree at `COMMIT` | copied once at start | handled (R3-1) |
+| `pcic.runs`, run tables | crosswalk, weights | export refusals | pre-existing, handled |
+| `pcic.series` (build) | the files, the crosswalk | replaced per model and scenario from the files' own metadata; old-crosswalk rows refused or (own model, `DAYS=1`) deleted | handled (R1-1, R1-2) |
+| `pcic.*.csv.gz` | the database at export | rewritten each run; catalogue with the shared tables and after step 6 | handled (R2-1) |
+| fresh-bc objects | the local files | uploaded after `complete`, parquet first | procedural (R3-2) |
+| consumer `pcic.series` | published catalogue, crosswalk | `load/pcic.sql` refusals | handled |
+
+Nothing in the table is reused on a key that leaves out what it was built from, apart from the two rows marked by design or pre-existing.

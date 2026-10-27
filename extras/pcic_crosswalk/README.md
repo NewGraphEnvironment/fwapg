@@ -145,8 +145,11 @@ fetch (27 min, network-bound). The job:
    `days_build.sh` reads the year from the kept NetCDF (`pcic_days.py rows`), runs it through the
    climatology's own steps (`sql/pcic_crosswalk06_daily.sql`: local runoff, then accumulation down the FWA
    tree) and writes `data/days/<model>_<scenario>/pcic.subbasin_days.<model>_<scenario>.<year>.parquet`
-   (`pcic_days.py parquet`). Four years are built at once, each in tables of its own, and a year whose
-   file exists is skipped, so a rerun resumes. `sql/qa_days.sql` then reads the files back and checks that
+   (`pcic_days.py parquet`), with the md5 of the crosswalk and the fwapg commit in the file's metadata.
+   Four years are built at once, each in tables of its own. A year's file is kept, so a rerun resumes,
+   only while it was routed on this crosswalk by the same per-year code and is newer than every NetCDF;
+   otherwise it is rebuilt. The job runs a copy of its SQL and scripts taken at the start, so an edit
+   during a run does not reach it. `sql/qa_days.sql` then reads the files back and checks that
    their mean over `YEARS` is the run's climatology, `fwapg.pcic_subbasins_daily`, within float32
    rounding (`2^-23` of the bin's mean magnitude, plus 1e-9 m³/s), and, when every year was built in the
    run, that the years' float64 monthly means average to the run's monthly sub-basin flow at 1e-9; a
