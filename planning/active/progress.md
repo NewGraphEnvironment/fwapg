@@ -7,3 +7,5 @@
 - Created branch `24-pcic-crosswalk-nechako-reservoir-outlets` off `newgraph`
 - Scaffolded PWF baseline from issue #24 with approved phases
 - Next: start Phase 1
+- Filed #46: the next-largest clusters of unplaced outlets (Phase 7)
+- Dev build (held staging) started 15:19Z from a scratch worktree at 46fcf91, for the mutation checks
