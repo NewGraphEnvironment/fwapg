@@ -108,12 +108,18 @@ another job sharing the database server): about 1 h for the monthly run, 2 h 8 m
    levels above whose near candidates lie on or upstream of it), then the nearest. An outlet with no series is not placed (`no_series`). An outlet with no valid candidate is
    left unplaced (`broken_chain`); where the outlet that broke carries most of its parent's network and
    fits once the parent is skipped, the parent is `demoted` instead and placement reruns, until stable.
+   Where PCIC's water leaves a lake by another route than the FWA's, no outlet above the lake's outlet can
+   hold the chain. Such an outlet is listed by hand in `sql/pcic_crosswalk03_diversions.sql`, and placed at
+   the FWA's exit from the lake (its lowest segment on the line that drains it) whatever its anchor, and
+   never demoted. The outlets above then place against the FWA as usual. One is listed: the Nechako
+   Reservoir (below).
 5. **Flow at outlets.** Per calendar day. PCIC's network and the FWA do not always join streams at the same place, so
    PCIC's outflows are not used as they stand. Each PCIC outlet's local runoff (its outflow minus its PCIC
    children's) is given to the sub-basin of the outlet, or of its nearest placed PCIC ancestor if it is
    unplaced, and accumulated down the FWA tree of placed outlets (`fwa_parent_subid`, the nearest placed
    outlet downstream on the FWA). Where the networks agree, the accumulated flow at an outlet is PCIC's
-   outflow; where they do not, flow follows the FWA.
+   outflow; where they do not, flow follows the FWA. A listed diversion is the exception: its flow goes
+   to its nearest placed PCIC ancestor, where PCIC sends it, so its `fwa_parent_subid` is that outlet.
 6. **Segments.** Each FWA segment belongs to the sub-basin of the nearest placed outlet on or below it.
    Its weights (`pcic.segment_weights`) are that sub-basin (`subid`), the outlets directly above the
    sub-basin whose water passes the segment (`upstream_subids`) and the share of the sub-basin's local
@@ -129,8 +135,10 @@ another job sharing the database server): about 1 h for the monthly run, 2 h 8 m
    the segment below the junction. In the same way, a tributary's segments belong to the nearest placed
    outlet whose segment starts below its junction. Local runoff can be negative over a period (routing
    losses, and water in transit between outlets), so `q` is clamped at zero, per period, after the
-   period's flows are averaged. The job builds monthly flow and, with `WEEKLY=1`, weekly flow this way
-   (`sql/pcic_crosswalk08_periods.sql`, `sql/pcic_crosswalk09_discharge.sql`).
+   period's flows are averaged. A diversion's area belongs to the sub-basin its exit drains to on the
+   FWA, whose segments below the exit lose the diversion's area from their share and do not carry its flow;
+   its flow joins at its PCIC ancestor's own segment. The job builds monthly flow and, with `WEEKLY=1`,
+   weekly flow this way (`sql/pcic_crosswalk08_periods.sql`, `sql/pcic_crosswalk09_discharge.sql`).
 7. **QA and export.** Runs the tests in `sql/qa.sql` (and `sql/qa_weekly.sql` with `WEEKLY=1`) and
    stops, keeping the staging tables, if any fails; then prints `sql/qa_report.sql` and the clamped rows
    per period (`sql/qa_report_clamped.sql`), swaps the run into the `pcic` schema in one transaction
@@ -139,7 +147,9 @@ another job sharing the database server): about 1 h for the monthly run, 2 h 8 m
    (the drainage and line-following checks below), `fwapg.pcic_qa_flow` (mean annual flow at each placed
    outlet, PCIC's and accumulated on the FWA) and `fwapg.pcic_qa_gauges` (`qa_gauges.sh`), and the
    staging tables `fwapg.pcic_qa_outlets` and `fwapg.pcic_qa_candidates` (outlet and probe points, every
-   FWA candidate), which `review_build.sh` reads. `fwapg.pcic_qa_build` holds the md5 of the crosswalk
+   FWA candidate), which `review_build.sh` reads, and `fwapg.pcic_qa_diversions` (the listed diversions
+   with their exits and position parents, which `pcic.fwa_crosswalk` does not hold: a sub-basin's local
+   area takes a diversion's off its position parent, not its `fwa_parent_subid`). `fwapg.pcic_qa_build` holds the md5 of the crosswalk
    they were built with, and the run their flows are from; the job drops it and `pcic_qa_gauges` when it
    starts. Build the reference run (the defaults) last before a review: the review's strata use flow.
 8. **Per-year days** (`DAYS=1`). For each year of the model's series (1950-2012 for PNWNAmet; 1950 is
@@ -432,7 +442,7 @@ These are frozen: the job no longer writes them. They will be dropped once their
      subid                    | integer          | PCIC outlet id (primary key)
      dowsubid                 | integer          | PCIC downstream outlet
      anchor_subid             | integer          | nearest placed outlet downstream in PCIC's tree
-     fwa_parent_subid         | integer          | nearest placed outlet downstream on the FWA
+     fwa_parent_subid         | integer          | nearest placed outlet downstream on the FWA; for a listed diversion, the placed PCIC ancestor its flow goes to
      islake                   | boolean          |
      depth                    | integer          | steps to the root of the PCIC tree
      linear_feature_id        | bigint           | FWA position (NULL if unplaced)
@@ -441,8 +451,8 @@ These are frozen: the job no longer writes them. They will be dropped once their
      wscode_ltree             | ltree            |
      localcode_ltree          | ltree            |
      watershed_group_code     | text             |
-     distance_to_stream       | double precision | snap distance (m)
-     candidate_rank           | integer          | 1 = nearest candidate; NULL if moved > 1 m below a junction
+     distance_to_stream       | double precision | snap distance (m); for a listed diversion, from PCIC's outlet to the FWA exit
+     candidate_rank           | integer          | 1 = nearest candidate; NULL if moved > 1 m below a junction, or a listed diversion
      flag                     | text             | NULL, no_candidate, no_series, broken_chain, demoted
 
 

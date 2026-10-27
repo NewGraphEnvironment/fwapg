@@ -57,3 +57,27 @@ Produced by `logs/nechako_measure.sql` (`logs/20261027_baseline_1951-2012.out`);
   5013906 (92), Fox 206008363 (44), KOTL 5014312 (32), Chilcotin 4007152 (31). Out of scope (Phase 7 issue).
 - The reservoir exit: segment 701799415 (edge 1200, Knewstubb Lake 329318438) at 288,852.348 m on
   356362759, 70.7 km from PCIC's lake outlet point (on Ootsa Lake's shore at the spillway).
+
+## Dev build and mutation checks (2026-10-27)
+
+Dev build 2 (e4a4d91, monthly 1951-2012, from a scratch worktree whose `qa.sql` ended in a failing line):
+15:43:26Z to 16:20:07Z (36 min 41 s); every QA test `t`, the seven new ones included; only the hold line `f`, so
+the staging tables were kept. (Dev build 1, at 46fcf91, failed at 03_diversions: Errors below.)
+
+Mutation checks (`logs/mutation_checks.sh`, `logs/20261027_mutation_checks.out`), on that staging, 16:20-16:32Z.
+Each defect applied to a copy of the SQL (refused unless it matched once), run on the groups it touches, and undone
+by rerunning the real SQL:
+
+| mutation | tests that read f |
+|---|---|
+| M1: 07 does not add the diverted outlet at its PCIC ancestor's segment (CHES) | outlet segments carry accumulated flow; Nechako weights; exactly one segment |
+| M2: 07 joins children by flow parent, not position (LNRS) | Nechako weights (canyon share) |
+| M3: 06 takes the diversion's area off its flow parent | area comes off its position parent |
+| M4: 06 leaves the diversion's flow on its position parent | every diversion placed ... position and flow parents |
+| M5: no diversion listed, placement rerun (not undone) | every diversion placed; Nechako groups placed >= 90% |
+
+After the undo of M1-M4 every test was `t` again. Not mutated, as there is nothing to observe today (plan review 1):
+05's exemption (no child can break against the exit) and 06's move skip (no junction at the exit).
+
+The old build's staging is gone, so the new tests cannot be run on it (plan review 8). Its "before" is the
+baseline above: exit 0.134 m³/s against PCIC's 156, 4 of 483 outlets with a candidate placed.
