@@ -42,13 +42,13 @@ A committed list of diversions, `sql/pcic_crosswalk03_diversions.sql`, with one 
 
 ## Phase 2: Diversion list and placement
 
-- [ ] Write `sql/pcic_crosswalk03_diversions.sql`: the list, the derived exit position and the refusals. Call it from `pcic_crosswalk.sh` after 03_prepare. Copy it with the job's code, as the per-year days copy theirs.
-- [ ] `sql/pcic_crosswalk04_select.sql`: give listed outlets their listed position, bypassing the chain test.
+- [x] Write `sql/pcic_crosswalk03_diversions.sql`: the list, the derived exit position and the refusals. Call it from `pcic_crosswalk.sh` after 03_prepare. Copy it with the job's code, as the per-year days copy theirs.
+- [x] `sql/pcic_crosswalk04_select.sql`: give listed outlets their listed position, bypassing the chain test.
 
 ## Phase 3: Flow tree and weights
 
-- [ ] `sql/pcic_crosswalk06_subbasins.sql`: skip the move for listed outlets, record the position parent, override the flow parent, and compute local area by position parent.
-- [ ] `sql/pcic_crosswalk07_segments.sql`: join children by position parent, and add the diverted outlet at the receiving outlet's segment.
+- [x] `sql/pcic_crosswalk06_subbasins.sql`: skip the move for listed outlets, record the position parent, override the flow parent, and compute local area by position parent.
+- [x] `sql/pcic_crosswalk07_segments.sql`: join children by position parent, and add the diverted outlet at the receiving outlet's segment.
 - [ ] `./pcic_test.sh` still passes (06_daily is unchanged).
 
 ## Phase 4: Docs and research

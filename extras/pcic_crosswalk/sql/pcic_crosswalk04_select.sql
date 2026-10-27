@@ -21,6 +21,10 @@
 -- Outlets listed in fwapg.pcic_demoted, and outlets with no series in the run, are
 -- treated as having no valid candidate: placing an outlet with no flow would
 -- carve its catchment out of the sub-basin below without carrying its flow.
+--
+-- An outlet listed in fwapg.pcic_diversions (pcic_crosswalk03_diversions.sql)
+-- takes its listed exit whatever its anchor, and is never demoted: its water
+-- leaves by another route than the FWA's, so its chain cannot hold.
 
 DROP TABLE IF EXISTS fwapg.pcic_fwa_crosswalk;
 
@@ -88,9 +92,19 @@ BEGIN
     ),
 
     best AS (
-      SELECT DISTINCT ON (v.subid) v.*
-      FROM valid v
-      ORDER BY v.subid, v.score DESC, v.candidate_rank
+      SELECT dv.subid, dv.linear_feature_id, dv.blue_line_key, dv.downstream_route_measure,
+        dv.wscode_ltree, dv.localcode_ltree, dv.watershed_group_code, dv.distance_to_stream,
+        NULL::integer AS candidate_rank
+      FROM outlets o
+      INNER JOIN fwapg.pcic_diversions dv ON dv.subid = o.subid
+      UNION ALL
+      SELECT * FROM (
+        SELECT DISTINCT ON (v.subid) v.subid, v.linear_feature_id, v.blue_line_key, v.downstream_route_measure,
+          v.wscode_ltree, v.localcode_ltree, v.watershed_group_code, v.distance_to_stream, v.candidate_rank
+        FROM valid v
+        WHERE NOT EXISTS (SELECT 1 FROM fwapg.pcic_diversions dv WHERE dv.subid = v.subid)
+        ORDER BY v.subid, v.score DESC, v.candidate_rank
+      ) c
     )
 
     SELECT

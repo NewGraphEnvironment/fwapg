@@ -310,6 +310,9 @@ n=$($PSQL -tXA -c "SELECT count(*) FROM fwapg.pcic_outlets o WHERE NOT EXISTS (S
 ../blue_line_paths/blue_line_paths.sh
 $PSQL -v tolerance=150 -v num_features=5 -f "$CODE"/sql/pcic_crosswalk02_candidates.sql
 $PSQL -f "$CODE"/sql/pcic_crosswalk03_prepare.sql
+# outlets whose water leaves a lake by another route than the FWA's, placed at the
+# FWA's exit (fwapg#24)
+$PSQL -f "$CODE"/sql/pcic_crosswalk03_diversions.sql
 # place, then demote outlets that misplaced the chain above them, until stable
 for round in $(seq 1 10); do
   $PSQL -f "$CODE"/sql/pcic_crosswalk04_select.sql
@@ -502,7 +505,7 @@ $PSQL -c "CREATE TABLE fwapg.pcic_qa_build AS
   FROM pcic.fwa_crosswalk x, pcic.runs r
   WHERE (r.model, r.scenario, r.period) = ('$MODEL', '$SCENARIO', '$PERIOD')
   GROUP BY r.model, r.scenario, r.period, r.monthly_rows, r.monthly_q_sum"
-$PSQL -c "DROP TABLE fwapg.pcic_rivers, fwapg.pcic_lakes, fwapg.pcic_voters, fwapg.pcic_demoted, fwapg.pcic_fwa_crosswalk,
+$PSQL -c "DROP TABLE fwapg.pcic_rivers, fwapg.pcic_lakes, fwapg.pcic_voters, fwapg.pcic_demoted, fwapg.pcic_diversions, fwapg.pcic_fwa_crosswalk,
   fwapg.pcic_day_bins, fwapg.pcic_outlet_daily, fwapg.pcic_subbasins, fwapg.pcic_subbasins_daily, fwapg.pcic_segment_weights"
 for st in $STEPS; do
   $PSQL -c "DROP TABLE fwapg.pcic_outlet_${st#*:}, fwapg.pcic_subbasins_${st#*:}, fwapg.pcic_discharge_${st#*:}"

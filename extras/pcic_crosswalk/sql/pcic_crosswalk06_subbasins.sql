@@ -15,7 +15,9 @@
 --    placed, otherwise its anchor (its nearest placed PCIC ancestor). An unplaced
 --    outlet with no placed ancestor is downstream of everything placed, outside
 --    BC or at sea, and its runoff is dropped.
--- 3. Flow is accumulated down the FWA tree of placed outlets (fwa_parent_subid).
+-- 3. Flow is accumulated down the FWA tree of placed outlets (fwa_parent_subid),
+--    except that a listed diversion (pcic_crosswalk03_diversions.sql) passes its
+--    flow to its nearest placed PCIC ancestor, where PCIC sends its water.
 --
 -- Where the two networks agree, the accumulated flow at an outlet is PCIC's
 -- outflow; where they do not, flow follows the FWA. qa.sql measures how often
@@ -89,6 +91,8 @@ FROM (
     LIMIT 1
   ) b
   WHERE x.flag IS NULL
+  -- a listed diversion stays at its exit (pcic_crosswalk03_diversions.sql)
+  AND NOT EXISTS (SELECT 1 FROM fwapg.pcic_diversions dv WHERE dv.subid = x.subid)
   AND s.downstream_route_measure > 0
   AND abs(x.downstream_route_measure - s.downstream_route_measure) < 0.001
   AND u.blk = x.blue_line_key
@@ -157,23 +161,53 @@ FROM (
 ) p
 WHERE x.subid = p.subid;
 
+-- a listed diversion's water leaves by PCIC's route, not the FWA's: its FWA parent
+-- becomes its nearest placed PCIC ancestor (its anchor), and the parent its
+-- position gave it is kept as position_parent_subid, whose sub-basin its area
+-- belongs to (below, and pcic_crosswalk07_segments.sql)
+UPDATE fwapg.pcic_diversions dv
+SET position_parent_subid = x.fwa_parent_subid
+FROM fwapg.pcic_fwa_crosswalk x
+WHERE x.subid = dv.subid;
+
+DO $$
+DECLARE
+  bad text;
+BEGIN
+  SELECT string_agg(dv.subid::text, ', ') INTO bad
+  FROM fwapg.pcic_diversions dv
+  LEFT JOIN fwapg.pcic_fwa_crosswalk x ON x.subid = dv.subid
+  WHERE x.flag IS NOT NULL OR x.anchor_subid IS NULL;
+  IF bad IS NOT NULL THEN
+    RAISE EXCEPTION 'diversions % are unplaced or have no placed PCIC ancestor to pass their water to', bad;
+  END IF;
+END $$;
+
+UPDATE fwapg.pcic_fwa_crosswalk x
+SET fwa_parent_subid = x.anchor_subid
+FROM fwapg.pcic_diversions dv
+WHERE x.subid = dv.subid;
+
 CREATE INDEX IF NOT EXISTS pcic_fwa_crosswalk_fwa_parent_idx ON fwapg.pcic_fwa_crosswalk (fwa_parent_subid);
 ANALYZE fwapg.pcic_fwa_crosswalk;
 
 -- local FWA area: upstream area at the outlet's segment minus that at the outlets
--- directly above it on the FWA (which do not nest, being each other's siblings)
+-- directly above it on the FWA (which do not nest, being each other's siblings).
+-- A diversion's area is taken off the sub-basin its position drains to, not the
+-- one its water goes to
 DROP TABLE IF EXISTS fwapg.pcic_subbasins;
 
 CREATE TABLE fwapg.pcic_subbasins AS
 WITH area AS (
   SELECT
     x.subid,
-    x.fwa_parent_subid,
+    coalesce(dv.position_parent_subid, x.fwa_parent_subid) AS fwa_parent_subid,
     x.linear_feature_id,
     ua.upstream_area_ha
   FROM fwapg.pcic_fwa_crosswalk x
   INNER JOIN whse_basemapping.fwa_streams_watersheds_lut l ON x.linear_feature_id = l.linear_feature_id
   INNER JOIN whse_basemapping.fwa_watersheds_upstream_area ua ON l.watershed_feature_id = ua.watershed_feature_id
+  LEFT JOIN fwapg.pcic_diversions dv ON dv.subid = x.subid
   WHERE x.flag IS NULL
 )
 SELECT
