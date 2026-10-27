@@ -44,12 +44,16 @@ if [ "$DAYS" = 1 ] && [ "$FETCH_ONLY" = 0 ]; then
     || { echo "DAYS=1 records the commit that built the files: commit the changes under extras/pcic_crosswalk and load first" >&2; exit 1; }
   COMMIT=$(git rev-parse HEAD)
 fi
-# the job's own SQL and scripts, copied once and run from the copy: a run reads
-# them for hours, so an edit or checkout during it must not reach it (and DAYS=1
-# stamps every file with the commit the copy was taken at)
+# the job's SQL, the per-year scripts and the pcic schema, copied once and run
+# from the copy: a run reads them for hours, so an edit or checkout during it must
+# not reach them (and DAYS=1 stamps every file with the commit the copy was taken
+# at). This script itself is read as it runs: do not edit it in place during a run.
+# The EXIT trap would turn a failed expansion into exit 0 under bash 3.2, so it
+# exits 1 unless the job reached its end.
+ok=0
 CODE=$(mktemp -d "${TMPDIR:-/tmp}/pcic_crosswalk.XXXXXX")
-trap 'rm -rf "$CODE"' EXIT
-cp -R sql days_build.sh pcic_days.py "$CODE"/
+trap 'rc=$?; rm -rf "$CODE"; [ "$ok" = 1 ] || exit $(( rc ? rc : 1 ))' EXIT
+cp -R sql days_build.sh pcic_days.py ../../load/pcic_schema.sql "$CODE"/
 PERIOD=${YEARS/\//-}
 # the run's name in cache directories and export files, e.g. pnwnamet_historical_1981-2010
 RUN=$(printf '%s_%s_%s' "$MODEL" "$SCENARIO" "$PERIOD" | tr 'A-Z' 'a-z' | tr -cs 'a-z0-9.\n-' _)
@@ -274,6 +278,7 @@ if [ "$DAYS" = 1 ] || [ "$FETCH_ONLY" = 1 ]; then
 fi
 if [ "$FETCH_ONLY" = 1 ]; then
   echo "fetched $MODEL / $SCENARIO: $(echo "$LEAVES" | wc -l) batches, $(cat "$SERIES/missing.txt" 2> /dev/null | wc -l) outlets with no series"
+  ok=1
   exit 0
 fi
 
@@ -386,7 +391,7 @@ $PSQL -v step=month -v table=monthly -f "$CODE"/sql/qa_report_clamped.sql
 
 # into the pcic schema: the crosswalk and weights shared by every run, and this
 # run's rows, swapped in one transaction (sql/pcic_export.sql)
-$PSQL -f ../../load/pcic_schema.sql
+$PSQL -f "$CODE"/pcic_schema.sql
 $PSQL -v model="$MODEL" -v scenario="$SCENARIO" -v period="$PERIOD" -v weekly="$WEEKLY" -v days="$DAYS" -f "$CODE"/sql/pcic_export.sql
 # one file per table, and per table and run for the run's rows. pcic.runs lists
 # every run in this database, with the fingerprints load/pcic_*.sql check.
@@ -427,6 +432,11 @@ if [ "$DAYS" = 1 ]; then
   $PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_subbasins_months"
   $PSQL -c "CREATE TABLE fwapg.pcic_subbasins_months (year integer, subid integer, month integer, q_local double precision, q_acc double precision, PRIMARY KEY (year, subid, month))"
   CROSSWALK_MD5=$($PSQL -tXA -c "SELECT md5(string_agg(x::text, '|' ORDER BY x.subid)) FROM pcic.fwa_crosswalk x")
+  # this model and scenario's catalogue describes files the loop may remove or
+  # rebuild, so it goes before the first file is touched, from the database and the
+  # exported file alike; pcic_export_days.sql writes it again at the end
+  $PSQL -c "DELETE FROM pcic.series WHERE (model, scenario) = ('$MODEL', '$SCENARIO')"
+  export_table pcic.series "SELECT * FROM pcic.series ORDER BY model, scenario, year"
   RAN_ALL=1
   TODO=
   for y in $SERIES_YEARS; do
@@ -498,4 +508,5 @@ for st in $STEPS; do
   $PSQL -c "DROP TABLE fwapg.pcic_outlet_${st#*:}, fwapg.pcic_subbasins_${st#*:}, fwapg.pcic_discharge_${st#*:}"
 done
 $PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_subbasins_months, fwapg.pcic_days_means, fwapg.pcic_series_files"
+ok=1
 echo "PCIC crosswalk complete for $MODEL / $SCENARIO / $PERIOD, see pcic.runs"

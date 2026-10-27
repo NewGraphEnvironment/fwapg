@@ -90,7 +90,7 @@ None. CMIP6 per-year builds are not in scope (the job takes them; nothing is bui
 ## Validation
 
 - [ ] Tests pass
-- [ ] `/code-check` clean (once over the branch with `/code-check branch`)
+- [x] `/code-check` clean (once over the branch with `/code-check branch`)
 - [ ] PWF checkboxes match landed work
 - [ ] `/planning-archive` on completion
 

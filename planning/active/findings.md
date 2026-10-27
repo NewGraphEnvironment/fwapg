@@ -196,3 +196,46 @@ The enumeration, every cached or published artifact the job reads back or publis
 | consumer `pcic.series` | published catalogue, crosswalk | `load/pcic.sql` refusals | handled |
 
 Nothing in the table is reused on a key that leaves out what it was built from, apart from the two rows marked by design or pre-existing.
+
+### Code-check round 4, and the enumeration re-taken from the code
+
+Round 4 (`review-round4.md`) checked round 3's fixes and the table above. Three findings, one inside round 3's fix, and two wrong verdicts in the table:
+
+1. The days loop removed kept files (code or NetCDF axis) while their `pcic.series` rows stayed, and any later run that printed `complete` re-exported them; the upload loop took every model's directory. The days step now deletes its model and scenario's catalogue rows, and re-exports `pcic.series.csv.gz`, before it touches a file; `extras/README.md` uploads only the directory of the model whose `DAYS=1` run completed.
+2. (inside R3-1) `trap 'rm -rf "$CODE"' EXIT` under `/bin/bash` 3.2 turns a failed expansion into exit 0. Both scripts now use the success-flag trap (`ok=1` at the end, otherwise `exit $(( rc ? rc : 1 ))`). Probed under 3.2.57: unbound variable → 1, `false` → 1, success → 0. (A first probe reported 0: its `$?` read the `$(…)` that printed the bash version, not the script.)
+3. `load/pcic_schema.sql` was still read from the tree; it is now copied with the rest. `pcic_crosswalk.sh` itself is read as it runs; its comment says not to edit it in place during a run.
+
+The enumeration, re-taken from every write site in `pcic_crosswalk.sh` and `days_build.sh` (`grep` for redirections, `mv`, `touch`, `rm`, `-o`, `export_table`, `CREATE TABLE`, `\copy … TO`), with round 4's missing rows:
+
+| artifact (write site) | kept only while | verdict |
+|---|---|---|
+| PCIC pages `data/{rivers,lakes}/*.geojson` (tmp, mv) | present | pre-existing; the frozen network every key below assumes |
+| `data/{rivers,lakes}.geojson`, `fwapg.pcic_rivers/lakes` | rewritten each run | handled |
+| batch lists | regenerated each run | handled |
+| `.split`, `.missing`, children, `missing.txt` | present | pre-existing; stale only after the pages are refetched |
+| `$NC/<batch>.nc` (`.nc.tmp`, `ncdump -h`, mv) | outlets equal the batch's | handled; PCIC data version by design |
+| `${tmp}_day.nc`, `.cdl`, `$out.tmp` | overwritten, removed after use | handled |
+| `$DAILY/<batch>.csv` (tmp, mv) | newer than its NetCDF; only current leaves read | handled; `reduce_batch` code not tracked, as before #42 |
+| staging `fwapg.pcic_*`, per-year `pcic_*_year_<y>` | rebuilt each run; per-year dropped by the trap | handled |
+| `data/qa_drainage.csv`, `data/qa_following.csv`, kept `fwapg.pcic_qa_*` and `pcic_qa_build` | rewritten each run; stamp dropped at start | pre-existing, handled |
+| `pcic.*.csv.gz` (tmp, mv) | rewritten each run | handled |
+| `pcic.series` rows and `pcic.series.csv.gz` | this model's rows deleted and re-exported before any file is touched; written again from the files' own metadata | handled (R1-1, R2-1, R4-1) |
+| per-year parquet (`.tmp`, `os.replace`) | crosswalk md5 equal, per-year code unchanged since its commit, newer than every NetCDF | handled (R1-2, R2-3, R3-3, R3-4) |
+| the code a run executes | `sql/`, `days_build.sh`, `pcic_days.py`, `pcic_schema.sql` copied once; the job script not edited in place | handled (R3-1, R4-3); `blue_line_paths.sh` read once, early |
+| `$CODE`, the uv script environment | removed on exit; uv's own cache | handled |
+| fresh-bc objects | uploaded after `complete`, that model's files first, `.csv.gz` last | procedural (R3-2, R4-1) |
+| consumer `pcic.series` | `load/pcic.sql` refusals | handled |
+
+The review ends on this enumeration (four rounds; round 4 found a defect inside round 3's fix, so a quiet round could not end it). Every artifact is reused only on a key that carries what it was built from, except the three rows marked pre-existing or by design.
+
+### Phase 5, first build (commit 8d08a0e, stopped by design)
+
+Launched 00:44:11 UTC from a worktree at 8d08a0e, stopped 02:11 UTC during the per-year step, once the review had changed the file format (the per-file metadata of round 1) so that every file it wrote would be rebuilt. What it established before it was stopped:
+
+- **#25's fingerprints reproduced exactly** (`pcic.runs`, built 01:24:01 UTC): 1951–2012 `monthly_q_sum` 178035348.248310 over 40,524,444 rows and 3,377,037 segments, `daily_q_sum` 633459324.098216 over 13,786,122 rows and 37,667 sub-basins, `crosswalk_md5` b1a710836df2cafea0ef514b7ed1c338 (unchanged). The 06 split and the sorted, half-full `06_daily` table changed nothing.
+- `sql/qa.sql` all `t`.
+- **0 requests to hydromosaic**: no `fetching … from hydromosaic` line in the log; the run read the kept NetCDF.
+- Per year, four at once: rows and COPY 144–147 s, `06_daily` 300–340 s, months 15–17 s, parquet 16–17 s, about 8.6 min a year and 2.15 min of wall time per year at four in parallel (so about 2 h 15 min for 63 years). Alone, a year took about 4.2 min; four at once each run about twice as slow, so the parallel gain is about 2x, not 4x.
+- Twelve real years (1950–1961) were written: 144,698,369 to 146,405,560 bytes each, so about 9.2 GB for 63.
+
+A `DROP DATABASE` in `pcic_test.sh` waited 20+ minutes on a checkpoint behind the build's writes: run the tests between builds, not during one.

@@ -27,7 +27,10 @@ D=$(dirname "$0")
 PSQL="psql $DATABASE_URL -X -q -v ON_ERROR_STOP=1"
 src=pcic_outlet_year_$y
 dst=pcic_subbasins_year_$y
-trap '$PSQL -c "DROP TABLE IF EXISTS fwapg.$src, fwapg.$dst" > /dev/null 2>&1 || true' EXIT
+# exits 1 unless the year was built: under bash 3.2 an EXIT trap turns a failed
+# expansion into exit 0
+ok=0
+trap 'rc=$?; $PSQL -c "DROP TABLE IF EXISTS fwapg.$src, fwapg.$dst" > /dev/null 2>&1; [ "$ok" = 1 ] || exit $(( rc ? rc : 1 ))' EXIT
 
 t0=$SECONDS
 $PSQL -c "DROP TABLE IF EXISTS fwapg.$src" \
@@ -42,4 +45,5 @@ $PSQL -c "INSERT INTO fwapg.pcic_subbasins_months
 t3=$SECONDS
 $PSQL -c "\copy (SELECT subid, month, day, q_local, q_acc FROM fwapg.$dst) TO STDOUT WITH (FORMAT csv)" \
   | uv run -q --script "$D/pcic_days.py" parquet "$y" "$out" "$md5" "$commit"
+ok=1
 echo "days $y: rows and copy $((t1 - t0)) s, 06_daily $((t2 - t1)) s, months $((t3 - t2)) s, parquet $((SECONDS - t3)) s"
