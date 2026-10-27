@@ -31,3 +31,4 @@ The approval of 2026-10-26 covered the baseline only. The run-to-PR mandate star
 - Direct closure on BULK: 360,424 of 360,444 segment-months equal to `pcic.discharge_monthly` at 5 decimals, the rest a rounding flip (`logs/closure_bulk.R`).
 - Next: publish (parquet first, then the `.csv.gz` files), load the catalogue from fresh-bc in a scratch database, read a year back over HTTP; issue body, wet#122 comment, archive, PR.
 - Published: 63 parquet files (9.21 GB, 21 min 47 s), then the 7 `.csv.gz` (68 s); catalogue loaded from fresh-bc in a scratch database; 1983 read back over HTTP equal to its catalogue row; the README's query run against the published files (201 s). `pcic_test.sh`: 162 pass.
+- Issue #42 body revised (outcome, measured sizes, decisions, the first check restated as tested). Archived; the PR into `newgraph` and the wet#122 comment follow in the same session.

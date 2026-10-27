@@ -69,8 +69,8 @@ Mechanism, chosen and stated (not asked):
 ## Phase 6: Documentation
 - [x] `extras/pcic_crosswalk/README.md`: `DAYS`, `FETCH_ONLY`, the kept NetCDF and what a rerun now needs, the per-year product and its catalogue with the fingerprint formula, the duckdb (and R) query for flow on a segment for one year or every year of a window, sizes, timings, the per-year clamp caveat, 1950 as the start-up year, `uv` in requirements and in the test paragraph
 - [x] `research/pcic_routed_flow_years.md` (header per `planning.md`) and its row in `research/README.md`; `pcic_routed_flow_periods.md` cross-references it
-- [ ] Issue #42 body: `## Plan` kept current, sizes measured, decisions recorded, the first check's "row for row" restated as the tolerance tested; a comment on wet#122 naming the published files and the query
-- [ ] `/code-check branch`, `/planning-archive` (README with the Measurement list below and Evidence), `/gh-pr-push --base newgraph`
+- [x] Issue #42 body: `## Plan` kept current, sizes measured, decisions recorded, the first check's "row for row" restated as the tolerance tested; a comment on wet#122 naming the published files and the query
+- [x] `/code-check branch`, `/planning-archive` (README with the Measurement list below and Evidence), `/gh-pr-push --base newgraph`
 
 ## Measurement the archive README must carry
 
@@ -91,8 +91,8 @@ None. CMIP6 per-year builds are not in scope (the job takes them; nothing is bui
 
 - [x] Tests pass
 - [x] `/code-check` clean (once over the branch with `/code-check branch`)
-- [ ] PWF checkboxes match landed work
-- [ ] `/planning-archive` on completion
+- [x] PWF checkboxes match landed work
+- [x] `/planning-archive` on completion
 
 How each change is proved:
 - `PGSERVER=... ./pcic_test.sh` green after each phase (Phases 2–4 add checks); a mutation pass on the new guards as #25 did (`tests/mutations/`): each refusal shown to fire.
