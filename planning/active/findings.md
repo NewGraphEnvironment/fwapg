@@ -146,3 +146,16 @@ A probe of the kept files first reported 0 leaves: the interactive shell's profi
 ### Phase 2 measured: `pcic_days.py rows` on the real files
 
 `rows 1952` over the 216 files: 17,819,808 rows (48,688 outlets × 366 days) in **17 s**; piped into COPY with the primary key added, **75 s**. With the stand-in's other steps a year is about 75 + 152 + 8 + 15 ≈ 250 s, under the plan's 5-min gate, so the loop is committed as is.
+
+### Code-check round 1 (branch, 2026-10-27)
+
+Four findings (`review-round1.md`), all reproduced on reading; three fixed, one an ordering constraint:
+
+1. `pcic_export.sql` refused a `DAYS=1` rebuild of the model whose catalogue was on an old crosswalk (its remedy could not work). Now, with `-v days=1`, that model and scenario's stale rows are deleted in the export's transaction; other models are still refused.
+2. A kept year's file was reused on its path alone and catalogued with this run's crosswalk and commit. Each file now carries `fwapg.crosswalk_md5` and `fwapg.commit` in its parquet metadata; the job rebuilds a kept file routed on another crosswalk; `fingerprint` reports each file's own md5 and commit; `pcic_export_days.sql` refuses a file routed on another crosswalk and takes `commit` per file.
+3. The climatology load read `cat $DAILY/*.csv`, which a batch halved since an earlier run could double. It now reads only the current leaf batches' files and stops on a missing one.
+4. `load.sh` fails until `pcic.series.csv.gz` is on fresh-bc (403 today): Phase 5 publishes it before the PR.
+
+Mutation: removing the own-model exemption fails "with DAYS=1 the export goes ahead" and "deletes them"; removing the file-crosswalk refusal fails "a file routed on another crosswalk is refused". `pcic_test.sh` 154 → 162.
+
+Consequence for Phase 5: the build launched at 00:44 UTC (commit 8d08a0e) writes files without the metadata. It is kept running for its real-data measurements (#25 fingerprints, per-year timing, `qa_days.sql` on the real files), and a final `DAYS=1` run from the reviewed commit rebuilds every file before the publish.

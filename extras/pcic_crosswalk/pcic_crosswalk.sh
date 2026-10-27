@@ -270,7 +270,13 @@ fi
 $PSQL -v y1="${YEARS%/*}" -v y2="${YEARS#*/}" -f sql/pcic_crosswalk01_days.sql
 $PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_outlet_daily"
 $PSQL -c "CREATE TABLE fwapg.pcic_outlet_daily (subid integer, month integer, day integer, q_m3s double precision, PRIMARY KEY (subid, month, day))"
-cat "$DAILY"/*.csv | $PSQL -c "\copy fwapg.pcic_outlet_daily FROM STDIN WITH (FORMAT csv)"
+# the climatology of this network's batches only: a batch halved since an earlier
+# run can leave its parent's file beside its children's
+for f in $LEAVES; do
+  [ -e "$DAILY/$(basename "$f" .txt).csv" ] || { echo "no climatology for $f in $DAILY" >&2; exit 1; }
+done
+for f in $LEAVES; do cat "$DAILY/$(basename "$f" .txt).csv"; done \
+  | $PSQL -c "\copy fwapg.pcic_outlet_daily FROM STDIN WITH (FORMAT csv)"
 # every outlet with a series has every calendar day of YEARS
 n=$($PSQL -tXA -c "SELECT count(*) FROM (SELECT subid FROM fwapg.pcic_outlet_daily GROUP BY subid HAVING count(*) != (SELECT count(*) FROM fwapg.pcic_day_bins WHERE n_days > 0)) s")
 [ "$n" -eq 0 ] || { echo "$n outlets lack calendar days of $YEARS" >&2; exit 1; }
@@ -370,7 +376,7 @@ $PSQL -v step=month -v table=monthly -f sql/qa_report_clamped.sql
 # into the pcic schema: the crosswalk and weights shared by every run, and this
 # run's rows, swapped in one transaction (sql/pcic_export.sql)
 $PSQL -f ../../load/pcic_schema.sql
-$PSQL -v model="$MODEL" -v scenario="$SCENARIO" -v period="$PERIOD" -v weekly="$WEEKLY" -f sql/pcic_export.sql
+$PSQL -v model="$MODEL" -v scenario="$SCENARIO" -v period="$PERIOD" -v weekly="$WEEKLY" -v days="$DAYS" -f sql/pcic_export.sql
 # one file per table, and per table and run for the run's rows. pcic.runs lists
 # every run in this database, with the fingerprints load/pcic_*.sql check.
 export_table() {
@@ -394,8 +400,10 @@ export_table "pcic.discharge_monthly.$RUN" "SELECT * FROM pcic.discharge_monthly
 # $DAYDIR (days_build.sh), routed to segments by whoever reads
 # it, through pcic.segment_weights (README). Every year is also kept as monthly
 # means in fwapg.pcic_subbasins_months for sql/qa_report_days.sql. A year whose
-# file is kept is not rebuilt, so a re-run resumes; its months are read back from
-# the file. DAYS_JOBS years are built at once, each in tables of its own.
+# file is kept, routed on this crosswalk (its metadata says), is not rebuilt, so a
+# re-run resumes; its months are read back from the file. A kept file routed on
+# another crosswalk is rebuilt. DAYS_JOBS years are built at once, each in tables
+# of its own.
 DAYDIR=data/days/$MS
 if [ "$DAYS" = 1 ]; then
   mkdir -p "$DAYDIR"
@@ -403,10 +411,15 @@ if [ "$DAYS" = 1 ]; then
   SERIES_YEARS=$(cdo -s showyear "$(echo "$NCS" | head -1)" | tr -s ' ' '\n' | grep -v '^$')
   $PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_subbasins_months"
   $PSQL -c "CREATE TABLE fwapg.pcic_subbasins_months (year integer, subid integer, month integer, q_local double precision, q_acc double precision, PRIMARY KEY (year, subid, month))"
+  CROSSWALK_MD5=$($PSQL -tXA -c "SELECT md5(string_agg(x::text, '|' ORDER BY x.subid)) FROM pcic.fwa_crosswalk x")
   RAN_ALL=1
   TODO=
   for y in $SERIES_YEARS; do
     f=$DAYDIR/pcic.subbasin_days.$MS.$y.parquet
+    if [ -e "$f" ] && [ "$(uv run -q --script pcic_days.py meta "$f" | cut -d, -f1)" != "$CROSSWALK_MD5" ]; then
+      echo "$f was routed on another crosswalk: rebuilding it"
+      rm "$f"
+    fi
     if [ -e "$f" ]; then
       RAN_ALL=0
       uv run -q --script pcic_days.py months "$f" | $PSQL -c "\copy fwapg.pcic_subbasins_months FROM STDIN WITH (FORMAT csv)"
@@ -416,7 +429,7 @@ if [ "$DAYS" = 1 ]; then
   done
   # shellcheck disable=SC2086
   [ -z "$TODO" ] || printf '%s\n' $TODO \
-    | xargs -P $DAYS_JOBS -I {} ./days_build.sh {} "$DAYDIR/pcic.subbasin_days.$MS.{}.parquet" $NCS
+    | xargs -P $DAYS_JOBS -I {} ./days_build.sh {} "$DAYDIR/pcic.subbasin_days.$MS.{}.parquet" "$CROSSWALK_MD5" "$COMMIT" $NCS
 
   # the published files' mean over YEARS against the climatology, and (when every
   # year ran here) the float64 monthly means against the run's; a failure keeps the
@@ -435,11 +448,10 @@ if [ "$DAYS" = 1 ]; then
 
   # the catalogue: one row per file, every year of the series
   $PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_series_files" \
-    -c "CREATE TABLE fwapg.pcic_series_files (year integer, rows bigint, subbasins bigint, q_local_sum bigint, q_acc_sum bigint, bytes bigint)"
+    -c "CREATE TABLE fwapg.pcic_series_files (year integer, rows bigint, subbasins bigint, q_local_sum bigint, q_acc_sum bigint, bytes bigint, crosswalk_md5 text, commit text)"
   uv run -q --script pcic_days.py fingerprint "$DAYDIR"/pcic.subbasin_days."$MS".*.parquet \
     | $PSQL -c "\copy fwapg.pcic_series_files FROM STDIN WITH (FORMAT csv)"
-  $PSQL -v model="$MODEL" -v scenario="$SCENARIO" -v years="$(echo $SERIES_YEARS | tr ' ' ,)" -v commit="$COMMIT" \
-    -f sql/pcic_export_days.sql
+  $PSQL -v model="$MODEL" -v scenario="$SCENARIO" -v years="$(echo $SERIES_YEARS | tr ' ' ,)" -f sql/pcic_export_days.sql
 fi
 # every run writes the catalogue as the database holds it (empty until a DAYS=1
 # run), since the upload takes every pcic.*.csv.gz and load/pcic.sql reads it

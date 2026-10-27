@@ -11,15 +11,18 @@
       year missing or repeated, a fill or non-finite value, and an outlet in two
       files.
 
-  parquet <year> <out>
+  parquet <year> <out> <crosswalk md5> <commit>
       Read subid,month,day,q_local,q_acc for one year from stdin (CSV, no header)
       and write <out>: subid int32, date date32, q_local float32, q_acc float32,
-      sorted by subid and date, zstd, 1,000 sub-basins per row group. Refuses a
+      sorted by subid and date, zstd, 1,000 sub-basins per row group, with the md5
+      of the crosswalk the days were routed on and the fwapg commit that built them
+      in the file's metadata (fwapg.crosswalk_md5, fwapg.commit). Refuses a
       sub-basin without every day of the year, a NULL and a non-finite value.
 
   fingerprint <file...>
       Print each file's pcic.series line: year,rows,subbasins,q_local_sum,
-      q_acc_sum,bytes. Refuses a file named for another year than it holds. A sum is sum(floor(double(v) * 1000 + 0.5)) over the stored
+      q_acc_sum,bytes,crosswalk_md5,commit. Refuses a file named for another year
+      than it holds, and one without the metadata. A sum is sum(floor(double(v) * 1000 + 0.5)) over the stored
       float32 values v, as a 64-bit integer: double(v) * 1000 is exact for a
       float32, so every reader reproduces it bit for bit.
 
@@ -32,6 +35,9 @@
   months <file>
       Print year,subid,month,q_local,q_acc: the file's monthly means, in float64
       from the stored float32 values.
+
+  meta <file>
+      Print the file's crosswalk_md5,commit (empty where it has none).
 
   dump <file>
       Print subid,date,q_local,q_acc: the file's rows, the float32 values written
@@ -97,7 +103,14 @@ def rows(year, files):
             out.write(buf.getvalue())
 
 
-def parquet(year, path):
+META = (b"fwapg.crosswalk_md5", b"fwapg.commit")
+
+
+def parquet(year, path, crosswalk_md5, commit):
+    if not re.fullmatch(r"[0-9a-f]{32}", crosswalk_md5):
+        die(f"not an md5: {crosswalk_md5}")
+    if not re.fullmatch(r"[0-9a-f]{7,40}", commit):
+        die(f"not a commit: {commit}")
     import pyarrow as pa
     import pyarrow.csv as pacsv
     import pyarrow.parquet as pq
@@ -142,7 +155,7 @@ def parquet(year, path):
         "date": pa.array(date, pa.date32()),
         "q_local": pa.array(q["q_local"], pa.float32()),
         "q_acc": pa.array(q["q_acc"], pa.float32()),
-    })
+    }).replace_schema_metadata({META[0]: crosswalk_md5.encode(), META[1]: commit.encode()})
     tmp = path + ".tmp"
     pq.write_table(table, tmp, compression="zstd", row_group_size=SUBBASINS_PER_GROUP * ndays)
     os.replace(tmp, path)
@@ -168,6 +181,13 @@ def read(path):
     return int(years[0]), t["subid"].to_numpy(), date, q
 
 
+def meta(path):
+    import pyarrow.parquet as pq
+
+    m = pq.read_schema(path).metadata or {}
+    return m.get(META[0], b"").decode(), m.get(META[1], b"").decode()
+
+
 def fp_sum(v):
     return int(np.floor(v * 1000 + 0.5).astype(np.int64).sum())
 
@@ -179,7 +199,10 @@ def fingerprint(files):
         named = re.search(r"\.([0-9]{4})\.parquet$", f)
         if named and int(named.group(1)) != year:
             die(f"{f} holds the days of {year}")
-        w.writerow([year, len(subid), len(np.unique(subid)), fp_sum(q["q_local"]), fp_sum(q["q_acc"]), os.path.getsize(f)])
+        md5, commit = meta(f)
+        if not md5 or not commit:
+            die(f"{f} does not name the crosswalk and commit it was built from")
+        w.writerow([year, len(subid), len(np.unique(subid)), fp_sum(q["q_local"]), fp_sum(q["q_acc"]), os.path.getsize(f), md5, commit])
 
 
 def month_day(date):
@@ -250,14 +273,16 @@ def year_arg(x):
 def main(argv):
     if len(argv) >= 3 and argv[0] == "rows":
         rows(year_arg(argv[1]), argv[2:])
-    elif len(argv) == 3 and argv[0] == "parquet":
-        parquet(year_arg(argv[1]), argv[2])
+    elif len(argv) == 5 and argv[0] == "parquet":
+        parquet(year_arg(argv[1]), argv[2], argv[3], argv[4])
     elif len(argv) >= 2 and argv[0] == "fingerprint":
         fingerprint(argv[1:])
     elif len(argv) >= 4 and argv[0] == "means":
         means(year_arg(argv[1]), year_arg(argv[2]), argv[3:])
     elif len(argv) == 2 and argv[0] == "months":
         months(argv[1])
+    elif len(argv) == 2 and argv[0] == "meta":
+        print(",".join(meta(argv[1])))
     elif len(argv) == 2 and argv[0] == "dump":
         dump(argv[1])
     else:

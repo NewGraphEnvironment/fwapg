@@ -192,8 +192,8 @@ SQL
 sed -n '/^CREATE TABLE fwapg.pcic_fwa_crosswalk (/,/^);/p' sql/pcic_crosswalk04_select.sql | $P
 $P -c "INSERT INTO fwapg.pcic_fwa_crosswalk (subid, dowsubid, flag, linear_feature_id) VALUES (1, 2, NULL, 100), (2, 4, NULL, 200), (3, 2, NULL, 110), (4, -1, NULL, 400)"
 $P -f ../../load/pcic_schema.sql
-export_run() {  # export_run <model> <period> <weekly 0|1>
-  $P -v model="$1" -v scenario=historical -v period="$2" -v weekly="$3" -f sql/pcic_export.sql
+export_run() {  # export_run <model> <period> <weekly 0|1> [days 0|1]
+  $P -v model="$1" -v scenario=historical -v period="$2" -v weekly="$3" -v days="${4:-0}" -f sql/pcic_export.sql
 }
 succeeds 'export PNWNAmet 1981-2010 with weekly flow' export_run PNWNAmet 1981-2010 1
 # what the export wrote is its staging tables, row for row
@@ -269,7 +269,12 @@ for t in subbasin_daily discharge_monthly discharge_weekly; do
 done
 $P -c "INSERT INTO pcic.series (model, scenario, year, crosswalk_md5) VALUES ('Ghost', 'historical', 2001, 'x')"
 refused 'export: per-year days in pcic.series built on another crosswalk are refused' 'pcic.series were built on another crosswalk' export_run X 1981-2010 0
+refused 'and so are they with DAYS=1 for another model' 'pcic.series were built on another crosswalk' export_run X 1981-2010 0 1
 $P -c "DELETE FROM pcic.series WHERE model = 'Ghost'"
+$P -c "INSERT INTO pcic.series (model, scenario, year, crosswalk_md5) VALUES ('PNWNAmet', 'historical', 2001, 'x')"
+refused 'export: the run'"'"'s own model'"'"'s days on another crosswalk are refused without DAYS=1' 'pcic.series were built on another crosswalk' export_run PNWNAmet 1981-2010 1 0
+succeeds 'and with DAYS=1 the export goes ahead' export_run PNWNAmet 1981-2010 1 1
+check 'and deletes them, to be rebuilt' 0 "$($P -tA -c "SELECT count(*) FROM pcic.series")"
 check 'the refused exports changed nothing' 'PNWNAmet 1951-2012, PNWNAmet 1981-2010' \
   "$($P -tA -c "SELECT string_agg(model || ' ' || period, ', ' ORDER BY period) FROM pcic.runs")"
 # a per-year days catalogue on the runs' crosswalk, for the loads
@@ -476,6 +481,8 @@ sed -n '/^CREATE TABLE fwapg.pcic_fwa_crosswalk (/,/^);/p' sql/pcic_crosswalk04_
 $D -c "INSERT INTO fwapg.pcic_fwa_crosswalk (subid, dowsubid, anchor_subid, fwa_parent_subid, flag, linear_feature_id) VALUES
   (1, 2, 2, 2, NULL, 100), (2, 4, 4, 4, NULL, 200), (3, 2, 2, 4, NULL, 300), (4, -1, NULL, NULL, NULL, 400), (5, 3, 3, NULL, 'no_candidate', NULL)"
 
+DMD5=$($D -tA -c "SELECT md5(string_agg(x::text, '|' ORDER BY x.subid)) FROM fwapg.pcic_fwa_crosswalk x")
+
 # the job's climatology path (reduce_batch, taken from pcic_crosswalk.sh) for one
 # year and for 2001-2003, against pcic_days.py rows
 eval "$(sed -n '/^nc_outlets() {/,/^}/p; /^reduce_batch() {/,/^}/p' pcic_crosswalk.sh)"
@@ -540,7 +547,7 @@ $D -v step=month -v table=monthly -f sql/pcic_crosswalk08_periods.sql
 # the per-year files, built by days_build.sh as the job builds them
 $D -c "CREATE TABLE fwapg.pcic_subbasins_months (year integer, subid integer, month integer, q_local double precision, q_acc double precision, PRIMARY KEY (year, subid, month))"
 for y in 2001 2002 2003; do
-  succeeds "days_build.sh builds $y" env DATABASE_URL="$DAYS_DB" ./days_build.sh $y "$S/days/pcic.subbasin_days.Test_historical.$y.parquet" "$S/nc/a.nc" "$S/nc/b.nc"
+  succeeds "days_build.sh builds $y" env DATABASE_URL="$DAYS_DB" ./days_build.sh $y "$S/days/pcic.subbasin_days.Test_historical.$y.parquet" "$DMD5" abc1234 "$S/nc/a.nc" "$S/nc/b.nc"
 done
 # each year's file against the flows by hand: as for the climatology, with each
 # outlet's flow that year, q(o) = c(o) + (year - 2002) * o / 2, rounded to float32
@@ -570,7 +577,7 @@ SELECT 'each year''s file holds its flows by hand, at float32, one row per sub-b
   AND NOT EXISTS (SELECT * FROM dumped EXCEPT ALL SELECT * FROM days_want)
   AND NOT EXISTS (SELECT * FROM days_want EXCEPT ALL SELECT * FROM dumped);
 SELECT 'a file''s catalogue line is its fingerprint, by the formula in SQL',
-  '$fp' = format('2003,%s,%s,%s,%s,%s', count(*), count(DISTINCT subid),
+  '$fp' = format('2003,%s,%s,%s,%s,%s,$DMD5,abc1234', count(*), count(DISTINCT subid),
     sum(floor(q_local::real::float8 * 1000 + 0.5))::bigint, sum(floor(q_acc::real::float8 * 1000 + 0.5))::bigint,
     $(wc -c < "$S/days/pcic.subbasin_days.Test_historical.2003.parquet" | tr -d ' '))
 FROM days_want WHERE extract(year FROM date) = 2003;
@@ -585,12 +592,16 @@ refused 'fingerprint: a file named for another year is refused' 'holds the days 
 rewrite() {  # rewrite <year> <out> <awk program>
   uv run -q --script pcic_days.py dump "$S/days/pcic.subbasin_days.Test_historical.$1.parquet" \
     | awk -F, -v OFS=, '{ split($2, d, "-"); $2 = (d[2] + 0) "," (d[3] + 0) } '"$3"' { print }' \
-    | uv run -q --script pcic_days.py parquet "$1" "$2"
+    | uv run -q --script pcic_days.py parquet "$1" "$2" "$DMD5" abc1234
 }
 refused 'parquet: a sub-basin without every day of the year is refused' 'not every day of 2003' rewrite 2003 "$S/bad/short.parquet" '$2 == "6,15" && $1 == 2 { next }'
 succeeds 'parquet: a file rewritten unchanged is accepted' rewrite 2003 "$S/bad/same.parquet" ''
 check 'and holds the same rows' "$(uv run -q --script pcic_days.py fingerprint "$S/days/pcic.subbasin_days.Test_historical.2003.parquet" | cut -d, -f1-5)" \
   "$(uv run -q --script pcic_days.py fingerprint "$S/bad/same.parquet" | cut -d, -f1-5)"
+check 'a file names the crosswalk and commit it was built from' "$DMD5,abc1234" "$(uv run -q --script pcic_days.py meta "$S/bad/same.parquet")"
+uv run -q --with 'pyarrow>=15' python -c "import sys, pyarrow.parquet as pq; pq.write_table(pq.read_table(sys.argv[1]).replace_schema_metadata(None), sys.argv[2])" "$S/bad/same.parquet" "$S/bad/pcic.subbasin_days.Test_historical.2003.parquet"
+refused 'fingerprint: a file that does not name its crosswalk and commit is refused' 'does not name the crosswalk' uv run -q --script pcic_days.py fingerprint "$S/bad/pcic.subbasin_days.Test_historical.2003.parquet"
+refused 'parquet: a crosswalk that is not an md5 is refused' 'not an md5' sh -c 'echo 1,1,1,1,1 | uv run -q --script pcic_days.py parquet 2003 "$1/x.parquet" abc abc1234' _ "$S/bad"
 
 # sql/qa_days.sql over the files, and over the files with one year changed
 days_means() {  # days_means <directory>
@@ -638,10 +649,10 @@ check 'and its climatology count is 09''s own' "$($D -tA -c "SELECT count(*) FRO
 # the catalogue: sql/pcic_export_days.sql and its refusals
 $D -c "INSERT INTO pcic.fwa_crosswalk SELECT * FROM fwapg.pcic_fwa_crosswalk" \
   -c "INSERT INTO pcic.runs (model, scenario, period, crosswalk_md5) SELECT 'Test', 'historical', '2001-2003', md5(string_agg(x::text, '|' ORDER BY x.subid)) FROM pcic.fwa_crosswalk x" \
-  -c "CREATE TABLE fwapg.pcic_series_files (year integer, rows bigint, subbasins bigint, q_local_sum bigint, q_acc_sum bigint, bytes bigint)"
+  -c "CREATE TABLE fwapg.pcic_series_files (year integer, rows bigint, subbasins bigint, q_local_sum bigint, q_acc_sum bigint, bytes bigint, crosswalk_md5 text, commit text)"
 uv run -q --script pcic_days.py fingerprint "$S"/days/*.parquet | $D -c "\copy fwapg.pcic_series_files FROM STDIN WITH (FORMAT csv)"
 export_days() {  # export_days <years>
-  $D -v model=Test -v scenario=historical -v years="$1" -v commit=abc1234 -f sql/pcic_export_days.sql
+  $D -v model=Test -v scenario=historical -v years="$1" -f sql/pcic_export_days.sql
 }
 succeeds 'export the catalogue of 2001-2003' export_days 2001,2002,2003
 check 'the catalogue lists each file, with the crosswalk and commit' '2001|1460|4|abc1234 2002|1460|4|abc1234 2003|1460|4|abc1234' \
@@ -652,7 +663,9 @@ $D -c "UPDATE fwapg.pcic_series_files SET rows = rows + 1 WHERE year = 2002"
 refused 'export_days: a file short of a row per sub-basin and day is refused' 'files of years 2002 do not hold' export_days 2001,2002,2003
 $D -c "UPDATE fwapg.pcic_series_files SET rows = rows - 1 WHERE year = 2002" -c "UPDATE fwapg.pcic_series_files SET subbasins = 3, rows = 3 * 365 WHERE year = 2002"
 refused 'export_days: a file of other sub-basins than the placed outlets is refused' 'files of years 2002 do not hold' export_days 2001,2002,2003
-$D -c "UPDATE fwapg.pcic_series_files SET subbasins = 4, rows = 4 * 365 WHERE year = 2002" -c "UPDATE pcic.runs SET crosswalk_md5 = 'x'"
+$D -c "UPDATE fwapg.pcic_series_files SET subbasins = 4, rows = 4 * 365 WHERE year = 2002" -c "UPDATE fwapg.pcic_series_files SET crosswalk_md5 = 'x' WHERE year = 2001"
+refused 'export_days: a file routed on another crosswalk is refused' 'files of years 2001 were routed on another crosswalk' export_days 2001,2002,2003
+$D -c "UPDATE fwapg.pcic_series_files SET crosswalk_md5 = '$DMD5'" -c "UPDATE pcic.runs SET crosswalk_md5 = 'x'"
 refused 'export_days: a crosswalk unlike the runs'"'"' is refused' 'is not the crosswalk runs' export_days 2001,2002,2003
 $D -c "DELETE FROM pcic.runs"
 refused 'export_days: no published run is refused' 'lists no run' export_days 2001,2002,2003

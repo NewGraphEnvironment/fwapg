@@ -10,7 +10,9 @@
 -- another run in pcic.runs has a different crosswalk md5 or weights fingerprint:
 -- rebuild those runs too, or delete their rows from pcic.runs and their tables
 -- first. Rows of a run pcic.runs does not list are refused too, and so are
--- per-year days in pcic.series built on another crosswalk (they were routed on it).
+-- per-year days in pcic.series built on another crosswalk (they were routed on it),
+-- except, when :days is 1, those of this run's model and scenario: they are deleted
+-- here, and the job rebuilds their files and catalogue (pcic_export_days.sql).
 
 BEGIN;
 
@@ -19,6 +21,7 @@ SELECT
   :'model'::text AS model,
   :'scenario'::text AS scenario,
   :'period'::text AS period,
+  :'days'::integer AS days,
   (SELECT md5(string_agg(x::text, '|' ORDER BY x.subid)) FROM fwapg.pcic_fwa_crosswalk x) AS crosswalk_md5,
   (SELECT count(*) FROM fwapg.pcic_segment_weights) AS weights_rows,
   (SELECT sum(round(share::numeric, 9)) FROM fwapg.pcic_segment_weights) AS weights_share_sum;
@@ -51,11 +54,15 @@ BEGIN
   END IF;
   SELECT string_agg(DISTINCT s.model || ' / ' || s.scenario, ', ') INTO other
   FROM pcic.series s, run n
-  WHERE s.crosswalk_md5 IS DISTINCT FROM n.crosswalk_md5;
+  WHERE s.crosswalk_md5 IS DISTINCT FROM n.crosswalk_md5
+  AND NOT (n.days = 1 AND (s.model, s.scenario) = (n.model, n.scenario));
   IF other IS NOT NULL THEN
     RAISE EXCEPTION 'per-year days % in pcic.series were built on another crosswalk: rebuild them (DAYS=1), or delete their rows from pcic.series, first', other;
   END IF;
 END $$;
+
+DELETE FROM pcic.series s USING run n
+WHERE n.days = 1 AND (s.model, s.scenario) = (n.model, n.scenario) AND s.crosswalk_md5 IS DISTINCT FROM n.crosswalk_md5;
 
 TRUNCATE pcic.fwa_crosswalk, pcic.segment_weights, pcic.day_bins;
 INSERT INTO pcic.fwa_crosswalk SELECT * FROM fwapg.pcic_fwa_crosswalk;
