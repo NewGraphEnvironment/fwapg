@@ -51,10 +51,14 @@ fetch (27 min, network-bound). The job:
    endpoint (NetCDF, 500 outlets per request, one domain per request; batches are halved on a
    mixed-domain 422, or on repeated failure while above 50 outlets). Each batch is reduced to the mean
    flow of each calendar day over `YEARS` with `cdo ydaymean`, which bins by month and day (Feb 29 is a
-   bin of its own), and the NetCDF is deleted. The climatology is cached per run in `data/daily/<run>/`
-   (`<run>` is e.g. `pnwnamet_historical_1981-2010`) and the batch lists in `data/series/<run>/`, so a
-   run resumes where it stopped. A series with a missing day in `YEARS` stops the job, as do more than
-   100 outlets with no series (28 for PNWNAmet, listed in `data/series/<run>/missing.txt`). Months and
+   bin of its own). Each batch's NetCDF (every day of the model's series, about 180 KB per outlet) is
+   kept in `data/nc/<model>_<scenario>/` (e.g. `data/nc/PNWNAmet_historical/`), so another period, or
+   the per-year days (`DAYS=1`), derive from it without fetching again. The climatology is cached per
+   run in `data/daily/<run>/` (`<run>` is e.g. `pnwnamet_historical_1981-2010`), and the batch lists,
+   with their split and missing-outlet markers, in `data/series/<model>_<scenario>/`, so a run resumes
+   where it stopped. A series with a missing day in `YEARS` stops the job, as do more than 100 outlets
+   with no series (28 for PNWNAmet, listed in `data/series/<model>_<scenario>/missing.txt`).
+   `FETCH_ONLY=1` stops the job once every batch is fetched. Months and
    weeks are averages of the calendar days, each day weighted by how often it occurs in `YEARS`
    (`sql/pcic_crosswalk01_days.sql`), which reproduces `cdo ymonmean` to float precision.
 3. **Snapping.** Up to 5 FWA candidates per outlet within 150 m, one per blue line: `FWA_IndexPoint`'s

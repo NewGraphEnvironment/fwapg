@@ -9,7 +9,8 @@
 -- would replace them under runs built on the old ones, so the swap is refused when
 -- another run in pcic.runs has a different crosswalk md5 or weights fingerprint:
 -- rebuild those runs too, or delete their rows from pcic.runs and their tables
--- first. Rows of a run pcic.runs does not list are refused too.
+-- first. Rows of a run pcic.runs does not list are refused too, and so are
+-- per-year days in pcic.series built on another crosswalk (they were routed on it).
 
 BEGIN;
 
@@ -47,6 +48,12 @@ BEGIN
   AND NOT EXISTS (SELECT 1 FROM run n WHERE (n.model, n.scenario, n.period) = (o.model, o.scenario, o.period));
   IF orphan IS NOT NULL THEN
     RAISE EXCEPTION 'pcic.subbasin_daily or pcic.discharge_* hold rows of runs % that pcic.runs does not list: delete them first', orphan;
+  END IF;
+  SELECT string_agg(DISTINCT s.model || ' / ' || s.scenario, ', ') INTO other
+  FROM pcic.series s, run n
+  WHERE s.crosswalk_md5 IS DISTINCT FROM n.crosswalk_md5;
+  IF other IS NOT NULL THEN
+    RAISE EXCEPTION 'per-year days % in pcic.series were built on another crosswalk: rebuild them (DAYS=1), or delete their rows from pcic.series, first', other;
   END IF;
 END $$;
 

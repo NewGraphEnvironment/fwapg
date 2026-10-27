@@ -17,3 +17,12 @@ cd /Users/airvine/Projects/repo/fwapg && git fetch -q origin && git checkout 42-
 ```
 
 The approval of 2026-10-26 covered the baseline only. The run-to-PR mandate starts when the user says to resume; then start Phase 1 of `task_plan.md`, with `DATABASE_URL` exported for the build database and `PGSERVER` for `pcic_test.sh`.
+
+## Session 2026-10-27 (UTC)
+
+- Resumed on the user's instruction; the run-to-PR mandate starts here. `DATABASE_URL`/`PGSERVER` for the local build database exported per command.
+- The pending gate decision (`commit` in `pcic.series`) taken as recommended, flagged for the user (`findings.md`).
+- Phases 1–4 code: the fetch keeps the NetCDF (`DAYS`, `FETCH_ONLY`), 06 split into `06_daily`, `pcic_days.py`, `days_build.sh`, the per-year loop with its QA, report and catalogue, `pcic.series` in the schema, export and loads; `pcic_test.sh` 107 → 154 checks, green.
+- Phase 1 fetch running (`DAYS=1 FETCH_ONLY=1`, from a frozen copy, since 00:16 UTC); first run killed after a mid-run edit (`findings.md`).
+- Phase 2 timing on a stand-in year: `06_daily` reproduces #25's daily fingerprint; the loop 259 s → 152 s (sorted, fillfactor 50); closure-table contingency measured slower; years built 4 at once.
+- Next: the fetch's elapsed and bytes; time `pcic_days.py rows` on the real files; the Phase 5 build.

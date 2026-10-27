@@ -10,6 +10,10 @@
 -- extras/pcic_crosswalk/sql/pcic_export.sql). A published run's rows already in
 -- this database are kept only where they are what its published fingerprint
 -- describes; the rest are deleted, so that only load/pcic_run.sql brings them back.
+-- pcic.series gains (or replaces) the published per-year days catalogue, per
+-- model and scenario; it may be empty, and the parquet files it describes are never
+-- loaded. A catalogue built on another crosswalk than the published one stops the
+-- load, as does one in this database, not published, built on another.
 -- One transaction, so a failed download or check leaves the tables as they were.
 BEGIN;
 
@@ -17,11 +21,13 @@ BEGIN;
   CREATE TEMPORARY TABLE crosswalk_in (LIKE pcic.fwa_crosswalk) ON COMMIT DROP;
   CREATE TEMPORARY TABLE weights_in (LIKE pcic.segment_weights) ON COMMIT DROP;
   CREATE TEMPORARY TABLE day_bins_in (LIKE pcic.day_bins) ON COMMIT DROP;
+  CREATE TEMPORARY TABLE series_in (LIKE pcic.series) ON COMMIT DROP;
 
   \copy runs_in FROM PROGRAM 'curl -sSf https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/pcic.runs.csv.gz | gunzip' with (format csv, header match)
   \copy crosswalk_in FROM PROGRAM 'curl -sSf https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/pcic.fwa_crosswalk.csv.gz | gunzip' with (format csv, header match)
   \copy weights_in FROM PROGRAM 'curl -sSf https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/pcic.segment_weights.csv.gz | gunzip' with (format csv, header match)
   \copy day_bins_in FROM PROGRAM 'curl -sSf https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/pcic.day_bins.csv.gz | gunzip' with (format csv, header match)
+  \copy series_in FROM PROGRAM 'curl -sSf https://fresh-bc.s3.us-west-2.amazonaws.com/fwapg/extras/pcic.series.csv.gz | gunzip' with (format csv, header match)
 
   DO $$
   DECLARE
@@ -42,6 +48,16 @@ BEGIN;
     END IF;
     IF (SELECT count(*) FROM day_bins_in) != 366 THEN
       RAISE EXCEPTION 'pcic.day_bins.csv.gz does not hold 366 calendar days';
+    END IF;
+    IF EXISTS (SELECT 1 FROM series_in WHERE crosswalk_md5 IS DISTINCT FROM cw_md5) THEN
+      RAISE EXCEPTION 'pcic.series.csv.gz lists days built on another crosswalk than pcic.fwa_crosswalk.csv.gz (md5 %)', cw_md5;
+    END IF;
+    SELECT string_agg(DISTINCT s.model || ' / ' || s.scenario, ', ') INTO other
+    FROM pcic.series s
+    WHERE NOT EXISTS (SELECT 1 FROM series_in i WHERE (i.model, i.scenario) = (s.model, s.scenario))
+    AND s.crosswalk_md5 IS DISTINCT FROM cw_md5;
+    IF other IS NOT NULL THEN
+      RAISE EXCEPTION 'per-year days % in pcic.series were built on another crosswalk: rebuild them, or delete their rows from pcic.series, first', other;
     END IF;
     SELECT string_agg(r.model || ' / ' || r.scenario || ' / ' || r.period, ', ') INTO other
     FROM pcic.runs r
@@ -95,9 +111,13 @@ BEGIN;
   INSERT INTO pcic.fwa_crosswalk SELECT * FROM crosswalk_in;
   INSERT INTO pcic.segment_weights SELECT * FROM weights_in;
   INSERT INTO pcic.day_bins SELECT * FROM day_bins_in;
+  DELETE FROM pcic.series s USING (SELECT DISTINCT model, scenario FROM series_in) i
+  WHERE (s.model, s.scenario) = (i.model, i.scenario);
+  INSERT INTO pcic.series SELECT * FROM series_in;
 
 COMMIT;
 
 ANALYZE pcic.runs;
+ANALYZE pcic.series;
 ANALYZE pcic.fwa_crosswalk;
 ANALYZE pcic.segment_weights;

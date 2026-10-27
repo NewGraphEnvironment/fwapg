@@ -6,7 +6,9 @@
 -- weights (segment_weights) and the calendar-day week bins (day_bins). Per run,
 -- keyed by model, scenario and period: sub-basin flow per calendar day
 -- (subbasin_daily) and segment flow per month and week (discharge_monthly,
--- discharge_weekly). runs lists the runs with each table's fingerprint.
+-- discharge_weekly). runs lists the runs with each table's fingerprint. Per model
+-- and scenario, series lists the per-year sub-basin days published as parquet
+-- (one file a year, never loaded here), with each file's fingerprint.
 --
 -- Run by pcic_crosswalk.sh before its export and by load.sh before its loads;
 -- creates only what is missing.
@@ -107,4 +109,23 @@ CREATE TABLE IF NOT EXISTS pcic.discharge_weekly (
   week integer,
   q_m3s double precision,
   PRIMARY KEY (model, scenario, period, linear_feature_id, week)
+);
+
+-- one row per year of a model and scenario's per-year sub-basin days, the file
+-- pcic.subbasin_days.<model>_<scenario>.<year>.parquet (subid, date, q_local,
+-- q_acc; extras/pcic_crosswalk/README.md). A sum is sum(floor(double(v) * 1000 +
+-- 0.5)) over the file's float32 values v, which every reader reproduces exactly.
+CREATE TABLE IF NOT EXISTS pcic.series (
+  model text,
+  scenario text,
+  year integer,
+  crosswalk_md5 text,            -- md5 of the crosswalk the days were built on, as in pcic.runs
+  rows bigint,                   -- rows in the file: subbasins x days of the year
+  subbasins bigint,
+  q_local_sum bigint,
+  q_acc_sum bigint,
+  bytes bigint,                  -- the file's size
+  commit text,                   -- the fwapg commit that built the file
+  built_at timestamptz,
+  PRIMARY KEY (model, scenario, year)
 );

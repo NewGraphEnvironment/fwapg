@@ -91,3 +91,48 @@ wet#122's branch `122-pcic-per-year-routed-flow-keep-the-years` (`scripts/depart
 
 1. `pcic.series` names no commit, so wet takes it from `WET_FWAPG_DAYS_COMMIT`; a `commit` column is a pending gate decision (recommended: add it).
 2. The `qa_days.sql` tolerance: float32 rounding bounds each value's error relative to that value, so a bin mean's error is bounded by 2^-24 × mean|v|, not by |mean|. On a losing reach `q_local` changes sign across years and the mean can sit near 0 while the values are near 1 m³/s (error about 6e-8), which `1e-6 * greatest(abs(clim), 1e-3)` (floor 1e-9) would fail. The bound is now `2^-23 × mean|v| + 1e-9`, wet's parity bound; not yet measured on real data.
+
+## Resume, 2026-10-27 (UTC)
+
+### The `commit` column (the pending gate decision)
+
+Taken as recommended: `pcic.series` carries `commit text`, `git rev-parse HEAD` at export, and a `DAYS=1` build refuses to start with uncommitted changes under `extras/pcic_crosswalk` or `load` so that the column cannot name a commit the files were not built from. The user was away; this is reversible before merge (drop the column from `load/pcic_schema.sql` and `sql/pcic_export_days.sql`) and is named in the PR for their call.
+
+### Phase 1: a mid-run edit, and the restart
+
+The first `DAYS=1 FETCH_ONLY=1` run (00:10 UTC) was killed at 00:15 after one batch: the job script was edited above the line bash was executing (the `COMMIT` guard), and bash reads a script by byte offset, so after `xargs` returned it would have resumed mid-line in the edited file. Killed cleanly (the `.nc.tmp` downloads were discarded, which is what the tmp-then-move is for) and relaunched from a frozen copy, `data/run42_fetch_frozen.sh`, at 00:16 UTC. The kept batch was reused.
+
+### Phase 2: timing one year, and two changes to the plan's mechanism
+
+Measured 2026-10-27 in a scratch database holding the staging tables (`pcic_fwa_crosswalk` from `pcic.fwa_crosswalk`, `pcic_outlets` from `fwapg.pcic_qa_outlets`, `pcic_subbasins` with `fwa_depth` rebuilt by 06's recursive CTE: 37,667 sub-basins, tree depth 538), on a stand-in year of the real size (the cached 1951–2012 climatology, 366 days × 48,688 outlets), while the fetch ran:
+
+| step | first cut | after the fix |
+|---|---|---|
+| COPY of 17.8 M outlet rows (from CSV, not yet from `pcic_days.py rows`) + primary key | 70 s | |
+| `06_daily` | 259 s | 152 s |
+| monthly means INSERT | 8 s | |
+| COPY out + `pcic_days.py parquet` | 15 s | |
+
+- **`06_daily` on the climatology reproduces #25's daily fingerprint exactly**: 13,786,122 rows, 37,667 sub-basins, `sum(round(q_acc::numeric, 6))` = 633459324.098216, before and after the fix below. So the 06 split changed nothing.
+- **The closure-table contingency is slower, not faster.** The closure of the FWA tree of placed outlets is `sum(fwa_depth + 1)` = 5,383,218 (ancestor, descendant) pairs (mean depth 142, median 101), so a closure join is about 2 billion rows a year, against the loop's 13.8 M row updates. Not taken.
+- **What the loop spent its time on:** `EXPLAIN (ANALYZE, BUFFERS)` of one level showed index nested loops, but 48,289 buffer hits to read 47,580 rows: one page per row. The table was built in hash-aggregate order and each UPDATE moved its row to a new page (no free space for a heap-only update). Building `:dst` `ORDER BY subid, month, day` `WITH (fillfactor = 50)` made every update heap-only (10,272,888 of 10,272,888) and cut the loop from 259 s to 152 s. Applied in `06_daily`, so the climatology runs it too.
+- **A year still takes about 4.5 min, so years are built at once:** `days_build.sh` (one year: rows, COPY, `06_daily`, months, parquet) works in tables of its own (`pcic_outlet_year_<year>`, `pcic_subbasins_year_<year>`, dropped on exit), and the job runs `DAYS_JOBS=4` of them under `xargs -P`. One code path for the climatology and the years, as planned.
+- **Decision 2's size rule:** the stand-in year written with `date` is 145,275,142 bytes, with `year`+`doy` int32 145,338,074: `date` is smaller (its column is 1.5 MB of the 145 MB; the floats are 71.6 and 71.9 MB). Kept `date`. At this size the series is about 63 × 145 MB ≈ 9.2 GB, above the issue's 6.8 GB probe (smooth means may compress differently from single years; Phase 5 measures the real files). 38 row groups of 366,000 rows.
+
+### Phase 3: the catalogue's place in the loads
+
+- `load.sh` runs `load/pcic.sql`, which now fetches `pcic.series.csv.gz`. Until that file is published (Phase 5), `load.sh` would fail at the fetch, so the publish has to precede the merge.
+- `pcic_export.sql` also refuses when `pcic.series` holds days built on another crosswalk, as it does for runs, so a crosswalk change cannot leave the catalogue describing files routed on the old one.
+
+### Tests
+
+`pcic_test.sh`: 107 → 154 checks, about 35 s; it now needs `uv`, `cdo` and `ncdump` and says so. The days section builds two synthetic NetCDF files in hydromosaic's layout (`string basin_name(outlet)`, `double streamflow(time, outlet)`, `_FillValue -9999`, gregorian days since 1950-01-01), runs the job's own `reduce_batch` (taken from `pcic_crosswalk.sh` by `sed`) against `pcic_days.py rows`, `06_daily` against hand-computed flows on a PCIC/FWA tree that disagree, `days_build.sh` for three years against hand-computed float32 values, `qa_days.sql` passing and failing (1 L/s on one value of one year; a missing year), `qa_report_days.sql`'s sorted-share clamp count against 09's formula on every mid-network segment (13, 14 and 14 segment-months in the years, 14 in the climatology, which equals 09's own count), and every refusal of `pcic_export_days.sql` and the catalogue in `load/pcic.sql`.
+
+## Errors Encountered
+
+| Error | Resolution |
+|-------|------------|
+| Job script edited while a run of it was executing | Killed the run before bash resumed reading; relaunched from a frozen copy in `data/` |
+| `pcic_days.py rows` printed `np.float64(0.229…)` | numpy 2's repr; format `tolist()` values |
+| `means` would have held every year in memory (~20 GB) | Accumulate per calendar-day bin file by file |
+| `declare -F name` prints the bare name | Test compares the bare names |
