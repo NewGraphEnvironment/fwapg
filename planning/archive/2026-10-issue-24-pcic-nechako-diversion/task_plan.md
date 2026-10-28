@@ -94,8 +94,8 @@ A committed list of diversions, `sql/pcic_crosswalk03_diversions.sql`, with one 
 
 - [x] Tests pass (`pcic_test.sh`, and `qa.sql` all `t` on both builds)
 - [x] `/code-check branch` clean before the PR (three-round floor)
-- [ ] PWF checkboxes match landed work
-- [ ] `/planning-archive` on completion
+- [x] PWF checkboxes match landed work
+- [x] `/planning-archive` on completion
 
 Verification:
 
