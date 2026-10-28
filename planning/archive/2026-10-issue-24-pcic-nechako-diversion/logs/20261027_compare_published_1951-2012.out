@@ -1,0 +1,67 @@
+NOTICE:  schema "cmp24" does not exist, skipping
+== loaded 00:52:09Z
+SELECT 484
+ subtree_outlets 
+-----------------
+             484
+
+== crosswalk rows that differ, inside and outside the subtree
+ in_subtree | rows_differ 
+------------+-------------
+ t          |         484
+
+== of them, outside the subtree
+ subid | old_parent | new_parent | old_flag | new_flag 
+-------+------------+------------+----------+----------
+
+== weights that differ, by group (any column; share beyond 1e-9)
+ wsg  | segments_differ 
+------+-----------------
+ BABR |               1
+ BBAR |              19
+ CHES |              52
+ CHIL |               1
+ COLR |               4
+ DOGC |              11
+ FRCN |              10
+ HARR |               3
+ HERR |               1
+ LEUT |            6955
+ LNRS |            9347
+ LSKE |               1
+ MFRA |              15
+ MORK |              15
+ MSKE |               1
+ MSTR |               9
+ MURR |               2
+ NECR |              10
+ QUES |               6
+ TUYR |              10
+ UEUT |           20317
+ UNRS |           23977
+ VICT |               1
+
+== weights that differ, by kind: outside the five groups, and in them
+ nechako_groups | missing | subid_differs | share_differs | upstream_set_differs | order_only 
+----------------+---------+---------------+---------------+----------------------+------------
+ f              |       0 |             1 |             1 |                    0 |        119
+ t              |       0 |         60520 |         60647 |                 4768 |          0
+
+== sub-basin days: rows that differ by more than 1e-9 m3/s, inside and outside the subtree
+ in_subtree | rows_differ | subids 
+------------+-------------+--------
+ t          |      175680 |    480
+
+== of them, outside the subtree
+ subid | days | max_dq_local | max_dq_acc 
+-------+------+--------------+------------
+
+== done 00:52:44Z
+NOTICE:  drop cascades to 7 other objects
+DETAIL:  drop cascades to table cmp24.fwa_crosswalk_old
+drop cascades to table cmp24.fwa_crosswalk_new
+drop cascades to table cmp24.segment_weights_old
+drop cascades to table cmp24.segment_weights_new
+drop cascades to table cmp24.subbasin_daily_old
+drop cascades to table cmp24.subbasin_daily_new
+drop cascades to table cmp24.subtree

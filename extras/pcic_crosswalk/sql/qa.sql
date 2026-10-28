@@ -52,7 +52,9 @@ SELECT 'no negative flow' AS test, NOT EXISTS (
 -- mean annual flow rarely drops by more than 10% from one segment to the next
 -- going down any blue line, main stem or side channel (where it is over 10 m3/s).
 -- Measured at 10 of 89,251 pairs (0.01%); the ceiling is 0.1%. Misplaced outlets
--- and position comparisons that misread local codes showed as hundreds.
+-- and position comparisons that misread local codes showed as hundreds. Since the
+-- Nechako Reservoir was listed as a diversion (NewGraphEnvironment/fwapg#24),
+-- Kenney Dam is one more: its water leaves by the spillway, not the canyon.
 WITH annual AS (
   SELECT s.blue_line_key, s.downstream_route_measure, avg(d.q_m3s) AS q
   FROM whse_basemapping.fwa_stream_networks_sp s
@@ -155,6 +157,8 @@ WITH pairs AS (
   INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = p.linear_feature_id
   WHERE c.flag IS NULL
   AND c.blue_line_key != p.blue_line_key
+  -- a diversion's parent is where PCIC sends its water, not on its path (tested below)
+  AND NOT EXISTS (SELECT 1 FROM fwapg.pcic_diversions dv WHERE dv.subid = c.subid)
 )
 SELECT 'every FWA child on another blue line joins above the start of its parent''s segment' AS test,
   count(*) > 0 AND bool_and(ok) AS result
@@ -230,3 +234,139 @@ SELECT 'at most 400 placed outlets follow another river and 300 none, every meas
   AND count(*) FILTER (WHERE flag = 'follows_other') <= 400
   AND count(*) FILTER (WHERE flag = 'follows_none') <= 300 AS result
 FROM fwapg.pcic_qa_following;
+
+-- diversions (pcic_crosswalk03_diversions.sql, NewGraphEnvironment/fwapg#24): a
+-- listed outlet is placed at its listed FWA exit, its position parent is recorded,
+-- and its FWA parent is its nearest placed PCIC ancestor, where PCIC sends its water
+SELECT 'every diversion is placed at its exit, with its position and flow parents' AS test,
+  count(*) > 0 AND bool_and(
+    x.flag IS NULL
+    AND x.linear_feature_id = dv.linear_feature_id
+    AND abs(x.downstream_route_measure - dv.downstream_route_measure) < 0.001
+    AND dv.position_parent_subid IS NOT NULL
+    AND dv.position_parent_subid IS DISTINCT FROM x.fwa_parent_subid
+    AND x.fwa_parent_subid = (
+      WITH RECURSIVE up AS (
+        SELECT o.dowsubid AS subid, 1 AS n FROM fwapg.pcic_outlets o WHERE o.subid = x.subid
+        UNION ALL
+        SELECT o.dowsubid, up.n + 1 FROM up INNER JOIN fwapg.pcic_outlets o ON o.subid = up.subid
+        WHERE NOT EXISTS (SELECT 1 FROM fwapg.pcic_fwa_crosswalk a WHERE a.subid = up.subid AND a.flag IS NULL)
+      )
+      SELECT up.subid FROM up ORDER BY up.n DESC LIMIT 1
+    )
+  ) AS result
+FROM fwapg.pcic_diversions dv
+INNER JOIN fwapg.pcic_fwa_crosswalk x ON x.subid = dv.subid;
+
+-- the Nechako Reservoir (NewGraphEnvironment/fwapg#24): PCIC's tree sends it out
+-- through the Skins Lake spillway (outlet 1007550 to 1008709, then the Cheslatta),
+-- the FWA through Kenney Dam. Before the diversion was listed, 483 of the 487
+-- outlets in LEUT, UEUT, UNRS and LNRS were unplaced and the reservoir's segments
+-- carried about 0 m3/s. Measured after: see the README's caveats
+WITH outlets AS (
+  SELECT x.flag
+  FROM fwapg.pcic_fwa_crosswalk x
+  INNER JOIN fwapg.pcic_outlets o ON o.subid = x.subid
+  INNER JOIN whse_basemapping.fwa_watershed_groups_poly g ON ST_Intersects(g.geom, o.geom)
+  WHERE g.watershed_group_code IN ('LEUT', 'UEUT', 'UNRS', 'LNRS')
+)
+SELECT 'placed >= 90% of the Nechako Reservoir groups'' outlets with a candidate' AS test,
+  count(*) FILTER (WHERE flag IS NULL)::numeric / nullif(count(*) FILTER (WHERE flag IS DISTINCT FROM 'no_candidate'), 0) >= 0.9 AS result
+FROM outlets;
+
+-- the reservoir's water leaves on PCIC's route: Knewstubb Lake's exit segment
+-- carries outlet 1007550's PCIC outflow, the spillway outlet 1008709 its own
+-- (gauge 08JA013), and the Nechako canyon just below Kenney Dam only local runoff
+-- (0.13 m3/s before the diversion was listed)
+WITH pcic AS (
+  SELECT q.subid, avg(q.q_m3s) AS q FROM fwapg.pcic_outlet_monthly q
+  WHERE q.subid IN (1007550, 1008709) GROUP BY q.subid
+),
+seg AS (
+  SELECT l.label, avg(d.q_m3s) AS q
+  FROM (VALUES ('exit', 288852.5::float8), ('canyon', 288500)) AS l(label, measure)
+  CROSS JOIN LATERAL (
+    SELECT s.linear_feature_id FROM whse_basemapping.fwa_stream_networks_sp s
+    WHERE s.blue_line_key = 356362759 AND s.downstream_route_measure <= l.measure
+    ORDER BY s.downstream_route_measure DESC LIMIT 1
+  ) s
+  INNER JOIN fwapg.pcic_discharge_monthly d ON d.linear_feature_id = s.linear_feature_id
+  GROUP BY l.label
+),
+acc AS (
+  SELECT m.subid, avg(m.q_acc) AS q FROM fwapg.pcic_subbasins_monthly m
+  WHERE m.subid = 1008709 GROUP BY m.subid
+)
+SELECT 'Nechako Reservoir: exit carries 1007550''s PCIC flow, spillway 1008709 within 5%, canyon under 1 m3/s' AS test,
+  coalesce(
+    (SELECT abs(seg.q - pcic.q) <= 0.05 * pcic.q FROM seg, pcic WHERE seg.label = 'exit' AND pcic.subid = 1007550)
+    AND (SELECT abs(acc.q - pcic.q) <= 0.05 * pcic.q FROM acc, pcic WHERE pcic.subid = 1008709)
+    AND (SELECT seg.q < 1 FROM seg WHERE seg.label = 'canyon'),
+    false) AS result;
+
+-- a diversion's area is taken off the sub-basin its exit drains to on the FWA (its
+-- position parent) and not off the one its flow goes to (pcic_crosswalk06_subbasins.sql):
+-- the local areas of both are their upstream area less that of the outlets whose
+-- position drains to them, which counts the diversion under its position parent
+WITH kids AS (
+  SELECT coalesce(dv.position_parent_subid, x.fwa_parent_subid) AS parent, sum(sb.upstream_area_ha) AS area
+  FROM fwapg.pcic_fwa_crosswalk x
+  INNER JOIN fwapg.pcic_subbasins sb ON sb.subid = x.subid
+  LEFT JOIN fwapg.pcic_diversions dv ON dv.subid = x.subid
+  GROUP BY 1
+)
+SELECT 'a diversion''s area comes off its position parent''s sub-basin, not its flow parent''s' AS test,
+  count(*) > 0 AND bool_and(
+    abs(r.local_area_ha - (r.upstream_area_ha - coalesce(kr.area, 0))) <= 0.01
+    AND abs(p.local_area_ha - (p.upstream_area_ha - coalesce(kp.area, 0))) <= 0.01
+  ) AS result
+FROM fwapg.pcic_diversions dv
+INNER JOIN fwapg.pcic_fwa_crosswalk x ON x.subid = dv.subid
+INNER JOIN fwapg.pcic_subbasins t ON t.subid = dv.subid
+INNER JOIN fwapg.pcic_subbasins r ON r.subid = x.fwa_parent_subid
+INNER JOIN fwapg.pcic_subbasins p ON p.subid = dv.position_parent_subid
+LEFT JOIN kids kr ON kr.parent = r.subid
+LEFT JOIN kids kp ON kp.parent = p.subid;
+
+-- and in the weights (pcic_crosswalk07_segments.sql): the Nechako canyon just below
+-- Kenney Dam takes the reservoir's area off its share and not its flow, and the
+-- spillway outlet's own segment takes the reservoir's flow
+SELECT 'Nechako Reservoir weights: canyon share under 0.1 without 1007550, spillway segment with it' AS test,
+  coalesce(
+    (SELECT w.share < 0.1 AND NOT 1007550 = ANY(w.upstream_subids)
+     FROM fwapg.pcic_segment_weights w
+     WHERE w.linear_feature_id = (
+       SELECT s.linear_feature_id FROM whse_basemapping.fwa_stream_networks_sp s
+       WHERE s.blue_line_key = 356362759 AND s.downstream_route_measure <= 288500
+       ORDER BY s.downstream_route_measure DESC LIMIT 1))
+    AND (SELECT 1007550 = ANY(w.upstream_subids)
+     FROM fwapg.pcic_segment_weights w
+     INNER JOIN fwapg.pcic_fwa_crosswalk x ON x.linear_feature_id = w.linear_feature_id
+     WHERE x.subid = 1008709),
+    false) AS result;
+
+-- a diversion's flow enters the network once: at its PCIC ancestor's own segment
+SELECT 'each diversion is in exactly one segment''s upstream_subids, its PCIC ancestor''s' AS test,
+  count(*) > 0 AND bool_and(n = 1 AND on_receiving) AS result
+FROM (
+  SELECT dv.subid, count(w.linear_feature_id) AS n,
+    coalesce(bool_and(w.linear_feature_id = r.linear_feature_id), false) AS on_receiving
+  FROM fwapg.pcic_diversions dv
+  INNER JOIN fwapg.pcic_fwa_crosswalk x ON x.subid = dv.subid
+  INNER JOIN fwapg.pcic_fwa_crosswalk r ON r.subid = x.fwa_parent_subid
+  LEFT JOIN fwapg.pcic_segment_weights w ON dv.subid = ANY(w.upstream_subids)
+  GROUP BY dv.subid
+) d;
+
+-- inside the reservoir: the Eutsuk River at the outlet of Eutsuk Lake (gauge
+-- 08JA028, PCIC outlet 1001917, 45 m3/s) was broken_chain and carried 0.024 m3/s
+WITH annual AS (
+  SELECT m.subid, avg(m.q_acc) AS q_acc, avg(q.q_m3s) AS q_pcic
+  FROM fwapg.pcic_subbasins_monthly m
+  INNER JOIN fwapg.pcic_outlet_monthly q ON q.subid = m.subid AND q.month = m.month
+  WHERE m.subid = 1001917
+  GROUP BY m.subid
+)
+SELECT 'Eutsuk outlet 1001917 is placed and within 5% of PCIC' AS test,
+  coalesce(bool_and(abs(q_acc - q_pcic) <= 0.05 * q_pcic), false) AS result
+FROM annual;

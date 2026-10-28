@@ -310,6 +310,9 @@ n=$($PSQL -tXA -c "SELECT count(*) FROM fwapg.pcic_outlets o WHERE NOT EXISTS (S
 ../blue_line_paths/blue_line_paths.sh
 $PSQL -v tolerance=150 -v num_features=5 -f "$CODE"/sql/pcic_crosswalk02_candidates.sql
 $PSQL -f "$CODE"/sql/pcic_crosswalk03_prepare.sql
+# outlets whose water leaves a lake by another route than the FWA's, placed at the
+# FWA's exit (fwapg#24)
+$PSQL -f "$CODE"/sql/pcic_crosswalk03_diversions.sql
 # place, then demote outlets that misplaced the chain above them, until stable
 for round in $(seq 1 10); do
   $PSQL -f "$CODE"/sql/pcic_crosswalk04_select.sql
@@ -490,9 +493,11 @@ if [ "$DAYS" = 1 ]; then
   export_table pcic.series "SELECT * FROM pcic.series ORDER BY model, scenario, year"
 fi
 
-$PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_qa_outlets, fwapg.pcic_qa_candidates"
+$PSQL -c "DROP TABLE IF EXISTS fwapg.pcic_qa_outlets, fwapg.pcic_qa_candidates, fwapg.pcic_qa_diversions"
 $PSQL -c "ALTER TABLE fwapg.pcic_outlets RENAME TO pcic_qa_outlets"
 $PSQL -c "ALTER TABLE fwapg.pcic_candidates RENAME TO pcic_qa_candidates"
+# the diversions with their position parents, which pcic.fwa_crosswalk does not hold
+$PSQL -c "ALTER TABLE fwapg.pcic_diversions RENAME TO pcic_qa_diversions"
 # stamp the crosswalk and run the kept pcic_qa_* tables belong to (their flows are
 # the run's), once all of them are in place, so review_build.sh can tell it from
 # one placed by another run or loaded by load.sh

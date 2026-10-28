@@ -1,0 +1,43 @@
+== base (dev build staging, real SQL) 16:20:39Z
+outlet segments carry accumulated flow | t
+every diversion is placed at its exit, with its position and flow parents | t
+placed >= 90% of the Nechako Reservoir groups' outlets with a candidate | t
+Nechako Reservoir: exit carries 1007550's PCIC flow, spillway 1008709 within 5%, canyon under 1 m3/s | t
+a diversion's area comes off its position parent's sub-basin, not its flow parent's | t
+Nechako Reservoir weights: canyon share under 0.1 without 1007550, spillway segment with it | t
+each diversion is in exactly one segment's upstream_subids, its PCIC ancestor's | t
+Eutsuk outlet 1001917 is placed and within 5% of PCIC | t
+== M1: 07 does not add the diverted outlet at its PCIC ancestor's segment 16:20:41Z
+outlet segments carry accumulated flow | f
+Nechako Reservoir: exit carries 1007550's PCIC flow, spillway 1008709 within 5%, canyon under 1 m3/s | t
+Nechako Reservoir weights: canyon share under 0.1 without 1007550, spillway segment with it | f
+each diversion is in exactly one segment's upstream_subids, its PCIC ancestor's | f
+== M2: 07 joins children by flow parent, not position 16:20:59Z
+Nechako Reservoir: exit carries 1007550's PCIC flow, spillway 1008709 within 5%, canyon under 1 m3/s | t
+Nechako Reservoir weights: canyon share under 0.1 without 1007550, spillway segment with it | f
+== M3: 06 takes a diversion's area off its flow parent 16:21:18Z
+psql:/var/folders/mg/h910y2c54fsc99qj74dyrjph0000gn/T/pcic_mut.cBSbew/sql/pcic_crosswalk06_subbasins.sql:123: NOTICE:  relation "pcic_fwa_crosswalk_blk_idx" already exists, skipping
+psql:/var/folders/mg/h910y2c54fsc99qj74dyrjph0000gn/T/pcic_mut.cBSbew/sql/pcic_crosswalk06_subbasins.sql:216: NOTICE:  relation "pcic_fwa_crosswalk_fwa_parent_idx" already exists, skipping
+a diversion's area comes off its position parent's sub-basin, not its flow parent's | f
+psql:/Users/airvine/Projects/repo/fwapg/extras/pcic_crosswalk/sql/pcic_crosswalk06_subbasins.sql:123: NOTICE:  relation "pcic_fwa_crosswalk_blk_idx" already exists, skipping
+psql:/Users/airvine/Projects/repo/fwapg/extras/pcic_crosswalk/sql/pcic_crosswalk06_subbasins.sql:216: NOTICE:  relation "pcic_fwa_crosswalk_fwa_parent_idx" already exists, skipping
+== M4: 06 leaves a diversion's flow on its position parent 16:26:55Z
+psql:/var/folders/mg/h910y2c54fsc99qj74dyrjph0000gn/T/pcic_mut.cBSbew/sql/pcic_crosswalk06_subbasins.sql:123: NOTICE:  relation "pcic_fwa_crosswalk_blk_idx" already exists, skipping
+psql:/var/folders/mg/h910y2c54fsc99qj74dyrjph0000gn/T/pcic_mut.cBSbew/sql/pcic_crosswalk06_subbasins.sql:216: NOTICE:  relation "pcic_fwa_crosswalk_fwa_parent_idx" already exists, skipping
+every diversion is placed at its exit, with its position and flow parents | f
+psql:/Users/airvine/Projects/repo/fwapg/extras/pcic_crosswalk/sql/pcic_crosswalk06_subbasins.sql:123: NOTICE:  relation "pcic_fwa_crosswalk_blk_idx" already exists, skipping
+psql:/Users/airvine/Projects/repo/fwapg/extras/pcic_crosswalk/sql/pcic_crosswalk06_subbasins.sql:216: NOTICE:  relation "pcic_fwa_crosswalk_fwa_parent_idx" already exists, skipping
+== base again, after the undo 16:32:15Z
+outlet segments carry accumulated flow | t
+every diversion is placed at its exit, with its position and flow parents | t
+placed >= 90% of the Nechako Reservoir groups' outlets with a candidate | t
+Nechako Reservoir: exit carries 1007550's PCIC flow, spillway 1008709 within 5%, canyon under 1 m3/s | t
+a diversion's area comes off its position parent's sub-basin, not its flow parent's | t
+Nechako Reservoir weights: canyon share under 0.1 without 1007550, spillway segment with it | t
+each diversion is in exactly one segment's upstream_subids, its PCIC ancestor's | t
+Eutsuk outlet 1001917 is placed and within 5% of PCIC | t
+== M5: no diversion listed; placement rerun 16:32:18Z
+every diversion is placed at its exit, with its position and flow parents | f
+placed >= 90% of the Nechako Reservoir groups' outlets with a candidate | f
+== done 16:32:36Z
+exit 0

@@ -31,6 +31,12 @@
 -- share is set to 1 on that segment outright, because A_local can be <= 0 where
 -- the outlets map to the same fundamental watershed. Local flow can be negative
 -- (a losing month), so q is clamped at zero, per period, when it is applied.
+--
+-- A listed diversion (pcic_crosswalk03_diversions.sql) has two parents: the one
+-- its position gives it (area_parent_subid), whose segments it is above and whose
+-- area it takes, and its FWA parent, where PCIC sends its water. Its area is taken
+-- off the first sub-basin's segments it passes and its flow is not added to them;
+-- its flow enters the second at that outlet's own segment.
 
 BEGIN;
 
@@ -40,12 +46,17 @@ SET LOCAL max_parallel_workers_per_gather = 0;
 -- a segment belongs to the highest outlet on it or below it, compared by segment
 -- so that an outlet whose measure falls on a segment end stays with its segment
 CREATE TEMPORARY TABLE outlets ON COMMIT DROP AS
-SELECT x.subid, x.blue_line_key, x.downstream_route_measure, x.depth, x.fwa_parent_subid, s.downstream_route_measure AS seg_measure
+SELECT x.subid, x.blue_line_key, x.downstream_route_measure, x.depth, x.fwa_parent_subid,
+  coalesce(dv.position_parent_subid, x.fwa_parent_subid) AS area_parent_subid,
+  dv.subid IS NOT NULL AS diverted,
+  s.downstream_route_measure AS seg_measure
 FROM fwapg.pcic_fwa_crosswalk x
 INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = x.linear_feature_id
+LEFT JOIN fwapg.pcic_diversions dv ON dv.subid = x.subid
 WHERE x.flag IS NULL;
 CREATE INDEX ON outlets (blue_line_key, seg_measure);
 CREATE INDEX ON outlets (fwa_parent_subid);
+CREATE INDEX ON outlets (area_parent_subid);
 ANALYZE outlets;
 
 CREATE TEMPORARY TABLE pcic_segments ON COMMIT DROP AS
@@ -93,7 +104,11 @@ CREATE TEMPORARY TABLE pcic_segment_shares ON COMMIT DROP AS
 SELECT
   s.linear_feature_id,
   s.subid,
-  array_remove(array_agg(c.subid), NULL) AS upstream_subids,
+  array_remove(array_agg(c.subid) FILTER (WHERE c.fwa_parent_subid = s.subid), NULL)
+    -- diversions whose water enters at this sub-basin's outlet
+    || CASE WHEN s.linear_feature_id = sb.linear_feature_id THEN
+      coalesce((SELECT array_agg(d.subid ORDER BY d.subid) FROM outlets d WHERE d.diverted AND d.fwa_parent_subid = s.subid), '{}')
+    ELSE '{}' END AS upstream_subids,
   CASE
     WHEN s.linear_feature_id = sb.linear_feature_id THEN 1
     WHEN sb.local_area_ha > 0 THEN
@@ -104,8 +119,9 @@ FROM pcic_segments s
 INNER JOIN fwapg.pcic_subbasins sb ON s.subid = sb.subid
 -- outlets directly above the sub-basin whose water passes the segment: on its
 -- blue line, on this segment or above it; otherwise joining its line above its start
+-- (by position: a diversion's area is subtracted, its flow filtered out above)
 LEFT JOIN outlets c
-  ON c.fwa_parent_subid = s.subid
+  ON c.area_parent_subid = s.subid
   AND (
     (c.blue_line_key = s.blue_line_key AND c.seg_measure >= s.downstream_route_measure)
     OR (c.blue_line_key != s.blue_line_key

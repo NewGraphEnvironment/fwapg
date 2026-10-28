@@ -108,12 +108,21 @@ another job sharing the database server): about 1 h for the monthly run, 2 h 8 m
    levels above whose near candidates lie on or upstream of it), then the nearest. An outlet with no series is not placed (`no_series`). An outlet with no valid candidate is
    left unplaced (`broken_chain`); where the outlet that broke carries most of its parent's network and
    fits once the parent is skipped, the parent is `demoted` instead and placement reruns, until stable.
+   Where PCIC's water leaves a lake by another route than the FWA's, no outlet above the lake's outlet can
+   hold the chain. Such an outlet is listed by hand in `sql/pcic_crosswalk03_diversions.sql`, and placed at
+   the FWA's exit from the lake (its lowest segment on the line that drains it) whatever its anchor, and
+   never demoted. The outlets above then place against the FWA as usual. The job refuses a listing that
+   is not a PCIC lake outlet with a series, whose exit placement could not use or has another line joining
+   at its vertex, whose two routes reach the same placed outlet first (its exit must drain to one placed
+   outlet on the FWA, and its water reach another in PCIC's tree), or whose receiving outlet is not the
+   highest placed outlet on its segment. One is listed: the Nechako Reservoir (below).
 5. **Flow at outlets.** Per calendar day. PCIC's network and the FWA do not always join streams at the same place, so
    PCIC's outflows are not used as they stand. Each PCIC outlet's local runoff (its outflow minus its PCIC
    children's) is given to the sub-basin of the outlet, or of its nearest placed PCIC ancestor if it is
    unplaced, and accumulated down the FWA tree of placed outlets (`fwa_parent_subid`, the nearest placed
    outlet downstream on the FWA). Where the networks agree, the accumulated flow at an outlet is PCIC's
-   outflow; where they do not, flow follows the FWA.
+   outflow; where they do not, flow follows the FWA. A listed diversion is the exception: its flow goes
+   to its nearest placed PCIC ancestor, where PCIC sends it, so its `fwa_parent_subid` is that outlet.
 6. **Segments.** Each FWA segment belongs to the sub-basin of the nearest placed outlet on or below it.
    Its weights (`pcic.segment_weights`) are that sub-basin (`subid`), the outlets directly above the
    sub-basin whose water passes the segment (`upstream_subids`) and the share of the sub-basin's local
@@ -129,8 +138,10 @@ another job sharing the database server): about 1 h for the monthly run, 2 h 8 m
    the segment below the junction. In the same way, a tributary's segments belong to the nearest placed
    outlet whose segment starts below its junction. Local runoff can be negative over a period (routing
    losses, and water in transit between outlets), so `q` is clamped at zero, per period, after the
-   period's flows are averaged. The job builds monthly flow and, with `WEEKLY=1`, weekly flow this way
-   (`sql/pcic_crosswalk08_periods.sql`, `sql/pcic_crosswalk09_discharge.sql`).
+   period's flows are averaged. A diversion's area belongs to the sub-basin its exit drains to on the
+   FWA, whose segments below the exit lose the diversion's area from their share and do not carry its flow;
+   its flow joins at its PCIC ancestor's own segment. The job builds monthly flow and, with `WEEKLY=1`,
+   weekly flow this way (`sql/pcic_crosswalk08_periods.sql`, `sql/pcic_crosswalk09_discharge.sql`).
 7. **QA and export.** Runs the tests in `sql/qa.sql` (and `sql/qa_weekly.sql` with `WEEKLY=1`) and
    stops, keeping the staging tables, if any fails; then prints `sql/qa_report.sql` and the clamped rows
    per period (`sql/qa_report_clamped.sql`), swaps the run into the `pcic` schema in one transaction
@@ -139,7 +150,9 @@ another job sharing the database server): about 1 h for the monthly run, 2 h 8 m
    (the drainage and line-following checks below), `fwapg.pcic_qa_flow` (mean annual flow at each placed
    outlet, PCIC's and accumulated on the FWA) and `fwapg.pcic_qa_gauges` (`qa_gauges.sh`), and the
    staging tables `fwapg.pcic_qa_outlets` and `fwapg.pcic_qa_candidates` (outlet and probe points, every
-   FWA candidate), which `review_build.sh` reads. `fwapg.pcic_qa_build` holds the md5 of the crosswalk
+   FWA candidate), which `review_build.sh` reads, and `fwapg.pcic_qa_diversions` (the listed diversions
+   with their exits and position parents, which `pcic.fwa_crosswalk` does not hold: a sub-basin's local
+   area takes a diversion's off its position parent, not its `fwa_parent_subid`). `fwapg.pcic_qa_build` holds the md5 of the crosswalk
    they were built with, and the run their flows are from; the job drops it and `pcic_qa_gauges` when it
    starts. Build the reference run (the defaults) last before a review: the review's strata use flow.
 8. **Per-year days** (`DAYS=1`). For each year of the model's series (1950-2012 for PNWNAmet; 1950 is
@@ -186,11 +199,11 @@ as for the job, and gauge pages are cached per period in `data/wsc/<period>/`):
 
 At each gauge it compares PCIC's own flow at the nearest PCIC segment (no crosswalk involved) with
 the flow on the FWA segment at the gauge, which isolates crosswalk error from PCIC's model error, and
-both with the gauge. In the 2026-10 build, at 538 gauges: FWA flow within 10% of PCIC's at 494
-(207 of 210 gauges of 100-1,000 km², 134 of 139 of 1,000-10,000 km²); 11 more where another PCIC
-branch at the confluence matches; 33 disagree, 27 of them under 100 km². The FWA stream picked by
+both with the gauge. In the 2026-10 build, at 538 gauges: FWA flow within 10% of PCIC's at 497
+(207 of 210 gauges of 100-1,000 km², 135 of 139 of 1,000-10,000 km²); 11 more where another PCIC
+branch at the confluence matches; 30 disagree, 25 of them under 100 km². The FWA stream picked by
 drainage area matched the gauge's area within 10% at 559 of 603 gauges. Those are 1951-2012; over 1981-2010, at 431
-gauges: FWA within 10% of PCIC at 401, 9 more on another branch, 21 disagree (18 under 100 km²), and PCIC over observed
+gauges: FWA within 10% of PCIC at 404, 9 more on another branch, 18 disagree (16 under 100 km²), and PCIC over observed
 has a median of 0.988 (0.949 over 1951-2012). One gauge in detail:
 
     ./qa_gauge.sh 08EE003
@@ -201,8 +214,8 @@ stream still adds up. PCIC publishes no sub-basin areas, so PCIC's drainage is m
 river length and its mean flow, each per FWA km² at the placed segment and normalised by the watershed
 group's median (the province's, for groups with fewer than 20 main-stem placements). An outlet is flagged `small` (both < 0.2: a small PCIC outlet on a much bigger FWA
 stream) or `big` (both > 5). Side channels are not checked: the watershed lookup gives them their main
-river's area. In the 2026-10 build: 218 `small` and 126 `big` of 37,040 main-stem placements, with 82
-of the 85 outlets carrying more than 10 times PCIC's flow among the `small`. Seeded errors (the Nicola
+river's area. In the 2026-10 build: 218 `small` and 127 `big` of 37,517 main-stem placements, with 85
+of the 88 outlets carrying more than 10 times PCIC's flow among the `small`. Seeded errors (the Nicola
 main stem on Clapperton Creek; outlets moved onto streams with 10 times, or a tenth of, the area) are
 flagged; a wrong stream of similar size (within about 5 times) is not. Flags are a review list
 (NewGraphEnvironment/fwapg#8): lake connector lines, double-line river construction lines and regulated
@@ -216,11 +229,11 @@ where both branches are near) is compared with the FWA line of each candidate: t
 `follows_other` where another river's line follows the segment better by more than half its length, and
 `follows_none` where no candidate's line follows more than a fifth of it (the right stream may be beyond
 the candidates, or the networks differ there); with under 100 m of segment it is `unmeasured`. Lake
-outlets are not checked: they have no segment of their own. In the 2026-10 build: of 37,293 placed river
-outlets, 248 `follows_other` and 186 `follows_none`, and 761 unmeasured. The placed river's share has a
+outlets are not checked: they have no segment of their own. In the 2026-10 build: of 37,752 placed river
+outlets, 248 `follows_other` and 188 `follows_none`, and 773 unmeasured. The placed river's share has a
 median of 1.0 and a 5th percentile of 0.91. The gap between the other river's share and the placed
-river's is bimodal, and the 0.5 margin falls in the gap (30 outlets between 0.2 and 0.6). 179 of the 248 are
-in no other flag list. Seeded errors (every outlet that passes, moved onto another river's candidate)
+river's is bimodal, and the 0.5 margin falls in the gap (31 outlets between 0.2 and 0.6). 178 of the 248 are
+in no other flag list (drainage, or a gauge where FWA and PCIC differ by more than 10%). Seeded errors (every outlet that passes, moved onto another river's candidate)
 are flagged at 99.6% of 12,848 seeds within 5 times the placed stream's area, and 99.5% of 32,765 others.
 That covers the case where the right line is among the candidates; the review below measures the rest.
 
@@ -432,7 +445,7 @@ These are frozen: the job no longer writes them. They will be dropped once their
      subid                    | integer          | PCIC outlet id (primary key)
      dowsubid                 | integer          | PCIC downstream outlet
      anchor_subid             | integer          | nearest placed outlet downstream in PCIC's tree
-     fwa_parent_subid         | integer          | nearest placed outlet downstream on the FWA
+     fwa_parent_subid         | integer          | nearest placed outlet downstream on the FWA; for a listed diversion, the placed PCIC ancestor its flow goes to
      islake                   | boolean          |
      depth                    | integer          | steps to the root of the PCIC tree
      linear_feature_id        | bigint           | FWA position (NULL if unplaced)
@@ -441,8 +454,8 @@ These are frozen: the job no longer writes them. They will be dropped once their
      wscode_ltree             | ltree            |
      localcode_ltree          | ltree            |
      watershed_group_code     | text             |
-     distance_to_stream       | double precision | snap distance (m)
-     candidate_rank           | integer          | 1 = nearest candidate; NULL if moved > 1 m below a junction
+     distance_to_stream       | double precision | snap distance (m); for a listed diversion, from PCIC's outlet to the FWA exit
+     candidate_rank           | integer          | 1 = nearest candidate; NULL if moved > 1 m below a junction, or a listed diversion
      flag                     | text             | NULL, no_candidate, no_series, broken_chain, demoted
 
 
@@ -488,6 +501,21 @@ These are frozen: the job no longer writes them. They will be dropped once their
   above a junction carries flow of its own (a stub, a connector, a side channel), the segment above it
   carries none: 135 segments in the 2026-10 build, which until then carried the tributary's flow (one,
   a 144 m construction line in THOM, carried 734 m³/s).
+- The Nechako Reservoir (NewGraphEnvironment/fwapg#24). Since Kenney Dam closed in 1952 the reservoir
+  leaves through the Skins Lake spillway and the Cheslatta River, and through the Kemano tunnel to the
+  coast; the FWA routes it the natural way, out of Knewstubb Lake through the dam and the Nechako canyon.
+  PCIC has one lake outlet for the whole reservoir (1007550, on Ootsa Lake's shore at the spillway) and
+  sends it down the Cheslatta. The job follows PCIC: 1007550 is a listed diversion, placed at Knewstubb
+  Lake's exit 70.7 km away, and its flow joins at the spillway outlet 1008709. The reservoir's segments
+  carry its routed flow, about 156 m³/s at the exit; the canyon below the dam carries only its own runoff
+  (none on its first segment, which shares the exit's fundamental watershed; 0.35 m³/s above the
+  Cheslatta); the Cheslatta and the Nechako below it carry the reservoir. PCIC models no Kemano
+  diversion, so its flow is high below the reservoir, and the crosswalk matches PCIC: over 1951-2012,
+  156 m³/s against 96 observed at 08JA013 (Skins Lake spillway), 162 against 73 at 08JA017 (Nechako
+  below Cheslatta Falls). The drainage check flags the spillway outlets (1008709, 1001496: the reservoir
+  on 0.8 km² of FWA area) and the Cheslatta's mouth `big`, and the canyon outlet 1002307 `small`, by
+  design. Before the listing, 479 outlets above the reservoir were unplaced and its segments carried
+  about 0 m³/s.
 - Streams that leave BC before reaching their parent have no path, so their flow does not reach the
   parent in BC: the Okanagan, Kettle and Similkameen join the Columbia in the US, and their flow is not
   on the Columbia in BC (PCIC routes it through the US too).
