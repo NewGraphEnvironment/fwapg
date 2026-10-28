@@ -132,3 +132,43 @@ so flows compare in kind, not to the third decimal (the 1951-2012 rebuild compar
   that drains into the reservoir across the group boundary, now in newly placed 1000213's sub-basin (was 1002307's);
   1,204 more differ only in the order of `upstream_subids` (07's `array_agg` has no ORDER BY, so the order is the
   plan's; the sum is not affected). In the five groups: 60,520 segments changed sub-basin, 4,768 their upstream set.
+
+## Rebuild 2 (2026-10-27, 1951-2012 with per-year days, crosswalk 901d1271ff2a1fb1f2594be52042871e)
+
+From the worktree at 26d7582, 21:01:34Z to 00:46:44Z (3 h 45 min). Exit 0, every QA test `t`, exported: the crosswalk
+fingerprint is the same as rebuild 1's, so the export was not refused, and all 63 per-year parquet files were rewritten
+(`logs/20261027_build_1951-2012.log`, URL and temp paths scrubbed). The `.csv.gz` file's own md5 differs between builds
+(gzip header); `pcic.runs.crosswalk_md5` is the fingerprint that counts.
+
+- Against the baseline exactly (`logs/nechako_measure.sql -v period=1951-2012`, `logs/20261027_rebuild_1951-2012.out`
+  beside `logs/20261027_baseline_1951-2012.out`): placed CHES 95/95, LEUT 72/72, LNRS 101/101, UEUT 199/203 (4
+  no_candidate), UNRS 111/111. Median specific runoff LEUT 353.1 mm/yr, UEUT 353.5, UNRS 385.9, LNRS 144.1, CHES
+  131.1 (CHES unchanged); under 5 mm/yr 0.4%, 0.2%, 0.1%, 0.3%, 0.5%. Knewstubb exit 156.365 m³/s (was 0.134; PCIC's
+  1007550 156.366), spillway line top 156.366 (unchanged), canyon 0.000, Nechako above the Cheslatta 0.365.
+- `qa_report` against the old 1951-2012 build (#42's `20261027_days_build.log`): broken_chain 985 -> 506 (river 960
+  -> 501, lake 25 -> 5), placed 37,667 -> 38,146 (+479); not-nearest-candidate placements 608 -> 618; FWA within 5% of
+  PCIC 37,291 -> 37,768, FWA higher 376 -> 378; losing sub-basin months 7,749 -> 7,770 of 452,004 -> 457,752. The
+  diversion row: 1007550 at 701799415, 70,656 m from PCIC's point, position parent 1002307, flow parent 1008709,
+  156.365 against 156.365. Nothing else in the report moved.
+- Clamps (`qa_report_clamped`, monthly): 381,947 -> 421,713 segment-months clamped at zero (0.943% -> 1.041%),
+  nearly all in April-June; mid-network 1,568 -> 1,750. All inside the five groups: zero-flow rows outside them are
+  1,098,635 in both the published and the rebuilt monthly file, while inside them zero rows fell 281,470 -> 45,247
+  (the old build's reservoir flows rounded to 0). The new clamps are the newly placed lake outlets' freshet, where an
+  outlet's local runoff is negative for a month, as elsewhere in BC.
+- Gauges (`qa_gauges.sh`, 1951-2012; `logs/20261027_qa_gauges_1951-2012.{log,csv}`): 538 compared; FWA within 10% of
+  PCIC at 497 (was 494), 11 more on another branch, 30 disagree (was 33), 25 of them under 100 km² (was 27). The
+  three that moved are 08JA015 3.905 / 3.905, 08JA016 0.684 / 0.684 and 08JA028 44.962 / 44.962 (FWA / PCIC). 08JA013
+  156.366 / 156.366 and 08JA017 162.170 / 162.170 unchanged; observed 95.5 and 73.3. Drainage area within 10% at 559
+  of 603, unchanged. 08KH006 still 0.276 against 220.8 (pre-existing).
+- Drainage and following (the job's `qa_drainage.sql`, `qa_following.sql`): 218 `small` and 127 `big` of 37,517
+  main-stem placements (was 218 and 126 of 37,040); 85 of the 88 outlets carrying more than 10 times PCIC's flow are
+  `small` (was 82 of 85). In the five groups 25 `big` and 3 `small`, including 1008709, 1001496 and 1002305 `big` and
+  1002307 `small` by design (the README caveat). Following: of 37,752 placed river outlets 248 `follows_other` (1 in
+  the five groups), 188 `follows_none` (3), 773 unmeasured (15); share median 1.0, 5th percentile 0.913; 31 between
+  0.2 and 0.6. 178 of the 248 are in no drainage flag and at no gauge where FWA and PCIC differ by more than 10%.
+- The below-junction move updated 6 outlets, as before.
+- Against the published files for 1951-2012 (`logs/20261027_compare_published_1951-2012.out`): the same as for
+  1981-2010. Crosswalk rows differ for the 484 subtree outlets only; sub-basin days for 480 subtree sub-basins only
+  (175,680 rows); outside the five groups one weight changed (the CHIL segment) and 119 differ in `upstream_subids`
+  order only (1,204 in rebuild 1's comparison: the order is the plan's, so it differs per build).
+- README counts updated from these: gauges for both periods, drainage, following.

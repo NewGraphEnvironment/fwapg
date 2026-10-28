@@ -64,7 +64,11 @@ receiving outlet that is not the highest placed outlet on its segment (stricter 
 | 08JA013 / 08JA017, FWA over PCIC | 1.000 / 1.000 | 1.000 / 1.000 |
 
 The "before" placements and runoff are the 1951-2012 baseline; the gauge ratios are the old build's
-1981-2010. The 4 unplaced in UEUT have no candidate.
+1981-2010. The 4 unplaced in UEUT have no candidate. The 1951-2012 rebuild has the same crosswalk and the
+same picture: the exit carries 156.365 m³/s against PCIC's 156.366 (was 0.134), and FWA flow is within 10%
+of PCIC's at 497 of 538 gauges (was 494; the three are 08JA015, 08JA016 and 08JA028). Segment-months
+clamped at zero rose from 0.94% to 1.04%, all inside the five groups: the newly placed lake outlets have
+negative local runoff in some freshet months, as outlets elsewhere do.
 
 Outside the reservoir nothing moved: against the published files, crosswalk rows differ for the 484
 outlets of 1007550's PCIC subtree only, sub-basin days for 480 subtree sub-basins only, and weights

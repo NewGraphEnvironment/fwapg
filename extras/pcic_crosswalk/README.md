@@ -199,11 +199,11 @@ as for the job, and gauge pages are cached per period in `data/wsc/<period>/`):
 
 At each gauge it compares PCIC's own flow at the nearest PCIC segment (no crosswalk involved) with
 the flow on the FWA segment at the gauge, which isolates crosswalk error from PCIC's model error, and
-both with the gauge. In the 2026-10 build, at 538 gauges: FWA flow within 10% of PCIC's at 494
-(207 of 210 gauges of 100-1,000 km², 134 of 139 of 1,000-10,000 km²); 11 more where another PCIC
-branch at the confluence matches; 33 disagree, 27 of them under 100 km². The FWA stream picked by
+both with the gauge. In the 2026-10 build, at 538 gauges: FWA flow within 10% of PCIC's at 497
+(207 of 210 gauges of 100-1,000 km², 135 of 139 of 1,000-10,000 km²); 11 more where another PCIC
+branch at the confluence matches; 30 disagree, 25 of them under 100 km². The FWA stream picked by
 drainage area matched the gauge's area within 10% at 559 of 603 gauges. Those are 1951-2012; over 1981-2010, at 431
-gauges: FWA within 10% of PCIC at 401, 9 more on another branch, 21 disagree (18 under 100 km²), and PCIC over observed
+gauges: FWA within 10% of PCIC at 404, 9 more on another branch, 18 disagree (16 under 100 km²), and PCIC over observed
 has a median of 0.988 (0.949 over 1951-2012). One gauge in detail:
 
     ./qa_gauge.sh 08EE003
@@ -214,8 +214,8 @@ stream still adds up. PCIC publishes no sub-basin areas, so PCIC's drainage is m
 river length and its mean flow, each per FWA km² at the placed segment and normalised by the watershed
 group's median (the province's, for groups with fewer than 20 main-stem placements). An outlet is flagged `small` (both < 0.2: a small PCIC outlet on a much bigger FWA
 stream) or `big` (both > 5). Side channels are not checked: the watershed lookup gives them their main
-river's area. In the 2026-10 build: 218 `small` and 126 `big` of 37,040 main-stem placements, with 82
-of the 85 outlets carrying more than 10 times PCIC's flow among the `small`. Seeded errors (the Nicola
+river's area. In the 2026-10 build: 218 `small` and 127 `big` of 37,517 main-stem placements, with 85
+of the 88 outlets carrying more than 10 times PCIC's flow among the `small`. Seeded errors (the Nicola
 main stem on Clapperton Creek; outlets moved onto streams with 10 times, or a tenth of, the area) are
 flagged; a wrong stream of similar size (within about 5 times) is not. Flags are a review list
 (NewGraphEnvironment/fwapg#8): lake connector lines, double-line river construction lines and regulated
@@ -229,11 +229,11 @@ where both branches are near) is compared with the FWA line of each candidate: t
 `follows_other` where another river's line follows the segment better by more than half its length, and
 `follows_none` where no candidate's line follows more than a fifth of it (the right stream may be beyond
 the candidates, or the networks differ there); with under 100 m of segment it is `unmeasured`. Lake
-outlets are not checked: they have no segment of their own. In the 2026-10 build: of 37,293 placed river
-outlets, 248 `follows_other` and 186 `follows_none`, and 761 unmeasured. The placed river's share has a
+outlets are not checked: they have no segment of their own. In the 2026-10 build: of 37,752 placed river
+outlets, 248 `follows_other` and 188 `follows_none`, and 773 unmeasured. The placed river's share has a
 median of 1.0 and a 5th percentile of 0.91. The gap between the other river's share and the placed
-river's is bimodal, and the 0.5 margin falls in the gap (30 outlets between 0.2 and 0.6). 179 of the 248 are
-in no other flag list. Seeded errors (every outlet that passes, moved onto another river's candidate)
+river's is bimodal, and the 0.5 margin falls in the gap (31 outlets between 0.2 and 0.6). 178 of the 248 are
+in no other flag list (drainage, or a gauge where FWA and PCIC differ by more than 10%). Seeded errors (every outlet that passes, moved onto another river's candidate)
 are flagged at 99.6% of 12,848 seeds within 5 times the placed stream's area, and 99.5% of 32,765 others.
 That covers the case where the right line is among the candidates; the review below measures the rest.
 

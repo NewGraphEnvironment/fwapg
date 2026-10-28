@@ -53,7 +53,7 @@ A committed list of diversions, `sql/pcic_crosswalk03_diversions.sql`, with one 
 
 ## Phase 4: Docs and research
 
-- [ ] README:
+- [x] README:
   - placement (step 4) and the listed diversion
   - flow at outlets (step 5) and segments (step 6) with the diversion
   - `fwa_parent_subid` meaning in the `pcic.fwa_crosswalk` table doc
@@ -66,15 +66,15 @@ A committed list of diversions, `sql/pcic_crosswalk03_diversions.sql`, with one 
 
 - [x] Dev build (monthly, 1951-2012) from a scratch worktree whose `qa.sql` ends in a failing line, so it stops at QA with staging kept; run the mutation checks on that staging (plan review 8: the old build's staging is gone, so the baseline numbers are the before evidence)
 - [x] After the dev build, delete the old crosswalk's other run before the first real build, or its export is refused (plan review 1): the 1951-2012 rows of `pcic.runs`, `pcic.subbasin_daily`, `pcic.discharge_monthly` and `pcic.discharge_weekly`, and the PNWNAmet rows of `pcic.series`
-- [ ] Commit, then run `YEARS=1981/2010 WEEKLY=1 ./pcic_crosswalk.sh`, then `DAYS=1 ./pcic_crosswalk.sh`, from committed trees. Export `DATABASE_URL` and `PGSERVER` for the session, and keep the URL out of committed logs.
-- [ ] Measure against the Phase 1 baseline:
+- [x] Commit, then run `YEARS=1981/2010 WEEKLY=1 ./pcic_crosswalk.sh`, then `DAYS=1 ./pcic_crosswalk.sh`, from committed trees. Export `DATABASE_URL` and `PGSERVER` for the session, and keep the URL out of committed logs.
+- [x] Measure against the Phase 1 baseline:
   - placements in the four groups
   - reservoir segment flows and near-zero counts per group
   - `qa_report` deltas
   - `qa_gauges.sh` over both periods: 08JA013, 15, 16, 17 and 28
   - the drainage and following flags on the Cheslatta and the reservoir
   - the clamp counts
-- [ ] Record the measurements in `findings.md` and a log CSV.
+- [x] Record the measurements in `findings.md` and a log CSV.
 
 ## Phase 6: Publish and read back
 
