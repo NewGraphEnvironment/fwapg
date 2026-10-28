@@ -8,7 +8,7 @@
 #   DATABASE_URL=... ./mutation_checks.sh > 20261027_mutation_checks.out 2>&1
 set -euo pipefail
 
-JOB=$(cd "$(dirname "$0")/../../../extras/pcic_crosswalk" && pwd)
+JOB=$(cd "$(dirname "$0")/../../../../extras/pcic_crosswalk" && pwd)
 PSQL="psql $DATABASE_URL -v ON_ERROR_STOP=1 -q"
 MUT=$(mktemp -d "${TMPDIR:-/tmp}/pcic_mut.XXXXXX")
 trap 'rm -rf "$MUT"' EXIT

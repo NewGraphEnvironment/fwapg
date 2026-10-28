@@ -8,7 +8,7 @@
 set -euo pipefail
 
 : "${ADMIN_URL:?a server connection that may create databases}"
-REPO=$(cd "$(dirname "$0")/../../.." && pwd)
+REPO=$(cd "$(dirname "$0")/../../../.." && pwd)
 DB=pcic_readback24
 SCRATCH="${ADMIN_URL%/*}/$DB"
 trap 'psql "$ADMIN_URL" -q -c "DROP DATABASE IF EXISTS $DB"' EXIT

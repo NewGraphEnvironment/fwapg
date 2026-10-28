@@ -8,7 +8,7 @@
 #   DATABASE_URL=... ./mutation_area_test.sh > 20261027_mutation_area_test.out 2>&1
 set -euo pipefail
 
-JOB=$(cd "$(dirname "$0")/../../../extras/pcic_crosswalk" && pwd)
+JOB=$(cd "$(dirname "$0")/../../../../extras/pcic_crosswalk" && pwd)
 PSQL="psql $DATABASE_URL -v ON_ERROR_STOP=1 -q"
 MUT=$(mktemp -d "${TMPDIR:-/tmp}/pcic_mut.XXXXXX")
 trap 'rm -rf "$MUT"; $PSQL -c "DROP SCHEMA IF EXISTS mut24 CASCADE"' EXIT
