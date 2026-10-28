@@ -84,7 +84,7 @@ A committed list of diversions, `sql/pcic_crosswalk03_diversions.sql`, with one 
 ## Phase 7: Follow-ups
 
 - [x] File an issue (#46) for the other large broken-chain clusters, all inside BC: Kootenay 5025228 (140), Pend-d'Oreille 5013906 (92), Fox 206008363 (44), KOTL 5014312 (32), Chilcotin 4007152 (31). It asks whether any of them is the same kind of case.
-- [ ] Comment on wet#57 that the four groups now carry routed flow, with numbers.
+- [x] Comment on wet#57 that the four groups now carry routed flow, with numbers.
 
 ## Owed at the end (reported, done after merge)
 

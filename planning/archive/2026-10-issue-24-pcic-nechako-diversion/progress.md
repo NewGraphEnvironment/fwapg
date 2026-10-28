@@ -18,3 +18,4 @@
 - Phase 4: README refusal sentence tightened to the code's refusals (round 4), Nechako caveat; research/pcic_crosswalk_diversions.md and its index row. Rebuild 2 (1951-2012, DAYS=1) started 21:01:34Z at 26d7582
 - Rebuild 2 (1951-2012, DAYS=1) finished 00:46:44Z, 3 h 45 min: QA all t, same crosswalk fingerprint, 63 per-year files rewritten. Measured (findings: Rebuild 2); README counts updated
 - Published: 73 objects to fresh-bc in 26 min 15 s, sizes match; 1983 read back over HTTP; loads from fresh-bc into a scratch database pass (findings: Publish and read back)
+- Opened PR #47 into newgraph; commented on wet#57 with the numbers
