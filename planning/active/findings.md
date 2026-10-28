@@ -172,3 +172,18 @@ fingerprint is the same as rebuild 1's, so the export was not refused, and all 6
   (175,680 rows); outside the five groups one weight changed (the CHIL segment) and 119 differ in `upstream_subids`
   order only (1,204 in rebuild 1's comparison: the order is the plan's, so it differs per build).
 - README counts updated from these: gauges for both periods, drainage, following.
+
+## Publish and read back (2026-10-28 UTC)
+
+- Uploaded from the worktree to `s3://fresh-bc/fwapg/extras/`, in `extras/README.md`'s order: the 63 per-year parquet
+  files, then the 10 `.csv.gz` files, 00:56:40Z to 01:22:55Z (26 min 15 s), exit 0. Every one of the 73 objects has
+  its file's size (`aws s3 ls` against `stat`).
+- HTTP read-back (#42's `readback_http.R 1983`, `logs/20261027_readback_http_1983.out`): 1983 matches its row of the
+  published `pcic.series` on rows, sub-basins, bytes and both sums, and its metadata names crosswalk 901d1271 and
+  commit 26d7582; 19.1 s.
+- Loads (`logs/readback_load.sh`, `logs/20261027_readback_load.out`): `load/pcic_schema.sql`, `load/pcic.sql`, then
+  `load/pcic_run.sql` for both runs' sub-basin days and monthly flow, from fresh-bc into a new scratch database, as
+  `load.sh` does: 01:23:40Z to 01:57:05Z (33 min 25 s), every fingerprint check passed. Loaded crosswalk md5 901d1271
+  over 48,716 outlets; both runs on it; 63 catalogue years (1950-2012) on one crosswalk; 1007550 at 701799415, flow
+  parent 1008709; the Knewstubb exit 156.365 (1951-2012) and 155.832 m³/s (1981-2010). Scratch database dropped.
+- Another database that loaded the old 1951-2012 files needs the loads re-run: the PR says so.

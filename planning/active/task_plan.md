@@ -78,8 +78,8 @@ A committed list of diversions, `sql/pcic_crosswalk03_diversions.sql`, with one 
 
 ## Phase 6: Publish and read back
 
-- [ ] Upload the 63 parquet files, then the `.csv.gz` files, to `s3://fresh-bc/fwapg/extras/` (`extras/README.md` order). Check each object's size against its file.
-- [ ] Load `load/pcic.sql` and `load/pcic_run.sql` from fresh-bc into a scratch database. Read one year over HTTP and match its `pcic.series` row.
+- [x] Upload the 63 parquet files, then the `.csv.gz` files, to `s3://fresh-bc/fwapg/extras/` (`extras/README.md` order). Check each object's size against its file.
+- [x] Load `load/pcic.sql` and `load/pcic_run.sql` from fresh-bc into a scratch database. Read one year over HTTP and match its `pcic.series` row.
 
 ## Phase 7: Follow-ups
 
@@ -92,7 +92,7 @@ A committed list of diversions, `sql/pcic_crosswalk03_diversions.sql`, with one 
 
 ## Validation
 
-- [ ] Tests pass (`pcic_test.sh`, and `qa.sql` all `t` on both builds)
+- [x] Tests pass (`pcic_test.sh`, and `qa.sql` all `t` on both builds)
 - [x] `/code-check branch` clean before the PR (three-round floor)
 - [ ] PWF checkboxes match landed work
 - [ ] `/planning-archive` on completion
