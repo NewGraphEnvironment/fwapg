@@ -1,4 +1,6 @@
-# Drafts (#41) — none posted
+# Drafts (#41)
+
+Posted 2026-10-30: section 1 (as revised below, body and title) and section 4 (as the comment). Section 2 was posted 2026-10-24; section 3 was superseded by 4.
 
 Each of these goes out only on the user's word.
 
@@ -74,3 +76,30 @@ Replaces 3 as the comment to post. Post only once the reworked branch is pushed 
 > An example of the precision issue you mention, unchanged here: 3 observations on blue line 359500676 get measure 900, but the segment starts at 900.0000085, so `FWA_LocateAlong` returns nothing in either version.
 >
 > After migrating, the grants on your shared database need re-applying, because the `FWA_IndexPoint` functions are dropped and recreated.
+
+
+## 1 as posted (2026-10-30)
+
+Section 1 with the final counts (56 cases, 15 reverts), the `FWA_SliceWatershedAtPoint` clamp and a bcfishobs/bcfishpass line.
+
+> **Bug.** A point nearest the vertex two segments of one stream share ties on distance, and `DISTINCT ON (blue_line_key)` took whichever segment the plan reached first. When that was the lower segment, the measure fell short of the next segment's start: `FWA_LocateAlong` and `FWA_WatershedAtMeasure` returned nothing (gauge 08KD006).
+>
+> **Change** (one migration, `202610240132__indexpoint_tiebreak.sql`):
+> - `FWA_IndexPoint`: ties go to the segment starting at the vertex, then `linear_feature_id`. The point is `ST_LineInterpolatePoint` on the segment, PointZM (#161), and the measure is its m. The old formula (`drm + fraction * length_metre`) differs from m by up to ~5 mm and can name a measure past the segment's m range. `ST_LineMerge` was dropping m. `include_disconnected` and `include_null_localcodes` (#86) apply before the per-stream pick; defaults keep today's rows. A point on a watershed-group boundary no longer errors.
+> - At a stream's head the m measure equals the top segment's `upstream_route_measure` (91% of blue lines), which `upstream_route_measure > measure` rejected. `FWA_LocateAlong`, `FWA_UpstreamTrace`, `FWA_DownstreamTrace`, `FWA_WatershedHex` and `FWA_WatershedStream` now take the highest segment whose range, closed at the top, holds the measure. `FWA_UpstreamBorderCrossings` accepts the head, and it and `FWA_SliceWatershedAtPoint` keep their slice fraction in [0, 1] (at some stream heads the fraction rounded above 1 and the slice errored).
+> - `extras/channel_width` calls `FWA_IndexPoint` instead of its own pick.
+>
+> **Tests:** 56 cases across five files, all `t`; each of 15 one-change reverts turns at least one red.
+>
+> | check | before | after |
+> |---|---|---|
+> | `FWA_WatershedAtMeasure` point step misses, 1,190 random-point rows | 156 | 0 |
+> | `FWA_LocateAlong` misses, 11,182 indexed measures | 1,627 | 34 (4 dp band) |
+> | streams / segments changed, default flags | — | 0 / 0 |
+> | trace / watershed results changed where both answer (558 measures) | — | 0 |
+>
+> **Deploy notes:** both `fwa_indexpoint` functions are dropped and recreated, so grants are reset and pg_featureserv needs a restart. `geom` is now PointZM: wrap in `ST_Force2D` for a 2D column. A database that applied the earlier version of this migration will not re-run it.
+>
+> **bcfishobs and bcfishpass:** no change. Their only calls into changed functions are 4 `FWA_LocateAlong` sites, and old and new give identical points on their inputs (details in the comment below).
+>
+> 🤖 Generated with [Claude Code](https://claude.com/claude-code)

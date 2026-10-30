@@ -33,8 +33,7 @@ Ad hoc SQL, the harness and the reverts were in the session scratchpad and are n
 
 ## Owed
 
-- Push `indexpoint-tiebreak` and post the #201 body edit and reply, **on your word** (the upstream commit is `a8d00b9`, parked on `origin/indexpoint-tiebreak-41`, which no PR uses: fast-forward `indexpoint-tiebreak` to it)
-- Post the bcfishobs/bcfishpass notes, **on your word**
+- ~~Push `indexpoint-tiebreak`, edit the #201 body, post the reply and the bcfishobs/bcfishpass notes~~ done 2026-10-30: `indexpoint-tiebreak` fast-forwarded d955688 → a8d00b9, #201 title and body replaced, one comment posted (smnorris/fwapg#201, issuecomment-6530373831). Texts as posted are in `drafts.md`; Simon will review in November
 - Re-apply the fwa_indexpoint grants on our deployment after the migration (DROP resets them), and restart pg_featureserv
 - Open issues for the NGE picks still on the formula measure: this fork's `pcic_crosswalk02_candidates.sql` (`ST_LineMerge` and formula) and fresh's `frs_point_snap()` (review S1) (2026-10-26: fresh#266 widened, wet#127 and link#383 filed for the package side; the PCIC crosswalk is still open)
 - After upstream settles: merge the newgraph PR, close #39 and #41 by hand naming the PRs, then migrate the local fwapg (`cd db && DATABASE_URL=... ./migrate.sh`) **when you say so**
