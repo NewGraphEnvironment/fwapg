@@ -151,6 +151,23 @@ Round 3 (`review-round3.md`), asked for the mechanism: every function taking (bl
 
 **Tests:** 56 of 56 across five files. Fifteen one-change reverts, each red: a 10, b 3, c 1, d 3, e 1, f 2, g (d955688) 27, h 1, i 1, j 2, k 2, l 1, m 2, n (border head clause) 1, o (slice clamp) 2.
 
+## Effect on bcfishobs and bcfishpass (2026-10-30 18:06-18:20 UTC, after the PR was opened)
+
+Asked after Simon said he would review in November: what does the migration change in bcfishobs and bcfishpass? Measured on the local provincial fwapg, which is not migrated. The new `FWA_LocateAlong` was copied into a scratch schema, and the downstream SQL was run there with its schema renamed. The scratch schema was then dropped.
+
+- **Call inventory.** A code search over smnorris repos (default branches) for the 14 functions in the migration found these callers. bcfishobs `main` 217b650: `FWA_LocateAlong` once (`sql/process.sql:539`). bcfishpass `main` 3bd2824 (one commit past 620dbe4, touching only `load_streams_access.sql`, which calls no `fwa_` function): `FWA_LocateAlong` at `04_pscis.sql:225, 300` and `barriers_user_definite.sql:27`. Neither calls `FWA_IndexPoint`. Its 115 `fwa_upstream`/`fwa_downstream` calls and one `fwa_networktrace` call are to functions the migration does not touch. Outside those two repos: `bcbasins` (last pushed 2021) calls `fwa_indexpoint`, `fwa_watershedhex` and `fwa_watershedstream` through pg_featureserv, and a private grants file revokes and grants `postgisftw.FWA_IndexPoint`.
+- **The difference is confined to whole-number segment tops.** All four call sites pass whole numbers: the `CEIL(GREATEST(drm, FLOOR(LEAST(urm, m))))` clamp, or the barrier CSV, where 225 of 227 measures are whole. Old and new can differ only where a measure rounds (4 dp) to a segment's `upstream_route_measure` and no other segment covers it half-open. Whole-number segment tops in the province: 492. Run through both functions: 165 gain a point (96 at a blue line's head, 69 at mid-line gaps), 0 lose one, 0 move.
+- **Per site, old against new on real inputs:**
+
+| site | rows | old NULL | new NULL | gained | lost | moved |
+|---|---|---|---|---|---|---|
+| bcfishobs `process.sql:539` (process.sql up to the final load, run on the local FISS copy, 378,947 obs) | 372,424 | 3 | 3 | 0 | 0 | 0 |
+| bcfishpass `04_pscis.sql` (every `matched_distinct` row from `02_pscis_streams_150m.sql`, a superset of 04's input; 18,291 crossings) | 27,590 | 0 | 0 | 0 | 0 | 0 |
+| bcfishpass `barriers_user_definite.sql` (CSV through its own segment join; 1 of 227 rows does not join) | 226 | 0 | 0 | 0 | 0 | 0 |
+
+- **The 3 NULLs in both versions** are observations on blue line 359500676 at measure 900. The segment there (108060670) starts at 900.000008524187, so the 4 dp predicate admits it, while `ST_LocateAlong` at 900 is outside its m range. This is the pre-existing precision problem Simon called a separate issue. The PR leaves it as it was.
+- **Output columns allow NULL** (bcfishpass `pscis.geom`, bcfishobs `observations.geom`), so a NULL from the old function loaded silently rather than failing a build.
+
 ## Errors Encountered
 
 | Error | Resolution |

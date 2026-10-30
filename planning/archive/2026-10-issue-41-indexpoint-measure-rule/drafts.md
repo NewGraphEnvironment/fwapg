@@ -45,7 +45,7 @@ Title: `FWA_IndexPoint: tie-break, measure from the stream's m, stream filters; 
 
 ## 3. Note for Simon: the same untied pick in bcfishobs and bcfishpass
 
-Lines from smnorris default branches as measured 2026-10-24 (bcfishobs `master` 217b650, bcfishpass `main` 620dbe4). Re-check the lines before posting.
+Lines from smnorris default branches as measured 2026-10-24 (bcfishobs `main` 217b650, bcfishpass `main` 620dbe4). Re-check the lines before posting.
 
 > None of these breaks an exact distance tie, so a point on a vertex two segments share can take either segment's local code:
 > - bcfishobs `sql/process.sql:163` and 7 more nearest-stream picks in the file (`ORDER BY ..., distance_to_stream`). About 2.3% of observations sit on such a tie, 1.1% where the local codes differ.
@@ -53,3 +53,24 @@ Lines from smnorris default branches as measured 2026-10-24 (bcfishobs `master` 
 > - bcfishpass `model/01_access/pscis/sql/02_pscis_streams_150m.sql:74` (`distance_to_stream`), and `04_pscis.sql:208`, `05_pscis_points_duplicates.sql:80` (name score, then weighted distance).
 >
 > The one-line fix in each: add `downstream_route_measure DESC, linear_feature_id` after the distance key. Where they compute a measure, `ST_InterpolatePoint` is already the m method.
+
+## 4. Reply after "I'll take a look at the PR in November" (2026-10-30)
+
+Replaces 3 as the comment to post. Post only once the reworked branch is pushed (the Owed list in README.md). Lines re-checked 2026-10-30 against bcfishobs `main` 217b650 and bcfishpass `main` 3bd2824 (the measurement is in findings.md, "Effect on bcfishobs and bcfishpass"). Names no private repo.
+
+> Thanks Simon, no rush at all. We're adding a few things now so they're ready when you get to it in November.
+>
+> The branch now has the rework: one tie rule, the #86 filters, z/m on the point, and the measure taken from the stream's m. Taking the m exposed a stream-head gap in the functions that take a measure, so those now share one segment rule. Agreed that general float handling is a bigger, separate job; this doesn't attempt it.
+>
+> Where the equidistant match shows up: in the nearest-stream picks downstream rather than in fwapg. bcfishobs `sql/process.sql:163` (and 7 more in that file), and bcfishpass `load_falls.sql:74`, `load_dams.sql:74` and `02_pscis_streams_150m.sql:74` have no tie-break. About 2.3% of observations sit on a tie, and 1.1% of observations get a different local code depending on which segment wins. Adding `downstream_route_measure DESC, linear_feature_id` after the distance key fixes each.
+>
+> What this PR changes in bcfishobs and bcfishpass: neither calls `FWA_IndexPoint`. Their only calls to changed functions are 4 `FWA_LocateAlong` sites, all passing whole-number measures. We ran old and new on each site's inputs (current SQL, provincial FWA):
+> - bcfishobs `process.sql:539`: 372,424 observations, identical
+> - bcfishpass `04_pscis.sql`: 27,590 crossing matches, identical
+> - bcfishpass `barriers_user_definite.sql`: 226 barriers, identical
+>
+> Province-wide, 165 whole-number measures (96 at stream heads) now return a point where they returned none, and none of these inputs lands on one. No point is lost or moved.
+>
+> An example of the precision issue you mention, unchanged here: 3 observations on blue line 359500676 get measure 900, but the segment starts at 900.0000085, so `FWA_LocateAlong` returns nothing in either version.
+>
+> After migrating, the grants on your shared database need re-applying, because the `FWA_IndexPoint` functions are dropped and recreated.
