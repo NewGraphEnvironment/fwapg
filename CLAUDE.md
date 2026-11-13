@@ -20,6 +20,24 @@ PostgreSQL/PostGIS extension of BC's Freshwater Atlas (FWA): extra tables, index
 - The published loader image builds from `main` and tags only, so it never carries `newgraph`'s `load.sh`. To add one fork table to an existing DB, run its file alone: `psql $DATABASE_URL -v ON_ERROR_STOP=1 -f load/<table>.sql`.
 - The PCIC crosswalk's outputs live in the `pcic` schema (`load/pcic_schema.sql`), one set of rows per run (model, scenario, period). Load the shared tables with `psql $DATABASE_URL -v ON_ERROR_STOP=1 -f load/pcic_schema.sql -f load/pcic.sql`, then pipe each run's file into `load/pcic_run.sql` (`extras/pcic_crosswalk/README.md`). The two `whse_basemapping` PCIC tables are the frozen first build.
 
+## Working Conventions
+
+### Show a draft before posting a comment an outside person will read
+
+Draft any issue or PR comment or body that is addressed to someone outside NGE, or likely to be read first by them (the upstream maintainer, for example), and show it before posting. This holds even though fwapg is NGE's repo, and even when a plan step says "comment on #N".
+
+**Why:** it reads as the organisation speaking to an outside party, whichever repo it lands in. On 2026-10-22 an answer to fwapg#30 was posted unreviewed, because "own repos need no approval" was read as covering it.
+
+**How to apply:** a plan step that names the comment approves the task, not the text. Wait for the word on the text itself.
+
+### Name the branch, not "ours"
+
+In research files, PR bodies and issue comments, say where the code lives ("on the `newgraph` branch", "`extras/blue_line_paths` on the `newgraph` branch"). Avoid "ours", "our fork", "our side" or "our paths". "We" for people doing work ("we're looking into it") stays.
+
+**Why:** fwapg is the upstream maintainer's package, and ownership language reads as claiming or steering it (the user, 2026-10-22).
+
+**How to apply:** keep the tone collaborative and tentative. Offer a fix or decision as a likely home and a working guide, not a rule. Say what was measured without overstating it: "gives a different answer", not "is wrong"; "a poor fit", not "cannot".
+
 <!-- conventions-branch: newgraph -->
 <!-- BEGIN SOUL CONVENTIONS — DO NOT EDIT BELOW THIS LINE -->
 
