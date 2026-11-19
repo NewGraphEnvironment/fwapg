@@ -1,0 +1,80 @@
+NOTICE:  schema "cmp24" does not exist, skipping
+== loaded 21:09:54Z
+SELECT 484
+ subtree_outlets 
+-----------------
+             484
+
+== crosswalk rows that differ, inside and outside the subtree
+ in_subtree | rows_differ 
+------------+-------------
+ t          |         484
+
+== of them, outside the subtree
+ subid | old_parent | new_parent | old_flag | new_flag 
+-------+------------+------------+----------+----------
+
+== weights that differ, by group (any column; share beyond 1e-9)
+ wsg  | segments_differ 
+------+-----------------
+ BABR |               1
+ BBAR |              19
+ BLAR |               7
+ BONP |              19
+ CAMB |             151
+ CHES |              54
+ CHIL |               1
+ COLR |               4
+ DOGC |              11
+ FINA |             175
+ FRCN |              13
+ GRNL |               2
+ HARR |               3
+ HERR |               1
+ KETL |               1
+ LARL |               2
+ LEUT |            6955
+ LNRS |            9347
+ LSKE |               1
+ MFRA |              15
+ MORK |              22
+ MSKE |               1
+ MSTR |               9
+ NECR |              10
+ OKAN |             124
+ PARA |              99
+ PCEA |             433
+ QUES |               6
+ SETN |              49
+ THOM |               6
+ TUYR |              10
+ UEUT |           20317
+ UFRA |               8
+ UNRS |           23977
+ UPCE |               1
+ VICT |               1
+
+== weights that differ, by kind: outside the five groups, and in them
+ nechako_groups | missing | subid_differs | share_differs | upstream_set_differs | order_only 
+----------------+---------+---------------+---------------+----------------------+------------
+ f              |       0 |             1 |             1 |                    0 |       1204
+ t              |       0 |         60520 |         60647 |                 4768 |          2
+
+== sub-basin days: rows that differ by more than 1e-9 m3/s, inside and outside the subtree
+ in_subtree | rows_differ | subids 
+------------+-------------+--------
+ t          |      175680 |    480
+
+== of them, outside the subtree
+ subid | days | max_dq_local | max_dq_acc 
+-------+------+--------------+------------
+
+== done 21:10:29Z
+NOTICE:  drop cascades to 7 other objects
+DETAIL:  drop cascades to table cmp24.fwa_crosswalk_old
+drop cascades to table cmp24.fwa_crosswalk_new
+drop cascades to table cmp24.segment_weights_old
+drop cascades to table cmp24.segment_weights_new
+drop cascades to table cmp24.subbasin_daily_old
+drop cascades to table cmp24.subbasin_daily_new
+drop cascades to table cmp24.subtree

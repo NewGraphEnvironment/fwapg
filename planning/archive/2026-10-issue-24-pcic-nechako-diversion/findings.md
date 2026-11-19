@@ -1,0 +1,189 @@
+# Findings — PCIC crosswalk: Nechako Reservoir outlets unplaced (#24)
+
+## Issue context
+
+**If we do it:** FWA segments in the Nechako Reservoir groups carry PCIC's routed flow, instead of about zero. **If we never do:** routed flow there is about zero on every segment, so any consumer (wet's default pick, NewGraphEnvironment/wet#57) has to fall back to another estimate across four watershed groups.
+
+## What happens
+
+In LEUT, UEUT and UNRS, routed flow in `fwa_stream_networks_discharge_monthly` is under 1 % of wet's open water balance on 97–100 % of segments, and LNRS is close behind. These four groups hold 73 % of the Fraser's near-zero routed segments (measured for wet#57 against fwapg 341b078, the #14 build).
+
+PCIC has 487 outlets in the four groups (`fwapg.pcic_outlets` intersected with `fwa_watershed_groups_poly`):
+
+| group | PCIC outlets | placed | flags |
+|---|---|---|---|
+| LEUT | 72 | 0 | broken_chain |
+| UEUT | 203 | 0 | broken_chain, no_candidate |
+| UNRS | 111 | 1 | broken_chain |
+| LNRS | 101 | 3 | broken_chain |
+
+PCIC's tree takes all 386 outlets of LEUT, UEUT and UNRS to the Fraser (root 4009421), and their `anchor_subid` lies in CHES. That suggests PCIC routes the reservoir out through the Skins Lake spillway and the Cheslatta, while the FWA reservoir drains another way. The chain breaks, the outlets stay unplaced, and their local runoff is given to the Cheslatta anchor's sub-basin. The FWA segments in the reservoir get almost none.
+
+This is the "Nechako reservoir lakes" case in #6's gauge disagreements: wet's #58 report lists 08JA014, 08JA015, 08JA016 and 08JA028 at about 0 m³/s routed.
+
+## Proposed
+
+- Confirm the FWA's outlet of the reservoir, and PCIC's (`dowsubid` at the reservoir's lowest outlets).
+- Decide how placement treats a reservoir both networks hold but drain differently. One option: give the reservoir's runoff to the FWA reservoir's own segments, and pass it on to whichever placed outlet the FWA reaches, so flow follows the FWA as the README says it does elsewhere.
+- Check the regulated-flow flag on the Cheslatta (README, drainage check) against the result.
+
+Relates to #6, #8.
+
+
+## Errors Encountered
+
+| Error | Resolution |
+|-------|------------|
+| Dev build 1 (46fcf91) stopped at step 3 after 23 min: `invalid reference to FROM-clause entry for table "dv"` (an `UPDATE ... FROM x, LATERAL (... dv ...)` cannot see the target table) | Exit derived in a subquery that joins `pcic_diversions` itself; refusals probed with a non-lake subid and a wrong blue line, both raise |
+
+## Baseline (2026-10-27, crosswalk b1a710836df2cafea0ef514b7ed1c338, PNWNAmet 1951-2012)
+
+Produced by `logs/nechako_measure.sql` (`logs/20261027_baseline_1951-2012.out`); gauges from the build's
+`data/qa_gauges_*.csv` (`logs/20261027_baseline_gauges.csv`).
+
+- Outlets with their PCIC point in the group, placed: LEUT 0/72, UEUT 0/203 (4 no_candidate), UNRS 1/111,
+  LNRS 3/101, CHES 95/95. The 479 broken-chain outlets of the four groups are all anchored to 1007550.
+- Mean annual specific runoff over FWA upstream area, median per group: LEUT 0.3 mm/yr, UEUT 0.3, UNRS 0.2,
+  LNRS 0.3, CHES 131.1. Segments under 5 mm/yr: LEUT 100%, UEUT 100%, UNRS 100%, LNRS 97.3%, CHES 1.0%.
+  (5 mm/yr stands in for "under 1% of wet's water balance": the regional runoff is several hundred mm.)
+- Key points, mean annual m³/s: Whitesail Lake 0.003, Ootsa Lake 0.037, Natalkuz 0.045, Knewstubb mid 0.128,
+  Knewstubb exit segment 701799415 0.134, canyon below Kenney Dam 0.134, Nechako above the Cheslatta 0.365
+  (all sub-basin 1002307), Skins Lake spillway line top 156.365 (1007550), Cheslatta near its mouth 161.611,
+  Nechako below the Cheslatta 161.976.
+- Gauges, FWA against PCIC: 08JA013 (spillway) 156.365 vs 156.366; 08JA017 162.170 vs 162.170; 08JA015 0.001
+  vs 3.905; 08JA016 0.001 vs 0.684; 08JA028 0.024 vs 44.962; 08JA014 no PCIC outlet. Observed at 08JA013
+  95.5 and 08JA017 73.3 (1951-2012): PCIC models no Kemano diversion.
+- Other anchors collecting many unplaced outlets, all inside BC: Kootenay 5025228 (140), Pend-d'Oreille
+  5013906 (92), Fox 206008363 (44), KOTL 5014312 (32), Chilcotin 4007152 (31). Out of scope (Phase 7 issue).
+- The reservoir exit: segment 701799415 (edge 1200, Knewstubb Lake 329318438) at 288,852.348 m on
+  356362759, 70.7 km from PCIC's lake outlet point (on Ootsa Lake's shore at the spillway).
+
+## Dev build and mutation checks (2026-10-27)
+
+Dev build 2 (e4a4d91, monthly 1951-2012, from a scratch worktree whose `qa.sql` ended in a failing line):
+15:43:26Z to 16:20:07Z (36 min 41 s); every QA test `t`, the seven new ones included; only the hold line `f`, so
+the staging tables were kept. (Dev build 1, at 46fcf91, failed at 03_diversions: Errors below.)
+
+Mutation checks (`logs/mutation_checks.sh`, `logs/20261027_mutation_checks.out`), on that staging, 16:20-16:32Z.
+Each defect applied to a copy of the SQL (refused unless it matched once), run on the groups it touches, and undone
+by rerunning the real SQL:
+
+| mutation | tests that read f |
+|---|---|
+| M1: 07 does not add the diverted outlet at its PCIC ancestor's segment (CHES) | outlet segments carry accumulated flow; Nechako weights; exactly one segment |
+| M2: 07 joins children by flow parent, not position (LNRS) | Nechako weights (canyon share) |
+| M3: 06 takes the diversion's area off its flow parent | area comes off its position parent |
+| M4: 06 leaves the diversion's flow on its position parent | every diversion placed ... position and flow parents |
+| M5: no diversion listed, placement rerun (not undone) | every diversion placed; Nechako groups placed >= 90% |
+
+After the undo of M1-M4 every test was `t` again. Not mutated, as there is nothing to observe today (plan review 1):
+05's exemption (no child can break against the exit) and 06's move skip (no junction at the exit).
+
+The old build's staging is gone, so the new tests cannot be run on it (plan review 8). Its "before" is the
+baseline above: exit 0.134 m³/s against PCIC's 156, 4 of 483 outlets with a candidate placed.
+
+## Code check (`/code-check branch`, ce4add3...HEAD)
+
+| Round | Findings | Fixed | Accepted | Inside previous fix? |
+|-------|----------|-------|----------|----------------------|
+| 1 | 0 (2 notes) | 2 notes | 0 | — |
+| 2 | 1 fragile (area test, flow-parent side, a proxy) + 3 notes | 1 + 2 notes | 1 note (sort order kept comparable) | n |
+| 3 | 2 fragile (area test, position-parent side; guard 2 message) | 2, plus a refusal for a line joining at the exit vertex | guard 3 stricter than needed (commented) | y (the other half of round 2's fix) |
+| 4 | 0 | — | README sentence looser than the refusals (tightened in Phase 4) | n |
+
+Ended by enumeration: round 3 listed every place the mechanism (checks validated against the Nechako's sizes,
+counts or geometry rather than the property) reaches, 20 rows; round 4 walked each row against the code after the
+fixes (`review-round4.md`): each holds for any listed diversion, refuses loudly, or is Nechako-specific by design.
+Round 4 added two rows: 06's cycle check reachable through a diversion placed above its own ancestor (loud, does not
+name the diversion), and the area test's inner joins (cannot drop a row today: every lut row has an area).
+Spend: five reviewer agents with the plan review, the per-task bound.
+
+## Rebuild 1 (2026-10-27, 1981-2010 with weekly flow, crosswalk 901d1271ff2a1fb1f2594be52042871e)
+
+From the worktree at 9fde5e0, 16:38:17Z to 20:51:15Z (4 h 13 min; the weekly export alone took 50 min). Every QA
+test `t` (38), exported (`logs/20261027_build_1981-2010.log`, URL and temp paths scrubbed). Measured with
+`logs/nechako_measure.sql -v period=1981-2010` (`logs/20261027_rebuild_1981-2010.out`); the baseline is 1951-2012,
+so flows compare in kind, not to the third decimal (the 1951-2012 rebuild compares exactly).
+
+- Placed: CHES 95/95, LEUT 72/72, LNRS 101/101, UEUT 199/203 (the 4 no_candidate), UNRS 111/111. No broken_chain
+  or demoted outlet left in the five groups (baseline: 0/72, 0/203, 1/111, 3/101).
+- Median specific runoff: LEUT 353.3 mm/yr, UEUT 357.9, UNRS 385.5, LNRS 139.6, CHES 125.3 (baseline 0.3, 0.3,
+  0.2, 0.3, 131.1). Segments under 5 mm/yr: 0.4%, 0.2%, 0.1%, 0.3%, 0.5% (baseline 100, 100, 100, 97.3, 1.0).
+- Key points, m³/s: Whitesail 7.114, Ootsa 60.926, Natalkuz 67.715, Knewstubb mid 152.819, Knewstubb exit 155.832
+  (all sub-basin 1007550), the canyon below Kenney Dam 0.000 (its segment shares the exit's fundamental watershed,
+  so its share is 0), Nechako above the Cheslatta 0.350 (1002307's local runoff), the spillway line top 155.832
+  (1008709), Cheslatta near its mouth 160.880, Nechako below the Cheslatta 161.231.
+- Gauges (`qa_gauges.sh`, YEARS=1981/2010; `logs/20261027_qa_gauges_1981-2010.csv`), FWA against PCIC:
+  08JA013 155.832 / 155.832, 08JA015 3.899 / 3.899, 08JA016 0.683 / 0.683, 08JA017 161.416 / 161.416, 08JA028
+  45.125 / 45.126. Before (the old build's 1981-2010, #25's logs): 08JA015 0.001, 08JA016 0.001, 08JA028 0.023.
+  Observed 08JA013 65.7 and 08JA017 69.4: PCIC is 2.4 and 2.3 times high there, no Kemano diversion in its model.
+- Province-wide gauge summary: 431 compared, within 10% of PCIC 85/104, 168/169, 119/122, 32/36 by area class.
+  08KH006 (Quesnel near Quesnel) reads FWA 0.276 against PCIC 221.4: the same 0.276 is in #25's logs, so it
+  predates this branch and is outside the Nechako tree.
+- Area test re-proved by mutation (`logs/mutation_area_test.sh`, `logs/20261027_mutation_area_test.out`), on a
+  scratch schema rebuilt from `pcic.fwa_crosswalk` and `fwapg.pcic_qa_diversions` with 06's own area statement:
+  `t` on 06's areas (position parent 1002307 local 3,117.1 ha, flow parent 1008709 local 84.2 ha); `f` with the
+  diversion's area off its flow parent, off neither, and off both.
+- `pcic_test.sh`: all pcic tests pass (162 ok).
+- Outside the reservoir, against the published files (old crosswalk b1a71083; `logs/compare_published.sh`,
+  `logs/20261027_compare_published_1981-2010.out`): crosswalk rows differ for the 484 outlets of 1007550's PCIC
+  subtree and no other; sub-basin days (1981-2010) differ beyond 1e-9 m³/s for 480 subtree sub-basins and no other.
+  Weights: outside the five groups one segment changed, 832491663 in CHIL, the top of an unnamed line (356252763)
+  that drains into the reservoir across the group boundary, now in newly placed 1000213's sub-basin (was 1002307's);
+  1,204 more differ only in the order of `upstream_subids` (07's `array_agg` has no ORDER BY, so the order is the
+  plan's; the sum is not affected). In the five groups: 60,520 segments changed sub-basin, 4,768 their upstream set.
+
+## Rebuild 2 (2026-10-27, 1951-2012 with per-year days, crosswalk 901d1271ff2a1fb1f2594be52042871e)
+
+From the worktree at 26d7582, 21:01:34Z to 00:46:44Z (3 h 45 min). Exit 0, every QA test `t`, exported: the crosswalk
+fingerprint is the same as rebuild 1's, so the export was not refused, and all 63 per-year parquet files were rewritten
+(`logs/20261027_build_1951-2012.log`, URL and temp paths scrubbed). The `.csv.gz` file's own md5 differs between builds
+(gzip header); `pcic.runs.crosswalk_md5` is the fingerprint that counts.
+
+- Against the baseline exactly (`logs/nechako_measure.sql -v period=1951-2012`, `logs/20261027_rebuild_1951-2012.out`
+  beside `logs/20261027_baseline_1951-2012.out`): placed CHES 95/95, LEUT 72/72, LNRS 101/101, UEUT 199/203 (4
+  no_candidate), UNRS 111/111. Median specific runoff LEUT 353.1 mm/yr, UEUT 353.5, UNRS 385.9, LNRS 144.1, CHES
+  131.1 (CHES unchanged); under 5 mm/yr 0.4%, 0.2%, 0.1%, 0.3%, 0.5%. Knewstubb exit 156.365 m³/s (was 0.134; PCIC's
+  1007550 156.366), spillway line top 156.366 (unchanged), canyon 0.000, Nechako above the Cheslatta 0.365.
+- `qa_report` against the old 1951-2012 build (#42's `20261027_days_build.log`): broken_chain 985 -> 506 (river 960
+  -> 501, lake 25 -> 5), placed 37,667 -> 38,146 (+479); not-nearest-candidate placements 608 -> 618; FWA within 5% of
+  PCIC 37,291 -> 37,768, FWA higher 376 -> 378; losing sub-basin months 7,749 -> 7,770 of 452,004 -> 457,752. The
+  diversion row: 1007550 at 701799415, 70,656 m from PCIC's point, position parent 1002307, flow parent 1008709,
+  156.365 against 156.365. Nothing else in the report moved.
+- Clamps (`qa_report_clamped`, monthly): 381,947 -> 421,713 segment-months clamped at zero (0.943% -> 1.041%),
+  nearly all in April-June; mid-network 1,568 -> 1,750. All inside the five groups: zero-flow rows outside them are
+  1,098,635 in both the published and the rebuilt monthly file, while inside them zero rows fell 281,470 -> 45,247
+  (the old build's reservoir flows rounded to 0). The new clamps are the newly placed lake outlets' freshet, where an
+  outlet's local runoff is negative for a month, as elsewhere in BC.
+- Gauges (`qa_gauges.sh`, 1951-2012; `logs/20261027_qa_gauges_1951-2012.{log,csv}`): 538 compared; FWA within 10% of
+  PCIC at 497 (was 494), 11 more on another branch, 30 disagree (was 33), 25 of them under 100 km² (was 27). The
+  three that moved are 08JA015 3.905 / 3.905, 08JA016 0.684 / 0.684 and 08JA028 44.962 / 44.962 (FWA / PCIC). 08JA013
+  156.366 / 156.366 and 08JA017 162.170 / 162.170 unchanged; observed 95.5 and 73.3. Drainage area within 10% at 559
+  of 603, unchanged. 08KH006 still 0.276 against 220.8 (pre-existing).
+- Drainage and following (the job's `qa_drainage.sql`, `qa_following.sql`): 218 `small` and 127 `big` of 37,517
+  main-stem placements (was 218 and 126 of 37,040); 85 of the 88 outlets carrying more than 10 times PCIC's flow are
+  `small` (was 82 of 85). In the five groups 25 `big` and 3 `small`, including 1008709, 1001496 and 1002305 `big` and
+  1002307 `small` by design (the README caveat). Following: of 37,752 placed river outlets 248 `follows_other` (1 in
+  the five groups), 188 `follows_none` (3), 773 unmeasured (15); share median 1.0, 5th percentile 0.913; 31 between
+  0.2 and 0.6. 178 of the 248 are in no drainage flag and at no gauge where FWA and PCIC differ by more than 10%.
+- The below-junction move updated 6 outlets, as before.
+- Against the published files for 1951-2012 (`logs/20261027_compare_published_1951-2012.out`): the same as for
+  1981-2010. Crosswalk rows differ for the 484 subtree outlets only; sub-basin days for 480 subtree sub-basins only
+  (175,680 rows); outside the five groups one weight changed (the CHIL segment) and 119 differ in `upstream_subids`
+  order only (1,204 in rebuild 1's comparison: the order is the plan's, so it differs per build).
+- README counts updated from these: gauges for both periods, drainage, following.
+
+## Publish and read back (2026-10-28 UTC)
+
+- Uploaded from the worktree to `s3://fresh-bc/fwapg/extras/`, in `extras/README.md`'s order: the 63 per-year parquet
+  files, then the 10 `.csv.gz` files, 00:56:40Z to 01:22:55Z (26 min 15 s), exit 0. Every one of the 73 objects has
+  its file's size (`aws s3 ls` against `stat`).
+- HTTP read-back (#42's `readback_http.R 1983`, `logs/20261027_readback_http_1983.out`): 1983 matches its row of the
+  published `pcic.series` on rows, sub-basins, bytes and both sums, and its metadata names crosswalk 901d1271 and
+  commit 26d7582; 19.1 s.
+- Loads (`logs/readback_load.sh`, `logs/20261027_readback_load.out`): `load/pcic_schema.sql`, `load/pcic.sql`, then
+  `load/pcic_run.sql` for both runs' sub-basin days and monthly flow, from fresh-bc into a new scratch database, as
+  `load.sh` does: 01:23:40Z to 01:57:05Z (33 min 25 s), every fingerprint check passed. Loaded crosswalk md5 901d1271
+  over 48,716 outlets; both runs on it; 63 catalogue years (1950-2012) on one crosswalk; 1007550 at 701799415, flow
+  parent 1008709; the Knewstubb exit 156.365 (1951-2012) and 155.832 m³/s (1981-2010). Scratch database dropped.
+- Another database that loaded the old 1951-2012 files needs the loads re-run: the PR says so.

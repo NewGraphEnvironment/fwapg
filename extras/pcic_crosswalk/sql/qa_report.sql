@@ -6,7 +6,7 @@ FROM fwapg.pcic_fwa_crosswalk
 GROUP BY 1, 2
 ORDER BY 1, 2;
 
--- snap distance of placed outlets
+-- snap distance of placed outlets (a listed diversion is placed by hand, below)
 SELECT
   count(*) AS placed,
   round(percentile_cont(0.5) WITHIN GROUP (ORDER BY distance_to_stream)::numeric, 1) AS p50_m,
@@ -14,8 +14,29 @@ SELECT
   round(percentile_cont(0.99) WITHIN GROUP (ORDER BY distance_to_stream)::numeric, 1) AS p99_m,
   round(max(distance_to_stream)::numeric, 1) AS max_m,
   count(*) FILTER (WHERE candidate_rank > 1) AS not_nearest_candidate
-FROM fwapg.pcic_fwa_crosswalk
-WHERE flag IS NULL;
+FROM fwapg.pcic_fwa_crosswalk x
+WHERE flag IS NULL
+AND NOT EXISTS (SELECT 1 FROM fwapg.pcic_diversions dv WHERE dv.subid = x.subid);
+
+-- listed diversions (pcic_crosswalk03_diversions.sql, NewGraphEnvironment/fwapg#24):
+-- the exit they are placed at, how far it is from PCIC's outlet, where their area
+-- goes (position parent) and where their flow goes (FWA parent), and mean annual
+-- flow, PCIC's and accumulated on the FWA. The Nechako Reservoir's spillway
+-- outlets (1008709, 1001496) carry it on 0.8 km2 of FWA area, and the canyon
+-- outlet below Kenney Dam (1002307) little on 14,000 km2: the drainage check
+-- flags them by design
+WITH annual AS (
+  SELECT m.subid, avg(m.q_acc) AS q_acc, avg(q.q_m3s) AS q_pcic
+  FROM fwapg.pcic_subbasins_monthly m
+  INNER JOIN fwapg.pcic_outlet_monthly q ON q.subid = m.subid AND q.month = m.month
+  GROUP BY m.subid
+)
+SELECT dv.subid, x.linear_feature_id, round(x.downstream_route_measure::numeric, 1) AS measure,
+  round(x.distance_to_stream::numeric) AS distance_m, dv.position_parent_subid, x.fwa_parent_subid,
+  round(a.q_pcic::numeric, 3) AS q_pcic, round(a.q_acc::numeric, 3) AS q_fwa
+FROM fwapg.pcic_diversions dv
+INNER JOIN fwapg.pcic_fwa_crosswalk x ON x.subid = dv.subid
+LEFT JOIN annual a ON a.subid = dv.subid;
 
 -- PCIC segment ends that do not touch the downstream feature
 SELECT direction_method, count(*),

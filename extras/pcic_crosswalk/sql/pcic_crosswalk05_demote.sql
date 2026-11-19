@@ -5,7 +5,8 @@
 -- Outlet s breaks against its parent a (s has no candidate on or upstream of
 -- a). Either s or a is wrong. Blame a when s has a candidate on or upstream of a's
 -- own anchor (so s fits the chain once a is skipped) and s carries at least half
--- of a's PCIC network.
+-- of a's PCIC network. A listed diversion (pcic_crosswalk03_diversions.sql) is
+-- never blamed: it is placed by hand.
 
 INSERT INTO fwapg.pcic_demoted (subid, round)
 SELECT DISTINCT a.subid, :round
@@ -17,6 +18,7 @@ LEFT JOIN fwapg.pcic_fwa_crosswalk g ON g.subid = a.anchor_subid
 WHERE s.flag = 'broken_chain'
 AND s.anchor_subid = a.subid
 AND os.subtree_size * 2 >= oa.subtree_size
+AND NOT EXISTS (SELECT 1 FROM fwapg.pcic_diversions dv WHERE dv.subid = a.subid)
 AND EXISTS (
   SELECT 1
   FROM fwapg.pcic_candidates y

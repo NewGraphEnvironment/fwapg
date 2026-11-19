@@ -1,0 +1,30 @@
+NOTICE:  database "pcic_readback24" does not exist, skipping
+== load/pcic_schema.sql, load/pcic.sql 01:23:40Z
+== pcic.subbasin_daily pnwnamet_historical_1951-2012 01:24:34Z
+== pcic.discharge_monthly pnwnamet_historical_1951-2012 01:28:37Z
+== pcic.subbasin_daily pnwnamet_historical_1981-2010 01:40:28Z
+== pcic.discharge_monthly pnwnamet_historical_1981-2010 01:44:36Z
+== loaded 01:57:05Z
+          crosswalk_md5           | outlets 
+----------------------------------+---------
+ 901d1271ff2a1fb1f2594be52042871e |   48716
+
+  period   |          crosswalk_md5           | daily_rows | monthly_rows | weekly_rows 
+-----------+----------------------------------+------------+--------------+-------------
+ 1951-2012 | 901d1271ff2a1fb1f2594be52042871e |   13961436 |     40524444 |            
+ 1981-2010 | 901d1271ff2a1fb1f2594be52042871e |   13961436 |     40524444 |   175605924
+
+ series_years | min  | max  | crosswalks 
+--------------+------+------+------------
+           63 | 1950 | 2012 |          1
+
+  subid  | fwa_parent_subid | linear_feature_id | measure  
+---------+------------------+-------------------+----------
+ 1007550 |          1008709 |         701799415 | 288852.3
+
+  period   | knewstubb_exit_q 
+-----------+------------------
+ 1951-2012 |          156.365
+ 1981-2010 |          155.832
+
+== done 01:57:08Z

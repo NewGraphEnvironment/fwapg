@@ -22,9 +22,14 @@ Note that no metadata is currently provided to link versions of these add-ons to
 The PCIC crosswalk outputs (`pcic_crosswalk/`, NewGraph fork only) go to NewGraph's `fresh-bc` bucket rather than `bchamp`,
 under `fwapg/extras/`, the one `fwapg/` prefix that is public-read (the rest of `fwapg/` is private). `load.sh` loads them from there.
 A run writes `pcic.<table>.csv.gz` for the tables every run shares, and `pcic.<table>.<run>.csv.gz` for its own rows
-(`pcic_crosswalk/README.md`). Upload the shared files with every run, since `pcic.runs` lists them all:
+(`pcic_crosswalk/README.md`). Upload only after the job has printed `PCIC crosswalk complete`, and upload the shared
+files with every run, since `pcic.runs` lists them all. A `DAYS=1` run also writes one parquet file per year of the
+model's series to `data/days/<model>_<scenario>/`, listed in `pcic.series`. Upload the files of the model and scenario
+that run built first (only that one: another's directory may hold files a failed run left), flat beside the other
+files, and the `.csv.gz` files after them, so that the catalogue never describes files that are not there yet:
 
-	cd pcic_crosswalk && for f in pcic.*.csv.gz; do aws s3 cp "$f" "s3://fresh-bc/fwapg/extras/$f"; done
+	(cd pcic_crosswalk && MS=PNWNAmet_historical && for f in data/days/$MS/pcic.subbasin_days.$MS.*.parquet; do aws s3 cp "$f" "s3://fresh-bc/fwapg/extras/$(basename "$f")"; done)
+	(cd pcic_crosswalk && for f in pcic.*.csv.gz; do aws s3 cp "$f" "s3://fresh-bc/fwapg/extras/$f"; done)
 
 `fwa_stream_networks_discharge_monthly.csv.gz` and `pcic_fwa_crosswalk.csv.gz` there are the first build, loaded into
 `whse_basemapping` until their readers move to `pcic`; the job no longer writes them.

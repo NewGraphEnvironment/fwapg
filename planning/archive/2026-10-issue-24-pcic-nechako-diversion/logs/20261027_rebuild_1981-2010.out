@@ -1,0 +1,44 @@
+== crosswalk
+          crosswalk_md5           |  period   
+----------------------------------+-----------
+ 901d1271ff2a1fb1f2594be52042871e | 1981-2010
+
+== outlets per group (PCIC outlet point in the group), placed and flags
+ wsg  | outlets | placed | broken_chain | no_candidate | demoted 
+------+---------+--------+--------------+--------------+---------
+ CHES |      95 |     95 |            0 |            0 |       0
+ LEUT |      72 |     72 |            0 |            0 |       0
+ LNRS |     101 |    101 |            0 |            0 |       0
+ UEUT |     203 |    199 |            0 |            4 |       0
+ UNRS |     111 |    111 |            0 |            0 |       0
+
+== mean annual flow per segment, per group: specific runoff (mm/yr over FWA upstream area)
+ wsg  | segments | median_mm | under_5mm | pct_under_5mm 
+------+----------+-----------+-----------+---------------
+ CHES |     7677 |     125.3 |        37 |           0.5
+ LEUT |     6955 |     353.3 |        28 |           0.4
+ LNRS |     9610 |     139.6 |        32 |           0.3
+ UEUT |    20317 |     357.9 |        36 |           0.2
+ UNRS |    23978 |     385.5 |        12 |           0.1
+
+== key points: mean annual flow (m3/s)
+                   label                   | linear_feature_id | wsg  |  subid  | q_annual 
+-------------------------------------------+-------------------+------+---------+----------
+ Cheslatta River near its mouth            |         700640508 | CHES | 1002305 |  160.880
+ Knewstubb Lake, exit segment              |         701799415 | LNRS | 1007550 |  155.832
+ Knewstubb Lake, mid                       |         701805694 | LNRS | 1007550 |  152.819
+ Natalkuz Lake                             |         701815134 | LNRS | 1007550 |   67.715
+ Nechako above the Cheslatta               |         700641138 | CHES | 1002307 |    0.350
+ Nechako below the Cheslatta               |         700640507 | CHES | 1002282 |  161.231
+ Nechako canyon below Kenney Dam           |         701799355 | LNRS | 1002307 |    0.000
+ Ootsa Lake                                |         703643788 | UNRS | 1007550 |   60.926
+ Skins Lake spillway line, top             |         700626260 | CHES | 1008709 |  155.832
+ Whitesail Lake, top of the reservoir line |         703707716 | UNRS | 1007550 |    7.114
+
+== outlets of the diversion
+  subid  | flag | blue_line_key | measure  | fwa_parent_subid | anchor_subid 
+---------+------+---------------+----------+------------------+--------------
+ 1002307 |      |     356362759 | 280461.5 |          1002282 |      1002282
+ 1007550 |      |     356362759 | 288852.3 |          1008709 |      1008709
+ 1008709 |      |     356209076 |   1841.2 |          1001496 |      1001496
+

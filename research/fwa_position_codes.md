@@ -2,6 +2,8 @@
 
 Source: measured 2026-10-07/08 on a full provincial fwapg (`fresh-db`, 4.5M segments in `fwa_stream_networks_sp`, 1.78M blue lines) while building `extras/pcic_crosswalk` (NewGraphEnvironment/fwapg#5; six code-check rounds, findings in `planning/archive/2026-10-issue-5-pcic-crosswalk/review-round*.md`). Junction sections revised 2026-10-11 (fwapg#14; `planning/archive/2026-10-issue-14-junction-vertex/`). Shared-vertex ties revised 2026-10-24 (fwapg#39; `planning/archive/2026-10-issue-39-indexpoint-tiebreak/`), then again the same day from the upstream review (fwapg#41, whose body carries the survey of point-to-stream picks; ad hoc SQL, rolled back). Measure method and stream-head sections added 2026-10-25 (fwapg#41; `planning/archive/2026-10-issue-41-*/`, scratch schema dropped).
 
+**Status 2026-11-19:** of the fwapg#41 work, only the `FWA_IndexPoint` tie-break is in fwapg: Simon merged it as smnorris/fwapg#203, and it reached `newgraph` through fwapg#50. Where the sections below say "the fwapg#41 migration", they mean commit `a8d00b9` (branch `indexpoint-tiebreak`), which was not merged. Its other parts (the slice clamp, the closed-top segment rule, the smnorris/fwapg#86 filters, the m measure) go upstream one PR at a time, tracked in fwapg#41.
+
 ## Local codes are not a coordinate system
 
 `FWA_Upstream` decides "is b upstream of a" across blue lines by comparing `localcode_ltree` lexicographically. That holds only when every local code is exactly `wscode.position`, codes never decrease going up a blue line, and main and side channels are never compared by local code. None of the three holds province-wide:

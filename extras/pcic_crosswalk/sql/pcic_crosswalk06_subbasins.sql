@@ -1,6 +1,7 @@
 -- Per placed PCIC outlet (a sub-basin on the FWA): its FWA parent, its local FWA
--- area and, per calendar day of the run's climatology, the flow generated inside
--- it and the flow accumulated at it.
+-- area, its depth in the FWA tree of placed outlets and, per calendar day of the
+-- run's climatology, the flow generated inside it and the flow accumulated at it
+-- (the last two by pcic_crosswalk06_daily.sql, which the per-year days run too).
 --
 -- PCIC's network and the FWA do not always join streams at the same place: a
 -- tributary can enter the mainstem below a PCIC outlet in PCIC's network and
@@ -14,7 +15,9 @@
 --    placed, otherwise its anchor (its nearest placed PCIC ancestor). An unplaced
 --    outlet with no placed ancestor is downstream of everything placed, outside
 --    BC or at sea, and its runoff is dropped.
--- 3. Flow is accumulated down the FWA tree of placed outlets (fwa_parent_subid).
+-- 3. Flow is accumulated down the FWA tree of placed outlets (fwa_parent_subid),
+--    except that a listed diversion (pcic_crosswalk03_diversions.sql) passes its
+--    flow to its nearest placed PCIC ancestor, where PCIC sends its water.
 --
 -- Where the two networks agree, the accumulated flow at an outlet is PCIC's
 -- outflow; where they do not, flow follows the FWA. qa.sql measures how often
@@ -88,6 +91,8 @@ FROM (
     LIMIT 1
   ) b
   WHERE x.flag IS NULL
+  -- a listed diversion stays at its exit (pcic_crosswalk03_diversions.sql)
+  AND NOT EXISTS (SELECT 1 FROM fwapg.pcic_diversions dv WHERE dv.subid = x.subid)
   AND s.downstream_route_measure > 0
   AND abs(x.downstream_route_measure - s.downstream_route_measure) < 0.001
   AND u.blk = x.blue_line_key
@@ -156,23 +161,81 @@ FROM (
 ) p
 WHERE x.subid = p.subid;
 
+-- a listed diversion's water leaves by PCIC's route, not the FWA's: its FWA parent
+-- becomes its nearest placed PCIC ancestor (its anchor), and the parent its
+-- position gave it is kept as position_parent_subid, whose sub-basin its area
+-- belongs to (below, and pcic_crosswalk07_segments.sql)
+UPDATE fwapg.pcic_diversions dv
+SET position_parent_subid = x.fwa_parent_subid
+FROM fwapg.pcic_fwa_crosswalk x
+WHERE x.subid = dv.subid;
+
+DO $$
+DECLARE
+  bad text;
+BEGIN
+  SELECT string_agg(dv.subid::text, ', ') INTO bad
+  FROM fwapg.pcic_diversions dv
+  LEFT JOIN fwapg.pcic_fwa_crosswalk x ON x.subid = dv.subid
+  WHERE x.flag IS NOT NULL OR x.anchor_subid IS NULL;
+  IF bad IS NOT NULL THEN
+    RAISE EXCEPTION 'diversions % are unplaced or have no placed PCIC ancestor to pass their water to', bad;
+  END IF;
+  -- with no placed outlet below the exit, the area would come off the flow parent;
+  -- with the same outlet on both routes, its flow would be added there twice
+  SELECT string_agg(dv.subid::text, ', ') INTO bad
+  FROM fwapg.pcic_diversions dv
+  INNER JOIN fwapg.pcic_fwa_crosswalk x ON x.subid = dv.subid
+  WHERE dv.position_parent_subid IS NULL OR dv.position_parent_subid = x.anchor_subid;
+  IF bad IS NOT NULL THEN
+    RAISE EXCEPTION 'diversions % have no placed outlet below their exit, or their exit reaches their PCIC ancestor on the FWA as well: a diversion needs a placed outlet on each route (one listed only for placement would be added twice in pcic_crosswalk07_segments.sql)', bad;
+  END IF;
+  -- the diverted flow enters at the receiving outlet's own segment
+  -- (pcic_crosswalk07_segments.sql), which it owns only as the highest placed outlet on it.
+  -- Stricter than flow needs (below a stacked outlet the flow would still reach the
+  -- segments under it through the receiving outlet), but qa.sql's one-segment test
+  -- relies on it
+  SELECT string_agg(dv.subid::text, ', ') INTO bad
+  FROM fwapg.pcic_diversions dv
+  INNER JOIN fwapg.pcic_fwa_crosswalk x ON x.subid = dv.subid
+  INNER JOIN fwapg.pcic_fwa_crosswalk r ON r.subid = x.anchor_subid
+  WHERE EXISTS (
+    SELECT 1 FROM fwapg.pcic_fwa_crosswalk y
+    WHERE y.flag IS NULL
+    AND y.linear_feature_id = r.linear_feature_id
+    AND y.subid != dv.subid
+    AND (y.downstream_route_measure, y.depth, y.subid) > (r.downstream_route_measure, r.depth, r.subid)
+  );
+  IF bad IS NOT NULL THEN
+    RAISE EXCEPTION 'diversions %: their PCIC ancestor is not the highest placed outlet on its segment', bad;
+  END IF;
+END $$;
+
+UPDATE fwapg.pcic_fwa_crosswalk x
+SET fwa_parent_subid = x.anchor_subid
+FROM fwapg.pcic_diversions dv
+WHERE x.subid = dv.subid;
+
 CREATE INDEX IF NOT EXISTS pcic_fwa_crosswalk_fwa_parent_idx ON fwapg.pcic_fwa_crosswalk (fwa_parent_subid);
 ANALYZE fwapg.pcic_fwa_crosswalk;
 
 -- local FWA area: upstream area at the outlet's segment minus that at the outlets
--- directly above it on the FWA (which do not nest, being each other's siblings)
+-- directly above it on the FWA (which do not nest, being each other's siblings).
+-- A diversion's area is taken off the sub-basin its position drains to, not the
+-- one its water goes to
 DROP TABLE IF EXISTS fwapg.pcic_subbasins;
 
 CREATE TABLE fwapg.pcic_subbasins AS
 WITH area AS (
   SELECT
     x.subid,
-    x.fwa_parent_subid,
+    coalesce(dv.position_parent_subid, x.fwa_parent_subid) AS fwa_parent_subid,
     x.linear_feature_id,
     ua.upstream_area_ha
   FROM fwapg.pcic_fwa_crosswalk x
   INNER JOIN whse_basemapping.fwa_streams_watersheds_lut l ON x.linear_feature_id = l.linear_feature_id
   INNER JOIN whse_basemapping.fwa_watersheds_upstream_area ua ON l.watershed_feature_id = ua.watershed_feature_id
+  LEFT JOIN fwapg.pcic_diversions dv ON dv.subid = x.subid
   WHERE x.flag IS NULL
 )
 SELECT
@@ -187,43 +250,10 @@ GROUP BY s.subid, s.linear_feature_id, s.upstream_area_ha;
 
 ALTER TABLE fwapg.pcic_subbasins ADD PRIMARY KEY (subid);
 
--- flow generated inside each placed outlet's sub-basin, per calendar day. Every
--- step below is linear in the flows, so a period's mean of q_local or q_acc
--- (pcic_crosswalk08_periods.sql) equals the same steps run on the period's mean
--- outlet flows.
-DROP TABLE IF EXISTS fwapg.pcic_subbasins_daily;
-
-CREATE TABLE fwapg.pcic_subbasins_daily AS
-WITH runoff AS (
-  SELECT
-    o.subid,
-    q.month,
-    q.day,
-    q.q_m3s - coalesce(sum(qc.q_m3s), 0) AS q_runoff
-  FROM fwapg.pcic_outlets o
-  INNER JOIN fwapg.pcic_outlet_daily q ON o.subid = q.subid
-  LEFT JOIN fwapg.pcic_outlets c ON c.dowsubid = o.subid
-  LEFT JOIN fwapg.pcic_outlet_daily qc ON qc.subid = c.subid AND qc.month = q.month AND qc.day = q.day
-  GROUP BY o.subid, q.month, q.day, q.q_m3s
-)
-SELECT
-  sb.subid,
-  r.month,
-  r.day,
-  sum(r.q_runoff) AS q_local,
-  sum(r.q_runoff) AS q_acc
-FROM runoff r
-INNER JOIN fwapg.pcic_fwa_crosswalk x ON r.subid = x.subid
-INNER JOIN fwapg.pcic_subbasins sb
-  ON sb.subid = CASE WHEN x.flag IS NULL THEN x.subid ELSE x.anchor_subid END
-GROUP BY sb.subid, r.month, r.day;
-
-ALTER TABLE fwapg.pcic_subbasins_daily ADD PRIMARY KEY (subid, month, day);
-
--- flow accumulated at each placed outlet: its own local flow plus the
--- accumulated flow of the outlets directly above it, resolved from the top of the
--- FWA tree down. Every placed outlet must be reachable from a root, or the parent
--- relation has a cycle and accumulation would never finish.
+-- each placed outlet's depth in the FWA tree of placed outlets, from its roots
+-- (pcic_crosswalk06_daily.sql accumulates flow down it). Every placed outlet must
+-- be reachable from a root, or the parent relation has a cycle and accumulation
+-- would never finish.
 ALTER TABLE fwapg.pcic_subbasins ADD COLUMN fwa_depth integer;
 
 WITH RECURSIVE tree AS (
@@ -242,39 +272,19 @@ SET fwa_depth = t.fwa_depth
 FROM tree t
 WHERE sb.subid = t.subid;
 
-ANALYZE fwapg.pcic_subbasins;
-ANALYZE fwapg.pcic_subbasins_daily;
-
--- q_acc starts as q_local. The outlets directly above an outlet at FWA depth d
--- are all at depth d + 1, so going up from the deepest level, each level adds its
--- children's finished totals.
 DO $$
 DECLARE
-  d integer;
-  maxdepth integer;
   unreached integer;
 BEGIN
   SELECT count(*) INTO unreached FROM fwapg.pcic_subbasins WHERE fwa_depth IS NULL;
   IF unreached > 0 THEN
     RAISE EXCEPTION '% placed outlets are not reachable from a root of the FWA parent tree (a cycle)', unreached;
   END IF;
-
-  SELECT max(fwa_depth) INTO maxdepth FROM fwapg.pcic_subbasins;
-  FOR d IN REVERSE maxdepth - 1..0 LOOP
-    UPDATE fwapg.pcic_subbasins_daily m
-    SET q_acc = m.q_acc + c.q_acc
-    FROM (
-      SELECT x.fwa_parent_subid AS subid, cm.month, cm.day, sum(cm.q_acc) AS q_acc
-      FROM fwapg.pcic_subbasins sb
-      INNER JOIN fwapg.pcic_fwa_crosswalk x ON x.subid = sb.subid
-      INNER JOIN fwapg.pcic_subbasins_daily cm ON cm.subid = sb.subid
-      WHERE sb.fwa_depth = d + 1
-      GROUP BY x.fwa_parent_subid, cm.month, cm.day
-    ) c
-    WHERE m.subid = c.subid
-    AND m.month = c.month
-    AND m.day = c.day;
-  END LOOP;
 END $$;
 
-ANALYZE fwapg.pcic_subbasins_daily;
+ANALYZE fwapg.pcic_subbasins;
+
+-- flow per calendar day of the run's climatology
+\set src pcic_outlet_daily
+\set dst pcic_subbasins_daily
+\ir pcic_crosswalk06_daily.sql

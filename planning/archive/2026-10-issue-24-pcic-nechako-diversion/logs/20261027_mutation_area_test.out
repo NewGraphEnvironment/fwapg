@@ -1,0 +1,19 @@
+NOTICE:  schema "mut24" does not exist, skipping
+== real: 06's area statement 20:52:58Z
+NOTICE:  table "pcic_subbasins" does not exist, skipping
+1007550|1002307|1008709|3117.1|84.2
+a diversion's area comes off its position parent's sub-basin, not its flow parent's|t
+== A1: the diversion's area comes off its flow parent 20:53:01Z
+1007550|1002307|1008709|1403004.2|-1399803.0
+a diversion's area comes off its position parent's sub-basin, not its flow parent's|f
+== A2: the diversion's area comes off neither 20:53:03Z
+1007550|1002307|1008709|1403004.2|84.2
+a diversion's area comes off its position parent's sub-basin, not its flow parent's|f
+== A3: the diversion's area comes off both 20:53:05Z
+1007550|1002307|1008709|3117.1|-1399803.0
+a diversion's area comes off its position parent's sub-basin, not its flow parent's|f
+== done 20:53:07Z
+NOTICE:  drop cascades to 3 other objects
+DETAIL:  drop cascades to table mut24.pcic_fwa_crosswalk
+drop cascades to table mut24.pcic_diversions
+drop cascades to table mut24.pcic_subbasins
