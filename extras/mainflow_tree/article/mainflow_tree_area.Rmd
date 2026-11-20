@@ -174,7 +174,7 @@ s6 <- read_case("case6", "streams")
 need(any(s6$qa_kind %in% "dead_end" & s6$downstream_method %in% "junction"), "case 6: a dead end carried across a gap")
 need(any(s6$qa_kind %in% "dead_end" & is.na(s6$downstream_method)), "case 6: a dead end that is an outlet")
 
-# case 7: the one main-flow difference not explained
+# case 7: the one main-flow difference the QA leaves without a class
 s7 <- read_case("case7", "streams")
 u7 <- s7[s7$linear_feature_id == 212038783, ]
 need(nrow(u7) == 1 && near(u7$upstream_area_ha, 863.6, 0.1) && near(u7$lookup_area_ha, 865.3, 0.1),
@@ -293,7 +293,7 @@ case_map("case6", fit_ids = 212039249)
 
 **On the ground:** both look right for what the atlas holds. Segment 212039207, a side channel reached by a fallback junction, ends 42 m from 212039249, and its area is carried there. Segment 212039334 ends on the Alaska border; its code junction on line 360864386 is 1.6 km away, across ground the atlas does not map, so its area stops at the border. The water does not stop there: the outlet is where the atlas ends, not the stream.
 
-## 7. The one main-flow difference not explained
+## 7. The one main-flow difference the QA leaves without a class
 
 Segment 212038783 (TUTR) is the one main-flow segment whose area differs from the lookup's with nothing routed differently above it and nothing odd in its codes: `r ha(u7$upstream_area_ha, 1)` in the tree against `r ha(u7$lookup_area_ha, 1)` in the lookup. The polygon the lookup gives it has a black outline.
 

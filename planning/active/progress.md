@@ -16,3 +16,4 @@
 - Phase 4: maps with `case_map()` (fitted to each case's own features), the confluence-share chart (ECDF, log scale; palettes validated with the dataviz skill's validator), `article_render.sh` (refuses without `esri_satellite`, prints the pinned install).
 - Phase 5: screenshots read (scratchpad, SwiftShader); per-case readings written. Case 7 is explained: local codes out of order on line 360860536; the 1.632 ha difference is exactly polygons 8628560 and 8632200, which the tree gives to 212038745. Case 6's outlet is on BC's edge at the Alaska border (only TUTR within 5 m of the mouth).
 - #53's body gained the case-3 findings; filed #57 (the QA leaves 212038783 unclassed though its cause is out-of-order local codes).
+- Validation: a copy with one wrong value stops the render (Phase 2); a git worktree of 9c86123 renders with DATABASE_URL and PGSERVER unset (exit 0, 5.2 MB) and leaves the tree clean.
