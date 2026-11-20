@@ -20,9 +20,13 @@
 --                 polygon below it on its stream, which it lies in.
 --   2. pair_side: a polygon whose codes are on reattached or followed segments
 --                 only goes to the top one of them.
---   3. lower:     failing both, the top segment of the main-flow reach on its
+--   3. range:     a polygon whose codes are on no segment, but with main-flow
+--                 segments in its range (local codes above its own and below
+--                 the next that has a polygon), goes to the top of the lowest
+--                 run of them, as in rule 1: those segments lie in it.
+--   4. lower:     failing those, the top segment of the main-flow reach on its
 --                 watershed code at the greatest local code at or below its own.
---   4. ancestor:  failing that, on its nearest ancestor code in the tree, the
+--   5. ancestor:  failing that, on its nearest ancestor code in the tree, the
 --                 top segment of the main-flow reach at the greatest local code
 --                 strictly below the code of the branch it lies on (a tributary
 --                 is not upstream of the reach that starts at its own junction).
@@ -142,12 +146,13 @@ ALTER TABLE area_poly_codes ADD PRIMARY KEY (wscode_ltree, localcode_ltree);
 ANALYZE area_poly;
 ANALYZE area_poly_codes;
 
--- 4. rule 1's target per code pair. Each main-flow segment belongs to the
--- greatest local code with a polygon at or below its own (grp); segments of one
--- grp that follow each other up a line are a run. A pair that reappears further
--- up a line (local codes are not always in order) would otherwise pull its
--- polygon up there, so the run taken is one that holds the pair itself, the
--- lowest if there are several.
+-- 4. the target of rules 1 and 3 per polygon code pair. Each main-flow segment
+-- belongs to the greatest local code with a polygon at or below its own (grp);
+-- segments of one grp that follow each other up a line are a run. A pair that
+-- reappears further up a line (local codes are not always in order) would
+-- otherwise pull its polygon up there, so the run taken is one that holds the
+-- pair itself where there is one (exact: rule 1), and the lowest of them; where
+-- no segment has the pair (rule 3), the lowest run.
 CREATE TEMPORARY TABLE area_pair_top AS
 WITH grouped AS (
   SELECT s.linear_feature_id, s.blue_line_key, s.drm, s.wscode_ltree, s.localcode_ltree, g.localcode_ltree AS grp
@@ -188,15 +193,14 @@ runs AS (
   GROUP BY wscode_ltree, grp, blue_line_key, run
 )
 SELECT DISTINCT ON (wscode_ltree, localcode_ltree)
-  wscode_ltree, localcode_ltree, linear_feature_id
+  wscode_ltree, localcode_ltree, linear_feature_id, has_pair AS exact
 FROM runs
-WHERE has_pair
-ORDER BY wscode_ltree, localcode_ltree, bottom, blue_line_key;
+ORDER BY wscode_ltree, localcode_ltree, has_pair DESC, bottom, blue_line_key;
 
 ALTER TABLE area_pair_top ADD PRIMARY KEY (wscode_ltree, localcode_ltree);
 ANALYZE area_pair_top;
 
--- the top segment of each main-flow reach (code pair), for rules 3 and 4: of
+-- the top segment of each main-flow reach (code pair), for rules 4 and 5: of
 -- the lowest run of segments with that pair, for the reason above
 CREATE TEMPORARY TABLE area_reach AS
 WITH started AS (
@@ -254,10 +258,15 @@ DROP TABLE IF EXISTS fwapg.mainflow_tree_area_polygons;
 CREATE TABLE fwapg.mainflow_tree_area_polygons AS
 SELECT
   p.watershed_feature_id,
-  coalesce(m.linear_feature_id, sd.linear_feature_id, a.linear_feature_id) AS linear_feature_id,
   CASE
-    WHEN m.linear_feature_id IS NOT NULL THEN 'pair'
+    WHEN m.exact THEN m.linear_feature_id
+    WHEN sd.linear_feature_id IS NOT NULL THEN sd.linear_feature_id
+    ELSE coalesce(m.linear_feature_id, a.linear_feature_id)
+  END AS linear_feature_id,
+  CASE
+    WHEN m.exact THEN 'pair'
     WHEN sd.linear_feature_id IS NOT NULL THEN 'pair_side'
+    WHEN m.linear_feature_id IS NOT NULL THEN 'range'
     WHEN a.levels_up = 0 THEN 'lower'
     WHEN a.levels_up > 0 THEN 'ancestor'
   END AS method,
@@ -267,7 +276,7 @@ FROM area_poly p
 LEFT JOIN area_pair_top m
   ON m.wscode_ltree = p.wscode_ltree AND m.localcode_ltree = p.localcode_ltree
 LEFT JOIN area_side_top sd
-  ON m.linear_feature_id IS NULL
+  ON m.exact IS NOT TRUE
   AND sd.wscode_ltree = p.wscode_ltree AND sd.localcode_ltree = p.localcode_ltree
 LEFT JOIN LATERAL (
   SELECT x.linear_feature_id, x.localcode_ltree, x.levels_up

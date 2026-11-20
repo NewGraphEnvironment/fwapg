@@ -18,6 +18,9 @@ QA_T = "fwapg.mainflow_tree_area_qa"
 CASES = [
     ("every tree segment has a positive upstream area",
      f"UPDATE {TREE} SET upstream_area_ha = NULL WHERE linear_feature_id = 87078680"),
+    # the column on the tree no longer what the build's own table holds
+    ("every tree segment has a positive upstream area",
+     f"UPDATE {TREE} SET upstream_area_ha = upstream_area_ha + 1 WHERE linear_feature_id = 87078680"),
     ("area is additive at every node",
      f"UPDATE {AREA} SET upstream_area_ha = upstream_area_ha + 1 WHERE linear_feature_id = 123039830"),
     ("area never decreases downstream along a blue line",
@@ -39,7 +42,11 @@ CASES = [
      f"UPDATE {TREE} SET upstream_area_ha = 5059365 WHERE linear_feature_id = 123039830"),
     ("a tributary mouth inside its river",
      f"UPDATE {TREE} SET upstream_area_ha = 4558110 WHERE linear_feature_id = 87078680"),
-    ("at most 97 steps across a gap and 869 segments given a length share",
+    # round 1's second finding: a fallback rule putting a polygon on a side channel
+    ("every polygon is on a segment its rule allows",
+     "UPDATE fwapg.mainflow_tree_area_polygons SET linear_feature_id = 123039830 WHERE watershed_feature_id = "
+     "(SELECT min(watershed_feature_id) FROM fwapg.mainflow_tree_area_polygons WHERE method = 'lower')"),
+    ("at most 97 steps across a gap and 803 segments given a length share",
      f"INSERT INTO fwapg.mainflow_tree_area_shares SELECT linear_feature_id, NULL, 1 FROM {AREA} "
      "WHERE shared_area_ha IS NULL LIMIT 1"),
     ("main flow agrees with the lookup where nothing upstream is routed differently",

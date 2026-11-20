@@ -477,6 +477,37 @@ under their code: Skeena 5,440,478.9 / 5,440,334.4, Nechako 4,725,598.1 / 4,725,
 (4,362,376 / 4,290,355 / 337 / 72,021 / 71,748; 17 not explained on 11 lines, 3,169 ha). All 23 tests
 print `t`; all 13 restore-the-bug checks fire.
 
+## Review round 2 (2026-11-20, `review-round2.md`; with the database)
+
+Round 1's fixes held on every probe; about 60 quoted figures were re-derived by the reviewer and agree;
+ten defects restored in rolled-back transactions each printed `f`. Three findings:
+
+| finding | verdict | what was done |
+|---|---|---|
+| no test fails when round 1's second finding is put back (56 `lower` polygons moved back onto side channels, areas corrected down both chains: every area test still `t`) | right: "only rule 2 gives a polygon to a side channel" was held by the joins alone | new test: every polygon is on a segment its rule allows, read from the polygon's and the segment's codes; its defect check fires |
+| a polygon whose codes are on no segment never took rule 1's run, though main-flow segments sit in its code range: 96 polygons, 459 segments (837 km) | right; a rule question, put to the owner | decision 8: method `range`. The reviewer's example (blue line 360884436, measure 7,642 to 9,149) read 127 to 277 ha, the top from a length share; it reads 1,080 to 1,229 ha now |
+| "158,188 network segments" with no local code dropped its condition | right | "whose watershed code is not under `999`" restored (328,961 have no local code in all) |
+
+Also from its notes: the Fraser is 0.0705% from its polygons, so "within 0.08%" now; 632 `pair_side`
+polygons (20,055 ha) are on a pair several side channels share and go to the lowest `blue_line_key`
+(README caveat).
+
+**The build after round 2** (`scripts/10_final_figures.sql`, 2026-11-20T17:50Z, column checksum
+`4c1120f5…`): polygons `pair` 3,181,977 (93,747,827 ha), `pair_side` 8,431 (407,068), `range` 96
+(1,129,808), `lower` 1,658 (14,856,168), `ancestor` 20 (2,128); unassigned as after round 1. Steps,
+outlets, side channels and basins as after round 1 (the totals at the outlets are 110,143,668 ha).
+Shares 803 segments, 112,519 ha, 458 polygons, median 46.6 ha, largest 5,690 (the 37,633 ha share is
+gone: its polygon now goes to the segments in its range). Comparison: 4,362,376 comparable, 4,290,356
+routed alike of which 337 differ, 72,020 routed differently of which 71,747 differ; 215,648 rows in
+`fwapg.mainflow_tree_area_qa`: reattached 58,447, followed 177, lookup polygon at another local code
+53,560, on another stream 7,588, no row 2,353, one routing kind 51,292 (side channel 28,892, bad code
+16,398, edge 2,928, other place 1,641, share 1,172, side polygon 162, outlet 95, other stream 4), several
+kinds 41,016, local codes out of order 878 (339 with the tree higher, 539 lower), lookup row not its
+definition 155, segment code anomalies 165, not explained 17 on 11 lines (3,169 ha). "Local codes out of
+order" rose from 836 to 878: a polygon placed by position on a line whose codes run out of order. The
+area build took 5 min 40 s and 5 min 42 s on the last two runs. All 24 tests print `t`; all 15
+restore-the-bug cases fire.
+
 ## Errors Encountered
 
 | Error | Resolution |

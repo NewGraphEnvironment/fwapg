@@ -52,9 +52,12 @@ plain main flow agrees with the lookup. In order:
    the next local code that has a polygon. A reach with no polygon of its own so takes the polygon below it on
    its stream, which it lies in.
 2. `pair_side`: a polygon whose codes are on reattached or followed segments only goes to the top one of them.
-3. `lower`: failing both, the top segment of the main-flow reach on its watershed code at the greatest local
+3. `range`: a polygon whose codes are on no segment, but with main-flow segments in its range (local codes above
+   its own and below the next that has a polygon), goes to the top of the lowest run of them, as in rule 1:
+   those segments lie in it.
+4. `lower`: failing those, the top segment of the main-flow reach on its watershed code at the greatest local
    code at or below its own.
-4. `ancestor`: failing that, on its nearest ancestor code in the tree, the top segment of the main-flow reach at
+5. `ancestor`: failing that, on its nearest ancestor code in the tree, the top segment of the main-flow reach at
    the greatest local code strictly below the code of the branch it lies on.
 
 Only rule 2 gives a polygon to a side channel, so a side channel carries what enters it and the polygons that are
@@ -176,7 +179,8 @@ In the 2026-11 build (the 2026-10 tree; 3,245,453 watershed polygons):
 |---|---|---|
 | `pair` | 3,181,977 | 93,747,827 |
 | `pair_side` | 8,431 | 407,068 |
-| `lower` | 1,754 | 15,985,977 |
+| `range` | 96 | 1,129,808 |
+| `lower` | 1,658 | 14,856,168 |
 | `ancestor` | 20 | 2,128 |
 | unassigned, no stream of their code or an ancestor code in the tree | 53,208 | 838,859 |
 | unassigned, under `999` | 60 | 3,623 |
@@ -194,26 +198,25 @@ In the 2026-11 build (the 2026-10 tree; 3,245,453 watershed polygons):
   The lookup gives all of them 4.26 to 5.11 million ha. 360881231's mouth connector, which the lookup gives
   4,558,110 ha, reads 302,611.
 - **Basins at their mouth:** Skeena 5,440,479 ha, Nechako 4,725,598 ha, Fraser 23,198,718 ha. The Skeena and
-  the Nechako are within 0.01% of the polygons under their watershed code and the Fraser within 0.07%; the
+  the Nechako are within 0.01% of the polygons under their watershed code and the Fraser within 0.08%; the
   differences are streams a step across a gap brings in and dead ends inside the basin.
-- **Length shares:** 869 segments, 154,217 ha out of 494 polygons (median share 45 ha, the largest 37,633 ha,
-  in a polygon that size). 1,457 polygons (45,175 ha) have a local code that is not under their watershed code.
+- **Length shares:** 803 segments, 112,519 ha out of 458 polygons (median share 47 ha, the largest 5,690 ha). 1,457 polygons (45,175 ha) have a local code that is not under their watershed code.
 - **Against the lookup** (`sql/qa_area.sql`): of 4,362,376 main-flow segments whose lookup polygon has both
-  their codes and whose local code is in order on their line, 4,290,355 have nothing upstream routed
+  their codes and whose local code is in order on their line, 4,290,356 have nothing upstream routed
   differently, and all but 337 of those agree with the lookup: 155 where the lookup's stored row is not what
   its own definition gives now, 138 segments whose local code is more than one level below their watershed
-  code, 27 whose local code is not under it, and 17 not explained. Of the 72,021 with something routed
-  differently, 71,748 differ. Every tree segment that differs or has no lookup row, 215,611 in all:
+  code, 27 whose local code is not under it, and 17 not explained. Of the 72,020 with something routed
+  differently, 71,747 differ. Every tree segment that differs or has no lookup row, 215,648 in all:
 
   | class | segments |
   |---|---|
   | reattached, followed (the lookup gives a side channel its river's area) | 58,624 |
-  | the lookup's polygon is on the segment's stream at another local code | 53,564 |
+  | the lookup's polygon is on the segment's stream at another local code | 53,560 |
   | the lookup's polygon is on another stream | 7,588 |
   | no lookup row | 2,353 |
-  | routed differently: one kind (`side channel` 28,892, `bad code` 16,398, `edge` 2,928, `other place` 1,641, `share` 1,173, `side polygon` 162, `outlet` 95, `other stream` 4) | 51,293 |
+  | routed differently: one kind (`side channel` 28,892, `bad code` 16,398, `edge` 2,928, `other place` 1,641, `share` 1,172, `side polygon` 162, `outlet` 95, `other stream` 4) | 51,292 |
   | routed differently: several kinds | 41,016 |
-  | local codes out of order on the line | 836 |
+  | local codes out of order on the line | 878 |
   | lookup row not what its definition gives; segment code anomalies; not explained | 337 |
 
 - The whole job took 47 min on 2026-11-20 (the same database, while another session was using it): the blue
@@ -337,8 +340,10 @@ Re-run on the fork at 37ca338 (2026-10-10 and 11), the same exports:
 - Upstream area is the tree's: a segment below one of the 384 outlets inside BC where the network ends (383 dead
   ends and 1 cut-off, 184,716 ha above them, the largest 50,535 ha) does not carry the area above it, and neither
   does one below a mouth with no parent.
-- 869 segments on streams with no polygon of their own carry a length share of another stream's polygon
-  (154,217 ha in all): an estimate, not a measured catchment.
+- 803 segments on streams with no polygon of their own carry a length share of another stream's polygon
+  (112,519 ha in all): an estimate, not a measured catchment.
+- Where several side channels share a code pair, a polygon with that pair goes to the one with the lowest
+  `blue_line_key` (632 polygons, 20,055 ha).
 - 53,208 polygons (838,859 ha) belong to no tree segment: their watershed code is on no stream of the network
   and has no ancestor in the tree (land that drains to the sea or out of BC with no mapped stream). 3 more
   (14 ha) lie below the lowest tree segment of their stream.

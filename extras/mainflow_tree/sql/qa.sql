@@ -308,14 +308,43 @@ SELECT 'a tributary mouth inside its river''s polygon carries the tributary''s a
 FROM whse_basemapping.fwa_stream_networks_mainflow_tree t
 WHERE t.linear_feature_id = 87078680;
 
+-- each polygon is on a segment its rule allows, read from the polygon's and the
+-- segment's codes (mainflow_tree_area.sql's header has the rules). Only
+-- pair_side may put a polygon on a side channel: a side channel carries what
+-- enters it and the polygons that are its own by their codes.
+SELECT 'every polygon is on a segment its rule allows, and only pair_side on a side channel' AS test,
+  count(*) FILTER (WHERE p.method = 'pair') > 3000000
+  AND count(*) FILTER (WHERE p.method = 'pair_side') > 0
+  AND count(*) FILTER (WHERE p.method = 'range') > 0
+  AND count(*) FILTER (WHERE p.method = 'lower') > 0
+  AND count(*) FILTER (WHERE p.method = 'ancestor') > 0
+  AND count(*) FILTER (WHERE (
+    CASE p.method
+      WHEN 'pair' THEN t.source = 'mainflow' AND s.wscode_ltree = w.wscode_ltree AND s.localcode_ltree >= w.code
+      WHEN 'pair_side' THEN t.source != 'mainflow' AND s.wscode_ltree = w.wscode_ltree AND s.localcode_ltree = w.code
+      WHEN 'range' THEN t.source = 'mainflow' AND s.wscode_ltree = w.wscode_ltree AND s.localcode_ltree > w.code
+      WHEN 'lower' THEN t.source = 'mainflow' AND s.wscode_ltree = w.wscode_ltree AND s.localcode_ltree < w.code
+      WHEN 'ancestor' THEN t.source = 'mainflow' AND w.wscode_ltree <@ s.wscode_ltree AND w.wscode_ltree != s.wscode_ltree
+        AND s.localcode_ltree < subpath(w.wscode_ltree, 0, nlevel(s.wscode_ltree) + 1)
+    END) IS NOT TRUE) = 0 AS result
+FROM fwapg.mainflow_tree_area_polygons p
+INNER JOIN (
+  SELECT watershed_feature_id, wscode_ltree,
+    CASE WHEN localcode_ltree <@ wscode_ltree THEN localcode_ltree ELSE wscode_ltree END AS code
+  FROM whse_basemapping.fwa_watersheds_poly
+) w ON w.watershed_feature_id = p.watershed_feature_id
+INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = p.linear_feature_id
+INNER JOIN whse_basemapping.fwa_stream_networks_mainflow_tree t ON t.linear_feature_id = p.linear_feature_id
+WHERE p.linear_feature_id IS NOT NULL;
+
 -- the ceilings are the 2026-11 counts (README): steps across a gap, and segments
 -- with nothing above them that were given a length share of the polygon they lie in
 -- A segment that gives a share keeps what is left of the polygon; where the
 -- shares are the whole polygon that is float noise, which must not be the
 -- segment's whole area (it would read as positive).
-SELECT 'at most 97 steps across a gap and 869 segments given a length share' AS test,
+SELECT 'at most 97 steps across a gap and 803 segments given a length share' AS test,
   (SELECT count(*) FROM fwapg.mainflow_tree_area WHERE downstream_method IN ('line', 'junction')) BETWEEN 1 AND 97
-  AND (SELECT count(*) FROM fwapg.mainflow_tree_area_shares) BETWEEN 1 AND 869
+  AND (SELECT count(*) FROM fwapg.mainflow_tree_area_shares) BETWEEN 1 AND 803
   AND (SELECT count(*) FROM fwapg.mainflow_tree_area WHERE shared_area_ha > 0)
     = (SELECT count(*) FROM fwapg.mainflow_tree_area_shares)
   AND (SELECT count(*) FROM fwapg.mainflow_tree_area WHERE shared_area_ha < 0 AND upstream_area_ha < 1e-6) = 0 AS result;
@@ -343,10 +372,10 @@ SELECT 'the lookup differs on side channels and where the tree routes differentl
 -- routing, so a regression cannot hide in one of them
 SELECT 'the classes that are not about routing are no larger than measured' AS test,
   count(*) > 0
-  AND count(*) FILTER (WHERE class = 'lookup polygon at another local code') <= 53564
+  AND count(*) FILTER (WHERE class = 'lookup polygon at another local code') <= 53560
   AND count(*) FILTER (WHERE class = 'lookup polygon on another stream') <= 7588
   AND count(*) FILTER (WHERE class = 'no lookup row') <= 2353
-  AND count(*) FILTER (WHERE class = 'local codes out of order') <= 836
+  AND count(*) FILTER (WHERE class = 'local codes out of order') <= 878
   AND count(*) FILTER (WHERE class = 'segment local code more than one level deep') <= 138
   AND count(*) FILTER (WHERE class = 'segment local code not under its watershed code') <= 27
   AND count(*) FILTER (WHERE class = 'lookup row is not what its definition gives') <= 155 AS result

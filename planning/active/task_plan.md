@@ -113,6 +113,14 @@ Decisions 3 and 6 are defaults stated in the plan and approved with it.
    all tree segments in that polygon, taken from the segment the polygon was given to. The share is an
    estimate and is recorded by method. Options not taken: NULL; the whole polygon counted twice.
 
+8. **A polygon whose codes are on no segment goes to the main-flow segments in its own code range**
+   (owner, 2026-11-20, asked after review round 2). 96 polygons (1,129,808 ha); the 459 main-flow
+   segments (837 km) in their ranges then carry the polygon they lie in, as rule 6.1 already does for a
+   polygon whose codes are on a segment. Before, such a polygon went to the reach below. Method `range`.
+   Option not taken: leave as built, with a caveat. Also from the review, decided here as part of rule 6:
+   rules `lower` and `ancestor` read main-flow reaches only, so only `pair_side` puts a polygon on a
+   side channel (58 polygons, 158,934 ha, had landed on side channels through the fallbacks).
+
 ## Phase 1: Measure what the issue says, on the database as it is now
 
 One-off SQL lives in `planning/active/scripts/`, numbers in `findings.md`.
