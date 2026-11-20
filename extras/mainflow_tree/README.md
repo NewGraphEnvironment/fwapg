@@ -77,7 +77,9 @@ each thing whose place in the tree is not the place its codes give (a line whose
 an outlet, across a gap or somewhere else than its code says; a polygon on a side channel; a length share; a
 polygon with a bad local code) is counted for every segment it passes going down the tree, and for every segment
 its codes put below it. A segment whose two counts differ has that kind as its class; a main-flow segment whose
-counts are equal has to agree with the lookup.
+counts are equal is expected to agree with the lookup, and the tests hold the exceptions at the measured count
+(the two are counts, not sets, so a marker the tree has and the codes lack could cancel one the other way round;
+that would show as an unexplained difference, not hide one).
 
 
 ## Processing
@@ -248,7 +250,8 @@ outside), 6 when the topology is clean and the area step failed, and 129, 130 or
 no overrides: `afv_edges(infl_col = "upstream_area_ha")`, then `sites_to_lsn` and `afv_sites` on the midpoints
 of up to 200 edges. It prints one `area:` line, which `runs.log` carries too, and the run exits 6 when the
 step fails: an edge with no area above zero, an additive function value outside (0, 1], an outlet edge whose
-value is not 1, or a test side channel that takes more than 0.2 of its confluence.
+value is not 1, or a test side channel that takes more than 0.2 of its confluence. That last check runs only
+where the subset holds the mouth of 360216952, 360222216 or 360237491; the `area:` line says how many it held.
 
     SSNBLER_AREA=1 ./ssnbler_check.sh 40 klum_area 400 KLUM 1
 

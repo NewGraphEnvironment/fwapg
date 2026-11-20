@@ -53,7 +53,7 @@ Measured 2026-11-20 on the 2026-10 tree (4,510,368 segments, 3,245,453 watershed
 |---|---|---|
 | 17,478 main-flow segments (8,601 km) with no area | a reach with no polygon of its own code pair lies in the polygon coded at a lower local code on its stream, and the plain rule puts that polygon at the top of the lower reach | the polygon goes to the top of the run of reaches up to the next local code that has a polygon |
 | about 1,000 segments on 782 streams with no area | streams with no polygon at all, lying in another stream's polygon | a share of that polygon by length (869 segments after the fix above; an estimate) |
-| differences from the lookup with nothing routed differently | 1,457 polygons (45,175 ha) have a local code that is not under their own watershed code; `FWA_Upstream` has guards that leave them out, so the lookup counts them nowhere | they are placed at their stream's mouth, and classed |
+| differences from the lookup with nothing routed differently | 1,457 polygons (45,175 ha) have a local code that is not under their own watershed code; `FWA_Upstream` has guards on the local code in two of its three cases, so the lookup leaves such a polygon out at its stream's mouth reach and on every ancestor the local code is not under, and counts it elsewhere | they are placed at their stream's mouth, and classed |
 
 Local codes do not always rise along a line, and a pair can reappear further up: the run taken is the lowest that holds the pair, and a connector with no local code (edge type 6010) must not end a run (it did in the first build: segments above the connector missed their polygon, and the segments needing a length share fell from 1,171 to 869 once it was fixed).
 

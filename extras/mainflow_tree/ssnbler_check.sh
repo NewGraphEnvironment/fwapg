@@ -185,7 +185,10 @@ pid=""
 # its own line; any other status, or no result line, is a failure (5)
 if [ -z "$killed" ]; then
   if [ "$r_rc" -le 1 ] && grep -q 'node errors: [0-9]' "$log"; then
-    final=$r_rc
+    # with the area step on, a clean exit must carry the step's line too
+    if [ "$r_rc" -eq 1 ] || [ "$SSNBLER_AREA" = 0 ] || grep -q '^area: ok' "$log"; then
+      final=$r_rc
+    fi
   elif [ "$r_rc" -eq 6 ] && grep -q '^area: failed' "$log"; then
     final=6
   fi

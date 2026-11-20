@@ -17,7 +17,9 @@
 # sample of points), with no overrides. The step prints one "area:" line and
 # exits 6 if it fails: an edge with no area or none above zero, an additive
 # function value outside (0, 1], an outlet edge whose value is not 1, or a test
-# side channel whose share of its confluence is not small.
+# side channel whose share of its confluence is not small. Only that last check
+# can tell a wrong area from a right one, and it runs only where the subset
+# holds one of the three Skeena test side channels; the line says how many.
 #
 # SSNbler needs its parallel path at 46,340 lines or more. Below that it runs
 # serially, with memory growing as the square of the lines (52 GB at 30,000).
@@ -114,6 +116,8 @@ side_channel_mouths <- c(123041439, 87082084, 87078272)
 area <- tryCatch({
   if (!"upstream_area_ha" %in% names(streams)) stop("the streams file has no upstream_area_ha column")
   edges <- sf::st_read(file.path(args[2], "edges.gpkg"), quiet = TRUE)
+  # without the ids the side-channel check below would hold no edge and say nothing
+  if (!"linear_feature_id" %in% names(edges)) stop("the edges have no linear_feature_id column")
   a <- edges$upstream_area_ha
   if (anyNA(a) || any(!is.finite(a)) || any(a <= 0)) {
     stop(sum(is.na(a) | !is.finite(a) | a <= 0), " edges have no area above zero")
@@ -160,10 +164,11 @@ area <- tryCatch({
   if (nrow(sites) != length(pick) || anyNA(sites$afvArea) || any(sites$afvArea <= 0 | sites$afvArea > 1)) {
     stop("additive function values missing or outside (0, 1] at the sites")
   }
+  # a subset that holds none of the test side channels has only the limits above
   sprintf(
-    "area: ok  afv: %.3g to %.3g  sites: %d  side channels: %d (largest share %s)",
+    "area: ok  afv: %.3g to %.3g  sites: %d  side channels: %d (%s)",
     min(afv), max(afv), nrow(sites), sum(held),
-    if (any(held)) format(round(max(edges$areaPI[held]), 4)) else "-"
+    if (any(held)) paste("largest share", format(round(max(edges$areaPI[held]), 4))) else "none in this subset, not checked"
   )
 }, error = function(e) paste("area: failed,", conditionMessage(e)))
 cat(area, "\n")
