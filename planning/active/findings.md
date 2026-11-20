@@ -411,6 +411,32 @@ defect the issue is about (the lookup's 5,059,365 ha written onto a side-channel
 One mistake in the session itself: an edit script failed its own check and the commands after it ran
 anyway (joined with `;`), so a 5-minute build ran on unchanged files. Steps are joined with `&&` since.
 
+## Phase 5: SSNbler end to end (2026-11-20, the fork at 37ca338)
+
+`pak::pak("NewGraphEnvironment/SSNbler@37ca338")` installed 1.1.2.9000. The first try failed with "Could
+not solve package dependencies"; several lines down the cause was "Bad GitHub credentials": the token in
+the shell's environment is rejected, and the install of this public repo worked with it unset.
+
+The area step (`SSNBLER_AREA=1`): `afv_edges(infl_col = "upstream_area_ha")`, `sites_to_lsn` and
+`afv_sites` on the midpoints of up to 200 edges, exit status 6 on failure.
+
+| subset | lines | minutes | peak GB | node errors | outlets | AFV | side channel mouths held, largest share |
+|---|---|---|---|---|---|---|---|
+| tributary 360884603's basin (`400.107640`) | 3,190 | under 1 | 0.8 | 0 | 1 | 2.43e-05 to 1 | none |
+| KLUM (`400`, group KLUM) | 24,732 | 8 | 28.0 | 0 | 1 | 1.29e-07 to 1 | 2 (360222216, 360237491), 0.0665 |
+
+Both ran with no overrides, 200 sites each with a value in (0, 1].
+
+**Control** (`scripts/09_ssnbler_lookup_control.R`, on KLUM's network): with the tree's area the mouths
+of 360222216 and 360237491 take 0.0477 and 0.0665 of their confluence; with the watershed lookup's area
+both take 0.5, which the step's limit of 0.2 fails. The limits the issue names (values in (0, 1], 1 at
+the outlet) hold for any positive areas, so this is the check that can tell (the review's A6).
+
+**The whole Skeena is hours.** The control ran `afv_edges` twice on 24,732 edges in 7 min, so about
+3.5 min each. For every edge it finds the path to the outlet and tests every edge's membership in it, so
+its time grows with the square of the edge count: 262,000 edges is about 112 times KLUM, about 6.5 h,
+after the 54 min `lines_to_lsn` took on the fork. Its memory at that size is not measured.
+
 ## Errors Encountered
 
 | Error | Resolution |

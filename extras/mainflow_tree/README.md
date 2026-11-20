@@ -241,7 +241,24 @@ with the exit status, R's own status, peak memory, minutes, lines, result and SS
 outlet count, 2 on bad arguments or when another run
 holds the lock, 3 when killed at the cap or by low system memory, 4 when memory could not be sampled, 5 when
 there is no result for any other reason (the export failed, the subset is empty, R failed or was killed from
-outside), and 129, 130 or 143 when the script itself is sent HUP, INT or TERM.
+outside), 6 when the topology is clean and the area step failed, and 129, 130 or 143 when the script itself is sent HUP, INT or TERM.
+
+**Additive function values from the tree's area.** With `SSNBLER_AREA=1` the export carries
+`upstream_area_ha`, and after a clean topology check the script computes additive function values from it with
+no overrides: `afv_edges(infl_col = "upstream_area_ha")`, then `sites_to_lsn` and `afv_sites` on the midpoints
+of up to 200 edges. It prints one `area:` line, which `runs.log` carries too, and the run exits 6 when the
+step fails: an edge with no area above zero, an additive function value outside (0, 1], an outlet edge whose
+value is not 1, or a test side channel that takes more than 0.2 of its confluence.
+
+    SSNBLER_AREA=1 ./ssnbler_check.sh 40 klum_area 400 KLUM 1
+
+Any positive areas give values in (0, 1] and 1 at the outlets, so the last check is the one that can tell a
+wrong area: where a side channel's mouth meets the Skeena, its segment proportional influence is the
+tributary's area over the river's. On KLUM (24,732 lines, 2026-11-20, the fork at 37ca338): 0 node errors, 1
+outlet, values from 1.3e-07 to 1, and the mouths of 360222216 and 360237491 take 0.048 and 0.067 of their
+confluence. With the watershed lookup's area on the same network both take 0.5. The run took 8 min and peaked
+at 28.0 GB. `afv_edges` took about 3.5 min of it and its time grows with the square of the edge count, so the
+whole Skeena (262,000 edges) is hours, not minutes.
 
 SSNbler takes one of two paths, and they differ:
 

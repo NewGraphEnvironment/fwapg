@@ -231,10 +231,10 @@ The SSNbler installed where this runs is 1.1.2 with no GitHub remote recorded, s
 installed first. One run at a time, under `ssnbler_check.sh`'s cap, memory measured not estimated; a run
 that reaches the cap is repeated on a machine with more memory instead of with a higher cap.
 
-- [ ] Install the pinned fork: `pak::pak("NewGraphEnvironment/SSNbler@37ca338")`
-- [ ] `ssnbler_check.sh`: the export carries `upstream_area_ha`; an optional argument turns the area step
+- [x] Install the pinned fork: `pak::pak("NewGraphEnvironment/SSNbler@37ca338")`
+- [x] `ssnbler_check.sh`: the export carries `upstream_area_ha`; an optional argument turns the area step
       on; the `runs.log` line carries its result; the exit statuses keep their meanings
-- [ ] `ssnbler_check.R`: optional step after `lines_to_lsn`: `afv_edges(infl_col = "upstream_area_ha")`,
+- [x] `ssnbler_check.R`: optional step after `lines_to_lsn`: `afv_edges(infl_col = "upstream_area_ha")`,
       a fixed sample of sites through `sites_to_lsn` and `afv_sites`; fail on a zero or missing area
       warning, an AFV outside (0, 1], or an outlet edge whose AFV is not 1
 - [ ] KLUM (three of the four test side channels), then the whole Skeena, no overrides; numbers
@@ -242,12 +242,12 @@ that reaches the cap is repeated on a machine with more memory instead of with a
 
 ## Phase 6: Documents
 
-- [ ] `extras/mainflow_tree/README.md`: the rule for area, the Output table, Processing and its time,
+- [x] `extras/mainflow_tree/README.md`: the rule for area, the Output table, Processing and its time,
       Results by class, the SSNbler area step, and the caveat line that points at #4 replaced
-- [ ] `research/fwa_mainflow_tree.md`: the "Not settled" line becomes a section on area (what the lookup
+- [x] `research/fwa_mainflow_tree.md`: the "Not settled" line becomes a section on area (what the lookup
       gives and why, the assignment rule, the classes, what crossing gaps changes); `Verified`, `Issues`
       and `Produced by` updated
-- [ ] `research/README.md`: the row's topic gains area
+- [x] `research/README.md`: the row's topic gains area
 
 ## Phase 7: Whole job, review, PR
 

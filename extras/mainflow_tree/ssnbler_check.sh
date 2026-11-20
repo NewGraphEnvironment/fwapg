@@ -13,12 +13,16 @@ set -euo pipefail
 # this run's SSNbler workers, sampled every 3 s. At 46,340 lines or more SSNbler
 # starts a PSOCK cluster: separate R processes, reparented away from R, found by
 # the worker log path ssnbler_check.R puts on their command lines. Each run
-# appends one line to data/ssnbler/runs.log. Exit status: 0 clean; 1 node errors,
+# appends one line to data/ssnbler/runs.log. With SSNBLER_AREA=1 in the
+# environment the export carries the tree's upstream area and ssnbler_check.R
+# goes on, after a clean topology check, to additive function values from it.
+# Exit status: 0 clean; 1 node errors,
 # edge relationships that split or miss edges, or an outlet count other than
 # expected; 2 bad arguments or a run already going;
 # 3 killed at the cap or by low system memory; 4 the memory could not be sampled;
 # 5 no result (the export failed, the subset is empty, R failed, or anything else
-# went wrong); 129, 130 or 143 when the script itself got HUP, INT or TERM.
+# went wrong); 6 the topology is clean and the area step failed; 129, 130 or 143
+# when the script itself got HUP, INT or TERM.
 
 # The exit status is $final and nothing else: the EXIT trap always exits with it,
 # so a failure no line here anticipated (set -e, set -u, a tool's own status)
@@ -47,6 +51,11 @@ outlets=${5:-}
 [[ $group == - || $group =~ ^[A-Z]{4}$ ]] || die 2 "group must be a watershed group code or -"
 [[ -z $outlets || $outlets =~ ^[0-9]{1,6}$ ]] || die 2 "expected outlets must be a whole number"
 [ -n "${DATABASE_URL:-}" ] || die 2 "DATABASE_URL is not set"
+[[ ${SSNBLER_AREA:-0} =~ ^[01]$ ]] || die 2 "SSNBLER_AREA must be 0 or 1"
+# the area column only when asked for, so a tree built before it has one still exports
+columns="s.linear_feature_id"
+[ "${SSNBLER_AREA:-0}" = 1 ] && columns="$columns, t.upstream_area_ha"
+export SSNBLER_AREA=${SSNBLER_AREA:-0}
 
 dir=data/ssnbler
 mkdir -p "$dir"
@@ -96,7 +105,7 @@ where="s.wscode_ltree <@ '$wscode'::ltree"
 [ "$group" = - ] || where="$where AND s.watershed_group_code = '$group'"
 rm -f "$dir/$name.gpkg"
 ogr2ogr -f GPKG "$dir/$name.gpkg" PG:"$DATABASE_URL" -nln streams -sql \
-  "SELECT s.linear_feature_id, s.geom FROM whse_basemapping.fwa_stream_networks_sp s
+  "SELECT $columns, s.geom FROM whse_basemapping.fwa_stream_networks_sp s
    INNER JOIN whse_basemapping.fwa_stream_networks_mainflow_tree t ON t.linear_feature_id = s.linear_feature_id
    WHERE $where" || die 5 "export of $name failed"
 n=$(ogrinfo -ro -q -sql "SELECT count(*) AS n FROM streams" "$dir/$name.gpkg" | awk '/n \(Integer/ { print $NF }') \
@@ -172,10 +181,13 @@ r_rc=0
 wait "$pid" || r_rc=$?
 pid=""
 # R exits 0 clean and 1 for node errors or an outlet mismatch, printing the result
-# line either way; any other status, or no result line, is a failure (5)
+# line either way, and 6 when the area step failed after a clean check, printing
+# its own line; any other status, or no result line, is a failure (5)
 if [ -z "$killed" ]; then
   if [ "$r_rc" -le 1 ] && grep -q 'node errors: [0-9]' "$log"; then
     final=$r_rc
+  elif [ "$r_rc" -eq 6 ] && grep -q '^area: failed' "$log"; then
+    final=6
   fi
 fi
 
@@ -183,7 +195,8 @@ lines=$(grep -o 'lines: [0-9]*' "$log" || true)
 result=$(grep -o 'node errors: [0-9]*  outlets: [0-9]*' "$log" || true)
 build=$(grep -o '^ssnbler: .*[^ ]' "$log" | head -1 | tr -d '\n' || true)
 rels=$(grep -o 'relationships: [0-9]*  expected: [0-9]*  edges into two: [0-9]*' "$log" || true)
-summary="$(date '+%F %T') $name wscode=$wscode group=$group exit=$final r_exit=$r_rc peak_gb=$(awk -v k="$peak" 'BEGIN { printf "%.1f", k / 1048576 }') minutes=$((($(date +%s) - start + 59) / 60)) ${lines:-lines: ?} ${result:-node errors: ?} ${rels:-relationships: ?} ${build:-ssnbler: ?}"
+area=$(grep -o '^area: .*[^ ]' "$log" | head -1 | tr -d '\n' || true)
+summary="$(date '+%F %T') $name wscode=$wscode group=$group exit=$final r_exit=$r_rc peak_gb=$(awk -v k="$peak" 'BEGIN { printf "%.1f", k / 1048576 }') minutes=$((($(date +%s) - start + 59) / 60)) ${lines:-lines: ?} ${result:-node errors: ?} ${rels:-relationships: ?} ${area:-area: not run} ${build:-ssnbler: ?}"
 # the log first, so a closed stdout cannot lose the line
 echo "$summary" >> "$dir/runs.log" || echo "could not append to $dir/runs.log" >&2
 echo "$summary" || true
