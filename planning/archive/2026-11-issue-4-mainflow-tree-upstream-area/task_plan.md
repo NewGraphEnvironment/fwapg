@@ -277,19 +277,20 @@ that reaches the cap is repeated on a machine with more memory instead of with a
 - [x] `./mainflow_tree.sh` end to end on the provincial database, when no other job is writing to it
       (it rebuilds the blue line paths and drops the tree table); every test `t`; time recorded
 - [x] `/code-check branch`, fixes as follow-up commits (five rounds, ended on an enumeration; findings.md)
-- [ ] `/planning-archive` with a README that carries Measurement and Evidence, wrong turns kept
+- [x] `/planning-archive` with a README that carries Measurement and Evidence, wrong turns kept
 - [ ] `/gh-pr-push` with `--base newgraph`
 
 ## Owed at the end (reported, done after merge)
 
 - [ ] Close #4 by hand with a comment naming the PR (`Closes` does not act on a merge into `newgraph`)
+- [ ] Run the SSNbler area step on LSKE, which holds the place 360216952's water meets the Skeena, on a machine with more memory (about 29,000 lines on the serial path)
 
 ## Validation
 
 - [x] Tests pass (`sql/qa.sql`, every line `|t`, inside `mainflow_tree.sh`)
 - [x] `/code-check` clean (once over the branch with `/code-check branch`)
 - [x] PWF checkboxes match landed work
-- [ ] `/planning-archive` on completion
+- [x] `/planning-archive` on completion
 
 How each change is proved: the area by the tests of Phase 2, two of which do not use the pointer that
 built it (basin totals from polygon codes, and the lookup on the class where it should agree); each new
