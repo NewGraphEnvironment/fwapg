@@ -80,6 +80,6 @@ Plan review (`review-plan.md`, findings 2, 5, 8, 10) changed this phase: checks 
 - [x] Clean-checkout render: in a `git worktree` of the branch, `env -u DATABASE_URL -u PGSERVER ./article_render.sh` exits 0 and writes the HTML
 - [x] `/code-check` clean (once over the branch, `/code-check branch`)
 - [x] PWF checkboxes match landed work
-- [ ] `/planning-archive` on completion
+- [x] `/planning-archive` on completion
 
 The rendered page is sent to the owner (SendUserFile) with the PR.
