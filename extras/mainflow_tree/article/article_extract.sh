@@ -28,6 +28,7 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atq -c "
 
 STREAMS="
 SELECT s.linear_feature_id, s.blue_line_key, s.gnis_name, s.edge_type,
+  s.wscode_ltree::text AS wscode, s.localcode_ltree::text AS localcode,
   t.linear_feature_id IS NOT NULL AS tree, t.source,
   a.upstream_area_ha, a.local_area_ha, a.shared_area_ha, a.downstream_id, a.downstream_method,
   ua.upstream_area_ha AS lookup_area_ha, q.kind AS qa_kind, ss.focus,

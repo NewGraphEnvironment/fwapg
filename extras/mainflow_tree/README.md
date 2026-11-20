@@ -244,7 +244,7 @@ test side channel, a polygon moved up its line, side-channel land against mapped
 cross-border polygon, a length share, a gap crossed and an outlet at BC's edge, and the main-flow difference the
 QA leaves without a class), plus a chart of the confluence share, tree against lookup
 (NewGraphEnvironment/fwapg#55). It renders from extracts committed beside it, with no database, and checks every
-number it quotes against this README; the page stays local (gitignored):
+number it takes from them, against this README where it quotes one; the page stays local (gitignored):
 
     ./article/article_extract.sh     # needs DATABASE_URL; rewrites article/extracts/
     ./article/article_render.sh      # writes article/mainflow_tree_area.html

@@ -13,7 +13,7 @@
 Explored:
 - `docs/` is Sphinx + myst; `.github/workflows/build-docs.yml` publishes `docs/**` on any branch push. With the page kept local (gate), nothing goes under `docs/`, so no workflow runs.
 - `.gitignore` ignores `data/`, `.*` and `*.gz` anywhere, so extracts go in `article/extracts/`, not `data/`.
-- m1's database holds the tables (`fwapg.mainflow_tree_area*`, the tree). The md5 I computed (`c1e72f61…`) is not the memory's `0e553e9e…`, likely a different text form: Phase 3 checks the build against README numbers instead.
+- The local database holds the tables (`fwapg.mainflow_tree_area*`, the tree). The md5 I computed (`c1e72f61…`) is not the memory's `0e553e9e…`, likely a different text form: Phase 3 checks the build against README numbers instead.
 - gq installed 0.22.0, current 0.24.0. `gq_mapgl_layer(classes=)` is categorical only, so area is drawn in log classes computed in R. `gq_mapgl_basemap()` has `esri_topo_style()`, which is the pattern for an imagery option; no open gq issue covered imagery (gq#123 filed for it).
 - Mapped floodplain (`stac_floodplains_bc`, ff04) covers BULK, KISP, MORR, NECR, KOTL and others, not KLUM/LSKE. `pair_side` polygons in covered groups: KOTL 34, MORR 17, NECR 14, BULK 5, FRAN 3, KISP 2, LCHL 1. So case 3 comes from one of these groups.
 - The confluence share comes from `sql/qa.sql` (the `side`/`mouth` CTEs, 16,745 places).
@@ -54,7 +54,7 @@ Plan review (`review-plan.md`, findings 2, 5, 8, 10) changed this phase: checks 
   3. one floodplain-covered group (the first of MORR, NECR, BULK, KISP, KOTL holding all three kinds within 3 km of each other): a `pair_side` polygon a side-channel segment's midpoint is in; a river-assigned polygon a side-channel segment intersects with no midpoint inside; a polygon on side-channel-only codes that no side-channel segment intersects
   4. Beaver River polygon 1000002557 (BEAV) and the two Beaver main lines; the article says `lower` does not use the midpoint test (review finding 5)
   5. the share segment with the least `abs(share_ha - median share)`, then `linear_feature_id`, with all share rows of its polygon even outside the view
-  6. built: the closest pair in one group of a dead end carried across (`junction`) and a dead-end outlet, then ids: TUTR 212039207 and 212039334, 77 m apart (LTRE holds no dead-end outlet)
+  6. built: the closest pair in one group of a dead end carried across (`junction`) and a dead-end outlet, then ids: TUTR 212039207 and 212039334 (segments within 77 m, mouths 166 m apart) (LTRE holds no dead-end outlet)
   7. 212038783 (TUTR) and its reach
 - [x] Case 3 floodplain (built with `ogr2ogr` on the GeoPackage's `all_ff04` layer, EPSG:3005, clipped to the view; no R step needed): planned as an R step reading the group's `<wsg>_all_ff04` item with rstac from `images.a11s.one`, takes `floodplain.gpkg`, keeps `flood_factor` ff04, both `in_wsg` sides, clips to the case-3 view and writes sorted GeoJSON (review finding 11)
 - [x] Confluence CSV: `qa.sql`'s `side`/`mouth` CTEs, plus the lookup's share over the same inflow set (the side channel's lookup area over the sum of the inflows' lookup areas), and `lookup_missing` where an inflow has no lookup row (review finding 4)

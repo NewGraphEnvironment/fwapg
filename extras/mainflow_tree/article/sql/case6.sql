@@ -1,8 +1,9 @@
 -- Case 6: a dead end carried across a gap and one where the network ends. The
--- closest such pair in one watershed group (kind dead_end in
--- fwapg.mainflow_tree_qa; downstream_method junction against NULL), then ids:
--- TUTR 212039207 (junction) and 212039334 (an outlet), 77 m apart. The segment
--- the first is carried to is kept, wherever it lies.
+-- closest such pair in one watershed group by segment geometry (kind dead_end
+-- in fwapg.mainflow_tree_qa; downstream_method junction against NULL), then
+-- ids: TUTR 212039207 (junction) and 212039334 (an outlet), whose segments come
+-- within 77 m and whose mouths are 166 m apart. The segment the first is
+-- carried to is kept, wherever it lies.
 picked (linear_feature_id) AS (VALUES (212039207::bigint), (212039334::bigint)),
 view AS (
   SELECT ST_Buffer(ST_Envelope(ST_Collect(s.geom)), 600) AS geom

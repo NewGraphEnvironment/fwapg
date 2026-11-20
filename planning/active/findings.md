@@ -64,12 +64,12 @@ Follows #4 (built in PR #54). Related: #53 (side channels and floodplain), #2 (t
 
 
 
-## Case selection (2026-11-20, m1's database, the 2026-11 build)
+## Case selection (2026-11-20, the local database, the 2026-11 build)
 
 - "Moved up its line" (case 2): method `pair`, local code under its watershed code, given to a segment of another local code: 15,848 polygons, 3,545,764 ha. With the 19 bad-code polygons the README says rule 1 also moves, 15,867 and 3,547,842 ha, the README's figures exactly. Pick: 7745172 (LSKE, 363 ha, 3 segments crossed).
 - Case 3 (`sql/case3_search.sql`, about 70 s): MORR 7662562 (runs through), 7662598 (touches), 9742603 (not touching), all adjacent.
 - Case 5: 180011290 (SHEK), share 13.695 ha against a median of 13.692; polygon 8442664 gives shares to 8 segments.
-- Case 6: LTRE has two dead ends carried across and no dead-end outlet; the closest junction/outlet pair is in TUTR, 212039207 and 212039334, 77 m apart.
+- Case 6: LTRE has two dead ends carried across and no dead-end outlet; the closest junction/outlet pair is in TUTR, 212039207 and 212039334, whose segments come within 77 m (mouths 166 m apart; 212039207's mouth is 351 m from 212039249, where its area is carried).
 - Case 1: 360216952's water reaches main flow through side channel 360216962 at 123043992; the side-channel mouth is 123043588.
 - Extracts: 2.2 MB in all. Floodplain for MORR: `https://stac-floodplains-bc.s3.us-west-2.amazonaws.com/morr_all_ff04/floodplain.gpkg`, layer `all_ff04`, EPSG:3005.
 

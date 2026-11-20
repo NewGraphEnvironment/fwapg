@@ -30,7 +30,7 @@ nt AS (
       WHERE mt.source = 'mainflow' AND m.wscode_ltree = w.wscode_ltree AND m.localcode_ltree = w.localcode_ltree)
     AND NOT EXISTS (SELECT 1 FROM sc WHERE sc.geom && w.geom AND ST_Intersects(sc.geom, w.geom))
 )
-SELECT rt.g, rt.watershed_feature_id AS runs_through, tc.watershed_feature_id AS touches, nt.watershed_feature_id AS not_touching,
+SELECT rt.g, rt.watershed_feature_id AS midpoint_inside, tc.watershed_feature_id AS midpoint_outside, nt.watershed_feature_id AS not_touching,
   round(greatest(ST_Distance(rt.geom, tc.geom), ST_Distance(rt.geom, nt.geom), ST_Distance(tc.geom, nt.geom))) AS spread_m
 FROM rt
 INNER JOIN tc ON tc.g = rt.g AND ST_DWithin(rt.geom, tc.geom, 3000)
