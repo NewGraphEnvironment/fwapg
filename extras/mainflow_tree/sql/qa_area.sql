@@ -9,9 +9,9 @@
 -- it along its own nodes. The two agree unless something upstream is routed
 -- differently, so the classes are found from routing, not from the areas:
 -- each thing whose place in the tree is not the place its codes give is a
--- marker, counted for every segment it passes on the way down the tree, and for
--- every segment its codes put below it. A segment whose two counts differ has
--- that marker's kind as its class. Kinds:
+-- marker, summed for every segment it passes on the way down the tree, and for
+-- every segment its codes put below it. A segment whose two sets of markers
+-- differ in a kind has that kind as its class. Kinds:
 --
 --   outlet        a line whose mouth is an outlet inside BC (a dead end, a
 --                 cut-off or a mouth with no parent the paths lead nowhere from)
@@ -177,6 +177,31 @@ INNER JOIN whse_basemapping.fwa_watersheds_poly w ON w.watershed_feature_id = p.
 WHERE p.linear_feature_id IS NOT NULL
 AND NOT w.localcode_ltree <@ w.wscode_ltree;
 
+-- Each marker gets a number of its own, in a slot of its kind: 2^64 per slot,
+-- the number under 2^40, so the sum over any set of markers is exact and two
+-- sums are equal in a slot only when the two sets of that kind are the same
+-- (counts would let a marker the tree has and the codes lack cancel one the
+-- other way round).
+CREATE TEMPORARY TABLE qa_slot AS
+WITH RECURSIVE slot (kind, base) AS (
+  SELECT 1, 1::numeric
+  UNION ALL
+  SELECT kind + 1, base * 18446744073709551616 FROM slot WHERE kind < 9
+)
+SELECT kind, base FROM slot;
+
+ALTER TABLE qa_marker ADD COLUMN weight numeric;
+
+UPDATE qa_marker m
+SET weight = (1 + ('x' || substr(md5(n.n::text), 1, 10))::bit(40)::bigint) * sl.base
+FROM (
+  SELECT ctid AS row_id, row_number() OVER (ORDER BY kind, at_id, wscode_ltree, localcode_ltree) AS n
+  FROM qa_marker
+) n
+INNER JOIN qa_slot sl ON true
+WHERE n.row_id = m.ctid
+AND sl.kind = m.kind;
+
 -- the positions a marker's codes put it above, as FWA_Upstream has it: on its
 -- own stream at its local code and below (own, polygons only), and on each
 -- ancestor of its watershed code below the branch it lies on. A bad local code
@@ -185,20 +210,17 @@ AND NOT w.localcode_ltree <@ w.wscode_ltree;
 -- count for the mouth reach (at_mouth), where FWA_Upstream asks that the local
 -- code be under the reach's.
 CREATE TEMPORARY TABLE qa_marker_code AS
-SELECT kind, wscode_ltree, localcode_ltree AS pos, true AS own, valid AS at_mouth
+SELECT weight, wscode_ltree, localcode_ltree AS pos, true AS own, valid AS at_mouth
 FROM qa_marker
 WHERE localcode_ltree IS NOT NULL
 UNION ALL
-SELECT m.kind, subpath(m.wscode_ltree, 0, g.n),
+SELECT m.weight, subpath(m.wscode_ltree, 0, g.n),
   CASE WHEN m.valid THEN subpath(m.wscode_ltree, 0, g.n + 1)
        ELSE least(subpath(m.wscode_ltree, 0, g.n + 1), m.localcode_ltree) END,
   false, true
 FROM qa_marker m
 CROSS JOIN LATERAL generate_series(1, nlevel(m.wscode_ltree) - 1) AS g(n)
 WHERE m.valid OR m.localcode_ltree <@ subpath(m.wscode_ltree, 0, g.n);
-
--- a marker counts 10^(6 * (kind - 1)), so one exact number holds every kind's
--- count (a kind has far fewer than a million markers above any segment)
 
 -- along the tree: each marker at the segment where it enters, summed downstream
 -- from the deepest level to the outlets
@@ -213,7 +235,7 @@ INSERT INTO qa_tree_count
 SELECT s.linear_feature_id, s.downstream_id, s.depth, coalesce(m.markers, 0)
 FROM qa_seg s
 LEFT JOIN (
-  SELECT at_id, sum(power(10::numeric, 6 * (kind - 1))) AS markers
+  SELECT at_id, sum(weight) AS markers
   FROM qa_marker
   WHERE at_id IS NOT NULL
   GROUP BY at_id
@@ -247,8 +269,8 @@ SELECT
   wscode_ltree,
   pos,
   own,
-  sum(sum(power(10::numeric, 6 * (kind - 1)))) OVER (PARTITION BY wscode_ltree, own ORDER BY pos DESC) AS markers,
-  sum(coalesce(sum(power(10::numeric, 6 * (kind - 1))) FILTER (WHERE at_mouth), 0))
+  sum(sum(weight)) OVER (PARTITION BY wscode_ltree, own ORDER BY pos DESC) AS markers,
+  sum(coalesce(sum(weight) FILTER (WHERE at_mouth), 0))
     OVER (PARTITION BY wscode_ltree, own ORDER BY pos DESC) AS markers_at_mouth
 FROM qa_marker_code
 GROUP BY wscode_ltree, pos, own;
@@ -287,8 +309,9 @@ WITH kinds AS (
     (SELECT string_agg(k.name, ', ' ORDER BY k.kind)
      FROM (VALUES (1, 'outlet'), (2, 'edge'), (3, 'gap'), (4, 'side channel'), (5, 'other stream'),
                   (6, 'other place'), (7, 'side polygon'), (8, 'share'), (9, 'bad code')) AS k (kind, name)
-     WHERE mod(trunc(c.tree_markers / power(10::numeric, 6 * (k.kind - 1))), 1000000)
-        != mod(trunc(c.code_markers / power(10::numeric, 6 * (k.kind - 1))), 1000000)
+     INNER JOIN qa_slot sl ON sl.kind = k.kind
+     WHERE mod(div(c.tree_markers, sl.base), 18446744073709551616)
+        != mod(div(c.code_markers, sl.base), 18446744073709551616)
     ) AS routed_differently
   FROM qa_counted c
   WHERE c.lookup_area_ha IS NULL OR c.differs

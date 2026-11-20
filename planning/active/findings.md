@@ -508,6 +508,79 @@ order" rose from 836 to 878: a polygon placed by position on a line whose codes 
 area build took 5 min 40 s and 5 min 42 s on the last two runs. All 24 tests print `t`; all 15
 restore-the-bug cases fire.
 
+## Review round 3 (2026-11-20; `review-round3.md`, cut short at 19:17Z, and `review-round3b.md`)
+
+Two reviewers, because the first passed its 60 minutes (it was restoring a defect for every rule; it
+returned at 87 minutes after being asked to write up). Both found the same defect inside round 2's fix.
+
+**The `range` rule put most of its area in the wrong place.** Of its 96 polygons (1,129,808 ha), the
+segment each landed on touched the polygon for 29 (187,151 ha); the `lower` segment it had before touched
+for 11 (1,089,958 ha). Three cross-border polygons carried it: 1000002557 (BEAV, 766,913 ha) moved to a
+1.46 km line because two blue lines share a watershed code and their route measures were compared, so
+eight Beaver River segments read 924 to 5,333 ha where the lookup has about 780,000; 1000002001 (TATR,
+105,986 ha), local codes out of order; 1000003707 (SWIR, 63,375 ha), a segment whose local code is not
+under its watershed code sorting above every polygon code. The 42 new "local codes out of order"
+segments were this, not what the record said ("a polygon placed by position": it was placed by a code).
+
+This was my mistake before it was the rule's. I recommended the rule to the owner saying areas would
+change on those 459 segments and nowhere downstream, on the strength of one example, without measuring.
+The reviewer's "459 segments (837 km)" also measures as 540 km.
+
+**The mechanism, and how far it reached.** Both reviewers named it: a relation between codes was taken
+for a place. Measured by geometry (is the segment's midpoint inside the polygon; does the segment touch
+it) on the build before the fix:
+
+| rule that moves a polygon away from the place its codes give | polygons | on a segment whose midpoint is inside | on a segment that does not touch |
+|---|---|---|---|
+| rule 1, up the line through reaches with no polygon | 23,897 (3,989,156 ha) | 15,412 (3,538,225 ha) | 6,368 (largest 15,670 ha) |
+| rule 3, `range` | 96 (1,129,808 ha) | 9 (154,563 ha) | 67 (largest 766,913 ha) |
+| rule 2, `pair_side` | 8,431 (407,068 ha) | 1,467 (97,711 ha); another side-channel segment of the pair inside for 358 more | 5,470 (247,103 ha) with no side-channel segment of the pair in or touching |
+| bad-code polygons sent to their stream's mouth | 1,454 (45,105 ha) | | 530 do not touch the mouth segment (largest 940 ha); left as is: the mouth is below wherever the polygon is on its stream |
+
+**What was done.** A polygon leaves the place its codes give only for a segment that lies in it (midpoint
+inside): rule 1 up its line to the highest such segment; rule 3 only where one exists; rule 2 (the owner's
+decision 9, asked) only where a side-channel segment of the pair lies in it. `area_reach` takes the line
+with more segments of the code before comparing anything across lines. A new test checks it by geometry;
+the placement test stays. The comparison's markers are now compared as sets, not counts.
+
+**Why sets.** After the rule changes the unexplained segments went from 17 to 323, 293 of them on the
+Nechako main stem each 1.7 ha low. Tracing found no misplaced polygon: with 1,899 length shares instead
+of 803, a marker the tree has and the codes lack cancelled one the other way round. With each marker
+given a number of its own (in a 2^64 slot per kind, summed exactly) the unexplained are 1 segment
+(TUTR, 1.6 ha), and the 17 of earlier builds were mostly the same cancellation.
+
+**The owner's question while deciding** (2026-11-20): is this a floodplain issue, and should side
+channels and floodplains be explored together in their own issue, with mapped floodplain showing which
+segments intersect? The numbers say yes: the polygons in question are about 45 ha, with codes only on
+side-channel segments, mostly beside the river and not touching the side channel. Filed as its own issue
+(see progress).
+
+**The build after round 3** (`scripts/10_final_figures.sql`, 2026-11-20T20:15Z, column checksum
+`c0b270f3…`): polygons `pair` 3,181,977 (93,747,827 ha; 15,867 of them, 3,547,842 ha, above their own
+reach), `pair_side` 1,825 (108,013), `range` 11 (154,608), `lower` 8,332 (16,130,088), `ancestor` 20
+(2,128); unassigned `no stream` 53,208 (838,859 ha, 667 out as shares), `999` 60 (3,623), `below the
+tree` 20 (351: the 3 from round 1 and 17 whose codes are only on a side channel that does not lie in
+them, with no main-flow reach below). Steps as before. Outlets: BC's edge 26,690 (109,958,939 ha,
+largest 23,203,431), dead ends 383 (179,414, largest 50,535), `no_parent` 23 (4,761), cut-off 1 (217);
+110,143,331 ha in all. Side channels: 360216952 1,579.6 above the entry, 53,006.5 below, 53,058.3 at the
+mouth; 360222215 228,962.1; 360222216 228,962.1 and 229,062.7; 360237491 302,610.5 and 302,812.5;
+87078680 302,610.5. Basins: Skeena 5,440,478.7, Nechako 4,725,748.7, Fraser 23,203,431.2 (polygons under
+their code 5,440,334.4, 4,725,795.1, 23,215,086.5). Shares 1,899 segments, 181,108 ha, 1,116 polygons,
+median 13.7 ha, largest 37,633. Comparison: 4,362,376 comparable; 4,288,277 routed alike, 293 of them
+differ (154 lookup row not its definition, 138 segment code more than one level deep, 1 not explained);
+74,099 routed differently, 73,808 differ; 217,655 rows: reattached 58,447, followed 177, lookup polygon
+at another local code 53,591, on another stream 7,587, no row 2,353, one kind 57,134 (side channel
+32,740, bad code 16,525, share 3,212, edge 2,926, other place 1,627, outlet 95, side polygon 5, other
+stream 4), several kinds 37,581, local codes out of order 492. All 25 tests print `t`; all 16
+restore-the-bug cases fire.
+
+**From the first reviewer's enumeration (48 rows, unfinished):** the sum tests (additive, never
+decreasing, outlets sum to the area assigned, positive) are true of any assignment once summed, so they
+cannot see a polygon moved between segments; what can is the placement test, the geometry test and the
+comparison with the lookup, which `mainflow_tree.sh` runs before the tests. Held by the code alone, or by
+the comparison only: the order of rules 2 and 3 where both could apply; which run of a reappearing pair
+is taken; rule 2's tie-breaks.
+
 ## Errors Encountered
 
 | Error | Resolution |

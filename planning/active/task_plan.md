@@ -121,6 +121,17 @@ Decisions 3 and 6 are defaults stated in the plan and approved with it.
    rules `lower` and `ancestor` read main-flow reaches only, so only `pair_side` puts a polygon on a
    side channel (58 polygons, 158,934 ha, had landed on side channels through the fallbacks).
 
+9. **A polygon leaves the place its codes give only for a segment that lies in it** (the segment's
+   midpoint inside the polygon). Review round 3 found decision 8's rule, as built from codes, put 67 of
+   its 96 polygons on a segment that did not touch them (three cross-border polygons of 63,000 to
+   767,000 ha on the wrong lines); my recommendation for decision 8 had said the change was confined to
+   459 segments, which was not measured and was wrong. Geometry showed the same in rule 1 (6,368 of
+   23,897 polygons moved up their line to a segment that did not touch them) and in rule 2 (5,470 of
+   8,431 polygons given to a side channel no segment of which is in or touching them). Rules 1 and 3
+   were corrected under decision 8's own wording ("which it lies in"); rule 2 was put to the owner, who
+   chose geometry (2026-11-20) and asked whether this is a floodplain question to explore separately
+   (filed as its own issue). Option not taken for rule 2: keep by codes.
+
 ## Phase 1: Measure what the issue says, on the database as it is now
 
 One-off SQL lives in `planning/active/scripts/`, numbers in `findings.md`.

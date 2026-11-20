@@ -13,17 +13,15 @@
 -- polygon's outlet), so that plain main flow agrees with it. In FWA_Upstream's
 -- terms, in order:
 --   1. pair:      a polygon whose codes (watershed code, local code) are on
---                 main-flow segments goes to the top of the lowest run of
---                 main-flow segments on its watershed code whose local code is
---                 at or above its own and below the next local code that has a
---                 polygon. A reach with no polygon of its own so takes the
---                 polygon below it on its stream, which it lies in.
+--                 main-flow segments goes to the top segment of that reach,
+--                 and from there up its line, through reaches with no polygon
+--                 of their own code, to the highest segment that lies in it.
 --   2. pair_side: a polygon whose codes are on reattached or followed segments
---                 only goes to the top one of them.
---   3. range:     a polygon whose codes are on no segment, but with main-flow
---                 segments in its range (local codes above its own and below
---                 the next that has a polygon), goes to the top of the lowest
---                 run of them, as in rule 1: those segments lie in it.
+--                 only goes to the top one of them that lies in it; where none
+--                 does, rules 3 to 5 place it on main flow.
+--   3. range:     a polygon whose codes are on no segment goes to the highest
+--                 main-flow segment in its range (local codes above its own and
+--                 below the next that has a polygon) that lies in it.
 --   4. lower:     failing those, the top segment of the main-flow reach on its
 --                 watershed code at the greatest local code at or below its own.
 --   5. ancestor:  failing that, on its nearest ancestor code in the tree, the
@@ -32,6 +30,13 @@
 --                 is not upstream of the reach that starts at its own junction).
 -- Only rule 2 gives a polygon to a side channel, so a side channel carries what
 -- enters it and the polygons that are its own by their codes.
+-- "Lies in it" is geometry, not codes: the segment's midpoint is inside the
+-- polygon (the test the lookup's own fallback uses). Codes say which segments
+-- could lie in a polygon; of the 23,897 polygons a codes-only version of rule 1
+-- moved up their line, the segment they landed on did not touch the polygon for
+-- 6,368; for rule 3 it was 67 of 96, three of them cross-border polygons of
+-- 63,000 to 767,000 ha; and of the 8,431 a codes-only rule 2 gave to a side
+-- channel, no side-channel segment of the pair was in or touching 5,470.
 -- A polygon none of these places is listed in fwapg.mainflow_tree_area_unassigned,
 -- with the reason: under 999, no stream of its code or an ancestor code in the
 -- tree, or below the lowest tree segment of its stream.
@@ -146,65 +151,39 @@ ALTER TABLE area_poly_codes ADD PRIMARY KEY (wscode_ltree, localcode_ltree);
 ANALYZE area_poly;
 ANALYZE area_poly_codes;
 
--- 4. the target of rules 1 and 3 per polygon code pair. Each main-flow segment
--- belongs to the greatest local code with a polygon at or below its own (grp);
--- segments of one grp that follow each other up a line are a run. A pair that
--- reappears further up a line (local codes are not always in order) would
--- otherwise pull its polygon up there, so the run taken is one that holds the
--- pair itself where there is one (exact: rule 1), and the lowest of them; where
--- no segment has the pair (rule 3), the lowest run.
-CREATE TEMPORARY TABLE area_pair_top AS
-WITH grouped AS (
-  SELECT s.linear_feature_id, s.blue_line_key, s.drm, s.wscode_ltree, s.localcode_ltree, g.localcode_ltree AS grp
-  FROM area_seg s
-  LEFT JOIN LATERAL (
-    SELECT c.localcode_ltree
-    FROM area_poly_codes c
-    WHERE c.wscode_ltree = s.wscode_ltree
-    AND c.localcode_ltree <= s.localcode_ltree
-    ORDER BY c.localcode_ltree DESC
-    LIMIT 1
-  ) g ON true
-  -- a segment with no local code (a 6010 connector) is left out, so that it
-  -- does not end the run it sits in
-  WHERE s.source = 'mainflow'
-  AND s.localcode_ltree IS NOT NULL
-),
-started AS (
-  SELECT *,
-    (grp IS DISTINCT FROM lag(grp) OVER w OR wscode_ltree IS DISTINCT FROM lag(wscode_ltree) OVER w)::integer AS starts
-  FROM grouped
-  WINDOW w AS (PARTITION BY blue_line_key ORDER BY drm)
-),
-numbered AS (
-  SELECT *, sum(starts) OVER (PARTITION BY blue_line_key ORDER BY drm) AS run
-  FROM started
-),
-runs AS (
-  SELECT
-    wscode_ltree,
-    grp AS localcode_ltree,
-    blue_line_key,
-    min(drm) AS bottom,
-    (array_agg(linear_feature_id ORDER BY drm DESC))[1] AS linear_feature_id,
-    bool_or(localcode_ltree = grp) AS has_pair
-  FROM numbered
-  WHERE grp IS NOT NULL
-  GROUP BY wscode_ltree, grp, blue_line_key, run
-)
-SELECT DISTINCT ON (wscode_ltree, localcode_ltree)
-  wscode_ltree, localcode_ltree, linear_feature_id, has_pair AS exact
-FROM runs
-ORDER BY wscode_ltree, localcode_ltree, has_pair DESC, bottom, blue_line_key;
+-- 4. main-flow segments with no polygon of their own code: each with the
+-- greatest local code that has a polygon at or below its own (grp), the polygon
+-- it could lie in. A segment with no local code, or with one that is not under
+-- its watershed code (which would sort above every polygon code and take the
+-- last), is left out.
+CREATE TEMPORARY TABLE area_above AS
+SELECT s.linear_feature_id, s.blue_line_key, s.drm, s.wscode_ltree, g.localcode_ltree AS grp
+FROM area_seg s
+CROSS JOIN LATERAL (
+  SELECT c.localcode_ltree
+  FROM area_poly_codes c
+  WHERE c.wscode_ltree = s.wscode_ltree
+  AND c.localcode_ltree <= s.localcode_ltree
+  ORDER BY c.localcode_ltree DESC
+  LIMIT 1
+) g
+WHERE s.source = 'mainflow'
+AND s.localcode_ltree <@ s.wscode_ltree
+AND g.localcode_ltree < s.localcode_ltree;
 
-ALTER TABLE area_pair_top ADD PRIMARY KEY (wscode_ltree, localcode_ltree);
-ANALYZE area_pair_top;
+CREATE INDEX ON area_above (wscode_ltree, grp);
+ANALYZE area_above;
 
--- the top segment of each main-flow reach (code pair), for rules 4 and 5: of
--- the lowest run of segments with that pair, for the reason above
+-- the top segment of each main-flow reach (code pair): rule 1's first target,
+-- and the reach rules 4 and 5 look for. A pair that reappears further up a line
+-- (local codes are not always in order) would pull its polygon up there, so it
+-- is the top of the lowest run of segments with that pair. Where a watershed
+-- code is on two blue lines, the line with more segments of the code is taken
+-- first: measures on two lines do not compare.
 CREATE TEMPORARY TABLE area_reach AS
 WITH started AS (
   SELECT linear_feature_id, blue_line_key, drm, wscode_ltree, localcode_ltree,
+    count(*) OVER (PARTITION BY wscode_ltree, blue_line_key) AS line_segments,
     (localcode_ltree IS DISTINCT FROM lag(localcode_ltree) OVER w OR wscode_ltree IS DISTINCT FROM lag(wscode_ltree) OVER w)::integer AS starts
   FROM area_seg
   WHERE source = 'mainflow'
@@ -220,6 +199,7 @@ runs AS (
     wscode_ltree,
     localcode_ltree,
     blue_line_key,
+    max(line_segments) AS line_segments,
     min(drm) AS bottom,
     (array_agg(linear_feature_id ORDER BY drm DESC))[1] AS linear_feature_id
   FROM numbered
@@ -228,56 +208,44 @@ runs AS (
 SELECT DISTINCT ON (wscode_ltree, localcode_ltree)
   wscode_ltree, localcode_ltree, linear_feature_id
 FROM runs
-ORDER BY wscode_ltree, localcode_ltree, bottom, blue_line_key;
+ORDER BY wscode_ltree, localcode_ltree, line_segments DESC, blue_line_key, bottom;
 
 ALTER TABLE area_reach ADD PRIMARY KEY (wscode_ltree, localcode_ltree);
 ANALYZE area_reach;
 
--- rule 2's target: the top segment of each pair that is on reattached or
--- followed segments and on no main-flow segment (reattached before followed)
-CREATE TEMPORARY TABLE area_side_top AS
-SELECT DISTINCT ON (s.wscode_ltree, s.localcode_ltree)
-  s.wscode_ltree, s.localcode_ltree, s.linear_feature_id
+-- rule 2's candidates: reattached and followed segments whose pair is on no
+-- main-flow segment
+CREATE TEMPORARY TABLE area_side AS
+SELECT s.wscode_ltree, s.localcode_ltree, s.linear_feature_id, s.blue_line_key, s.drm,
+  CASE s.source WHEN 'reattached' THEN 1 ELSE 2 END AS source_rank
 FROM area_seg s
 WHERE s.source != 'mainflow'
 AND s.localcode_ltree IS NOT NULL
 AND NOT EXISTS (
   SELECT 1 FROM area_reach r
   WHERE r.wscode_ltree = s.wscode_ltree AND r.localcode_ltree = s.localcode_ltree
-)
-ORDER BY s.wscode_ltree, s.localcode_ltree,
-  CASE s.source WHEN 'reattached' THEN 1 ELSE 2 END,
-  s.blue_line_key, s.drm DESC, s.linear_feature_id;
+);
 
-ALTER TABLE area_side_top ADD PRIMARY KEY (wscode_ltree, localcode_ltree);
-ANALYZE area_side_top;
+CREATE INDEX ON area_side (wscode_ltree, localcode_ltree);
+ANALYZE area_side;
 
--- 5. each polygon to one segment
+-- 5. each polygon to one segment, by its codes
 DROP TABLE IF EXISTS fwapg.mainflow_tree_area_polygons;
 
 CREATE TABLE fwapg.mainflow_tree_area_polygons AS
 SELECT
   p.watershed_feature_id,
+  coalesce(m.linear_feature_id, a.linear_feature_id) AS linear_feature_id,
   CASE
-    WHEN m.exact THEN m.linear_feature_id
-    WHEN sd.linear_feature_id IS NOT NULL THEN sd.linear_feature_id
-    ELSE coalesce(m.linear_feature_id, a.linear_feature_id)
-  END AS linear_feature_id,
-  CASE
-    WHEN m.exact THEN 'pair'
-    WHEN sd.linear_feature_id IS NOT NULL THEN 'pair_side'
-    WHEN m.linear_feature_id IS NOT NULL THEN 'range'
+    WHEN m.linear_feature_id IS NOT NULL THEN 'pair'
     WHEN a.levels_up = 0 THEN 'lower'
     WHEN a.levels_up > 0 THEN 'ancestor'
   END AS method,
   p.area_ha,
   0::double precision AS shared_ha
 FROM area_poly p
-LEFT JOIN area_pair_top m
+LEFT JOIN area_reach m
   ON m.wscode_ltree = p.wscode_ltree AND m.localcode_ltree = p.localcode_ltree
-LEFT JOIN area_side_top sd
-  ON m.exact IS NOT TRUE
-  AND sd.wscode_ltree = p.wscode_ltree AND sd.localcode_ltree = p.localcode_ltree
 LEFT JOIN LATERAL (
   SELECT x.linear_feature_id, x.localcode_ltree, x.levels_up
   FROM (
@@ -302,11 +270,57 @@ LEFT JOIN LATERAL (
   ORDER BY x.levels_up
   LIMIT 1
 ) a ON m.linear_feature_id IS NULL
-  AND sd.linear_feature_id IS NULL
   AND p.wscode_ltree IS NOT NULL
   AND NOT p.wscode_ltree <@ '999'::ltree;
 
 ALTER TABLE fwapg.mainflow_tree_area_polygons ADD PRIMARY KEY (watershed_feature_id);
+
+-- then by where it is (a segment lies in a polygon when its midpoint is inside
+-- it). Rule 2: a polygon whose pair is on side-channel segments only goes to
+-- the top one that lies in it, reattached before followed.
+CREATE TEMPORARY TABLE area_side_hit AS
+SELECT DISTINCT ON (p.watershed_feature_id)
+  p.watershed_feature_id, g.linear_feature_id
+FROM fwapg.mainflow_tree_area_polygons p
+INNER JOIN area_poly c ON c.watershed_feature_id = p.watershed_feature_id
+INNER JOIN area_side g ON g.wscode_ltree = c.wscode_ltree AND g.localcode_ltree = c.localcode_ltree
+INNER JOIN whse_basemapping.fwa_watersheds_poly w ON w.watershed_feature_id = p.watershed_feature_id
+INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = g.linear_feature_id
+WHERE p.method IS DISTINCT FROM 'pair'
+AND ST_Intersects(w.geom, ST_LineInterpolatePoint(s.geom, 0.5))
+ORDER BY p.watershed_feature_id, g.source_rank, g.blue_line_key, g.drm DESC, g.linear_feature_id;
+
+UPDATE fwapg.mainflow_tree_area_polygons p
+SET linear_feature_id = l.linear_feature_id, method = 'pair_side'
+FROM area_side_hit l
+WHERE l.watershed_feature_id = p.watershed_feature_id;
+
+-- Rules 1 and 3: up to the highest main-flow segment in its range that lies in
+-- it. For rule 1 that is a segment above its reach on the same line; for a
+-- polygon whose codes are on no segment (rule 3) any main-flow segment in its
+-- range, which replaces what rules 4 and 5 gave it, or gives it a segment where
+-- they gave none.
+CREATE TEMPORARY TABLE area_lift AS
+SELECT DISTINCT ON (p.watershed_feature_id)
+  p.watershed_feature_id, g.linear_feature_id
+FROM fwapg.mainflow_tree_area_polygons p
+INNER JOIN area_poly c ON c.watershed_feature_id = p.watershed_feature_id
+INNER JOIN area_above g ON g.wscode_ltree = c.wscode_ltree AND g.grp = c.localcode_ltree
+LEFT JOIN area_seg t ON t.linear_feature_id = p.linear_feature_id
+INNER JOIN whse_basemapping.fwa_watersheds_poly w ON w.watershed_feature_id = p.watershed_feature_id
+INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = g.linear_feature_id
+WHERE p.method IS DISTINCT FROM 'pair_side'
+AND (p.method IS DISTINCT FROM 'pair' OR (g.blue_line_key = t.blue_line_key AND g.drm > t.drm))
+AND ST_Intersects(w.geom, ST_LineInterpolatePoint(s.geom, 0.5))
+ORDER BY p.watershed_feature_id, g.blue_line_key, g.drm DESC, g.linear_feature_id;
+
+UPDATE fwapg.mainflow_tree_area_polygons p
+SET
+  linear_feature_id = l.linear_feature_id,
+  method = CASE WHEN p.method = 'pair' THEN 'pair' ELSE 'range' END
+FROM area_lift l
+WHERE l.watershed_feature_id = p.watershed_feature_id;
+
 CREATE INDEX ON fwapg.mainflow_tree_area_polygons (linear_feature_id);
 ANALYZE fwapg.mainflow_tree_area_polygons;
 
