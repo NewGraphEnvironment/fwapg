@@ -169,21 +169,21 @@ they change, by phase; a box below marked (review) was added by it.
 Each is `SELECT '<name>' AS test, <boolean> AS result`, non-NULL over no rows (`mainflow_tree.sh` fails on
 `name|`). They fail until Phase 3.
 
-- [ ] Every tree segment has a non-null, positive `upstream_area_ha`
-- [ ] Additive at every node: a segment's area is its local area plus the areas of the tree segments
+- [x] Every tree segment has a non-null, positive `upstream_area_ha`
+- [x] Additive at every node: a segment's area is its local area plus the areas of the tree segments
       whose downstream node is its upstream node (from geometry) and of the listed gap steps into it,
       within float tolerance
-- [ ] Non-decreasing downstream along each blue line, by measure
-- [ ] Conservation: the areas at the tree's outlets sum to the assigned area; no unassigned polygon is
+- [x] Non-decreasing downstream along each blue line, by measure
+- [x] Conservation: the areas at the tree's outlets sum to the assigned area; no unassigned polygon is
       without a class
-- [ ] (review) Gap steps start only at segments the topology QA lists as dead ends or cut-offs, and every
+- [x] (review) Gap steps start only at segments the topology QA lists as dead ends or cut-offs, and every
       tree segment with no pointer is an outlet the QA accounts for
-- [ ] Independent of the pointer: the Skeena's area at its mouth equals the area of the polygons under
+- [x] Independent of the pointer: the Skeena's area at its mouth equals the area of the polygons under
       `400` that are assigned, and the same for the Nechako (`100.567134`) with its listed outlets
-- [ ] The four Skeena side channels below their entry carry the entering tributary's area, taken from the
+- [x] The four Skeena side channels below their entry carry the entering tributary's area, taken from the
       polygons under the tributary's code (51,420; 228,943; 228,943 through 360222215; 302,611 ha), plus
       at most a measured few hundred hectares of their own, and nothing like the Skeena's
-- [ ] 87078680 (the tributary mouth the lookup gives 4,558,110 ha) carries the tributary's area
+- [x] 87078680 (the tributary mouth the lookup gives 4,558,110 ha) carries the tributary's area
 - [ ] Main flow agrees with the lookup wherever the polygon is the segment's own and nothing reattached
       or carried across a gap lies above; every other difference has a class (zero unclassed)
 - [ ] Control: the lookup differs from the tree on the reattached segments by more than a floor, so the
