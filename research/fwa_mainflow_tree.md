@@ -55,7 +55,7 @@ Measured 2026-11-20 on the 2026-10 tree (4,510,368 segments, 3,245,453 watershed
 | about 1,000 segments on 782 streams with no area | streams with no polygon at all, lying in another stream's polygon | a share of that polygon by length (869 segments after the fix above; an estimate) |
 | differences from the lookup with nothing routed differently | 1,457 polygons (45,175 ha) have a local code that is not under their own watershed code; `FWA_Upstream` has guards that leave them out, so the lookup counts them nowhere | they are placed at their stream's mouth, and classed |
 
-Local codes do not always rise along a line, and a pair can reappear further up: the run taken is the lowest that holds the pair, and a connector with no local code (edge type 6010) must not end a run (it did in the first build, and 50 segments missed their polygon).
+Local codes do not always rise along a line, and a pair can reappear further up: the run taken is the lowest that holds the pair, and a connector with no local code (edge type 6010) must not end a run (it did in the first build: segments above the connector missed their polygon, and the segments needing a length share fell from 1,171 to 869 once it was fixed).
 
 **Gaps.** Of the 473 dead ends and 8 cut-offs, 90 and 7 reach the tree further down through the blue line paths and their area is carried there. The other 383 dead ends and 1 cut-off have no tree segment below them on any line of their path: the network ends there. They drain 184,742 ha, the largest 50,535 ha, and stay outlets.
 
