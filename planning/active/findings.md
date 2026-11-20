@@ -324,6 +324,93 @@ One wrong turn: "area never decreases downstream along a blue line" printed `f` 
 segment breaking it. The test's floor for the number of touching pairs was a guess (over 4 million); the
 tree has 2,967,528 (4,510,368 segments less one per line). The floor is now 2 million.
 
+## Phase 4: the tree's area against the lookup, by class (`sql/qa_area.sql`, 2026-11-20)
+
+**How a difference gets its class.** Not from the areas. The lookup routes by codes (`FWA_Upstream`),
+the tree by its nodes, and the two can only differ where something upstream is routed differently. Each
+such thing is a marker (a line whose mouth the tree takes somewhere its code does not; a polygon given to
+a side channel; a length share; a polygon with a bad local code), counted for every segment it passes
+going down the tree and for every segment its codes put below it. A segment whose two counts differ has
+that kind as its class. The counts are summed down the tree by the same level loop as the area, and by
+codes with a cumulative sum per stream. 4 min 21 s.
+
+**The comparison.** Main-flow segments whose lookup polygon has both their codes and whose local code is
+in order on their line: 4,362,376.
+
+| | segments | of which differ from the lookup |
+|---|---|---|
+| nothing upstream routed differently | 4,290,355 | 337 |
+| something upstream routed differently | 72,021 | 71,748 (99.6%) |
+
+Of the 337: 155 are lookup rows that are not what the lookup's own definition gives today (the tree
+equals the sum over every polygon `FWA_Upstream` puts above the lookup polygon; the stored row is a few
+hectares off), 138 are segments whose local code is more than one level below their watershed code, 27
+segments whose local code is not under their watershed code, and **17 on 11 lines are not explained**
+(3,167 ha of differences in all; HOMA, KHOR, TOOD, USIK, TUTR, OKAN, LBIR, COAL among them). The plan
+asked for zero unclassed; the test holds the count at 17 and the README says so.
+
+**Every tree segment that differs from the lookup or has no row, by class** (215,611 rows in
+`fwapg.mainflow_tree_area_qa`):
+
+| class | segments | sum of differences (ha) |
+|---|---|---|
+| reattached (the lookup gives a side channel its river's area) | 58,447 | 39,896,070,604 |
+| lookup polygon on the segment's stream at another local code | 53,564 | 99,118,257 |
+| several routing kinds at once | 41,016 | 925,536,274 |
+| side channel (a tributary the codes count, entering below through a side channel) | 28,892 | 7,951,546 |
+| bad code (a polygon whose local code is not under its watershed code) | 16,398 | 1,678,583 |
+| lookup polygon on another stream | 7,588 | 829,057,156 |
+| edge (a line that leaves BC although its code has a parent in the tree) | 2,928 | 1,096,136 |
+| no lookup row | 2,353 | |
+| other place (a line whose mouth is on its parent at another place than its code gives) | 1,641 | 1,356,541 |
+| share (a length share) | 1,173 | 120,089 |
+| local codes out of order on the line | 836 | 45,568 |
+| followed | 177 | 60,126,758 |
+| side polygon (a polygon given to a side channel) | 162 | 159,775 |
+| lookup row not what its definition gives | 155 | 788 |
+| segment local code more than one level deep | 138 | 586,553 |
+| outlet (a line that ends inside BC) | 95 | 678 |
+| segment local code not under its watershed code | 27 | 2,880 |
+| not explained | 17 | 3,167 |
+| other stream | 4 | 1,186 |
+
+Segments with each routing kind among their classes: side channel 66,535, side polygon 33,207, bad code
+31,582, edge 10,868, outlet 7,033, other place 6,739, share 5,173, gap 2,751, other stream 193.
+
+**The build as it stands.** Steps: node 4,483,174, junction 93, line 4, none 27,097. Polygons: `pair`
+3,181,977 (93,747,827 ha), `pair_side` 8,431 (407,068 ha), `lower` 1,754 (15,985,977 ha), `ancestor` 22
+(2,130 ha); unassigned 53,209 with no stream (838,871 ha, of which 667 ha went out as length shares) and
+60 under `999` (3,623 ha). Length shares: 869 segments, 154,217 ha, out of 494 polygons. 1,457 polygons
+(45,175 ha) have a local code that is not under their watershed code; they are placed at their stream's
+mouth.
+
+**Wrong turns, kept.**
+
+- The first class list had "local codes out of order" for a whole stream with any inversion. That put
+  60,618 segments in it, with the Fraser, Skeena, Stikine and Nechako main stems among 1,670 streams, and
+  took most of every large river out of the comparison (the review's A4). It is now per segment (no
+  segment above with a lower code, none below with a higher one): 836.
+- 5,009 segments differed with nothing routed differently. Tracing one (38 ha, `900.102882`) found a
+  polygon whose local code is not under its own watershed code. `FWA_Upstream` has guards that leave such
+  a polygon out, so the lookup counts it nowhere; my reading of `FWA_Upstream` from memory had missed the
+  guards. That became the `bad code` kind (and the polygon's place: its stream's mouth).
+- Tracing another (147 ha, a line in MILL) found a defect in the build: a 6010 connector with no local
+  code ended the run it sat in, so the polygon stopped at the connector and the segments above it had
+  none. Fixed (the connector is left out of the runs); length shares fell from 1,171 to 869 segments.
+- A third (5 ha, a chain in GRNL) had the tree equal to the lookup's own definition and the stored row
+  short: the lookup table is stale there. Recomputing the definition for the leftover segments is now a
+  step of `qa_area.sql`.
+- A bad-code polygon at its stream's mouth reach was still counted by the marker; `FWA_Upstream`'s
+  mouth-reach case asks for the local code to be under the reach's. Following it took the unexplained
+  from 37 to 17.
+
+**Restore the bug.** `scripts/08_restore_the_bug.py` breaks what each of the 13 new tests guards, in a
+transaction that is rolled back, and runs the test's own statement: all 13 print `f`, including the
+defect the issue is about (the lookup's 5,059,365 ha written onto a side-channel segment).
+
+One mistake in the session itself: an edit script failed its own check and the commands after it ran
+anyway (joined with `;`), so a 5-minute build ran on unchanged files. Steps are joined with `&&` since.
+
 ## Errors Encountered
 
 | Error | Resolution |

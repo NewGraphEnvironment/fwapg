@@ -184,11 +184,12 @@ Each is `SELECT '<name>' AS test, <boolean> AS result`, non-NULL over no rows (`
       polygons under the tributary's code (51,420; 228,943; 228,943 through 360222215; 302,611 ha), plus
       at most a measured few hundred hectares of their own, and nothing like the Skeena's
 - [x] 87078680 (the tributary mouth the lookup gives 4,558,110 ha) carries the tributary's area
-- [ ] Main flow agrees with the lookup wherever the polygon is the segment's own and nothing reattached
+- [x] Main flow agrees with the lookup wherever the polygon is the segment's own and nothing reattached
       or carried across a gap lies above; every other difference has a class (zero unclassed)
-- [ ] Control: the lookup differs from the tree on the reattached segments by more than a floor, so the
+      (landed as: at most 17 unexplained segments, the measured count; see findings, Phase 4)
+- [x] Control: the lookup differs from the tree on the reattached segments by more than a floor, so the
       comparison is shown able to fail
-- [ ] Ceilings on the unassigned classes and on junction steps, at the measured counts
+- [x] Ceilings on the unassigned classes and on junction steps, at the measured counts
 
 ## Phase 3: Build the area
 
@@ -207,21 +208,21 @@ New file `extras/mainflow_tree/sql/mainflow_tree_area.sql`, in the style of `sql
       lines
 - [x] Write `upstream_area_ha` to the tree table and keep `fwapg.mainflow_tree_area`
       (`linear_feature_id`, `downstream_id`, `downstream_method`, `local_area_ha`, `upstream_area_ha`)
-- [ ] Run it from `mainflow_tree.sh` after `sql/mainflow_tree.sql`; record its time against the job's
+- [x] Run it from `mainflow_tree.sh` after `sql/mainflow_tree.sql`; record its time against the job's
       20 min
 - [x] (owner, decision 7) Streams with no polygon of their own take a share of the polygon they lie in,
       by length, recorded by method
 
 ## Phase 4: Compare with the lookup, by class
 
-- [ ] `sql/qa_area.sql`: every tree segment whose area differs from the lookup's, with one class each
+- [x] `sql/qa_area.sql`: every tree segment whose area differs from the lookup's, with one class each
       (reattached side channel, side channel above, polygon of another stream's code, no lookup row, gap
       above, polygon assigned by a fallback step), kept as `fwapg.mainflow_tree_area_qa` and exported to
       `data/qa_area.csv` beside `data/qa_topology.csv`
-- [ ] Counts and area by class into `findings.md`; an unclassed difference is a defect in the build or a
+- [x] Counts and area by class into `findings.md`; an unclassed difference is a defect in the build or a
       class to name, not a tolerance to widen
-- [ ] Restore-the-bug check for each new test: break the thing it guards in a copy and see it print `f`
-- [ ] Update #33's body: what the tree's area needs from the lookup after this (nothing, under A) and
+- [x] Restore-the-bug check for each new test: break the thing it guards in a copy and see it print `f`
+- [x] Update #33's body: what the tree's area needs from the lookup after this (nothing, under A) and
       what stays open there
 
 ## Phase 5: SSNbler end to end

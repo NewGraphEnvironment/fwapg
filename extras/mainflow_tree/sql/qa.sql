@@ -207,10 +207,10 @@ SELECT 'the outlets'' areas sum to the area assigned' AS test,
 
 -- the ceilings are the 2026-11 counts (README): polygons whose watershed code is
 -- on no stream of the network and has no ancestor in the tree, and those under 999
-SELECT 'every unassigned polygon has a class, at most 53,220 with no stream and 60 under 999' AS test,
+SELECT 'every unassigned polygon has a class, at most 53,209 with no stream and 60 under 999' AS test,
   count(*) > 0
   AND count(*) FILTER (WHERE class IS NULL) = 0
-  AND count(*) FILTER (WHERE class = 'no stream') <= 53220
+  AND count(*) FILTER (WHERE class = 'no stream') <= 53209
   AND count(*) FILTER (WHERE class = '999') <= 60
   AND count(*) FILTER (WHERE class NOT IN ('no stream', '999')) = 0 AS result
 FROM fwapg.mainflow_tree_area_unassigned;
@@ -298,3 +298,43 @@ SELECT 'a tributary mouth inside its river''s polygon carries the tributary''s a
   )) <= 1e-3 * t.upstream_area_ha), false) AS result
 FROM whse_basemapping.fwa_stream_networks_mainflow_tree t
 WHERE t.linear_feature_id = 87078680;
+
+-- the ceilings are the 2026-11 counts (README): steps across a gap, and segments
+-- with nothing above them that were given a length share of the polygon they lie in
+SELECT 'at most 97 steps across a gap and 869 segments given a length share' AS test,
+  (SELECT count(*) FROM fwapg.mainflow_tree_area WHERE downstream_method IN ('line', 'junction')) <= 97
+  AND (SELECT count(*) FROM fwapg.mainflow_tree_area_shares) <= 869
+  AND (SELECT count(*) FROM fwapg.mainflow_tree_area WHERE shared_area_ha > 0)
+    = (SELECT count(*) FROM fwapg.mainflow_tree_area_shares) AS result;
+
+-- Against the lookup (qa_area.sql). Where a main-flow segment's lookup polygon
+-- has both its codes and nothing upstream is routed differently by the tree than
+-- by the codes, the two areas are equal: every difference there has a class
+-- (a code anomaly on the segment, or a lookup row that is not what its own
+-- definition gives), bar 17 segments on 11 lines in the 2026-11 build that are
+-- not explained (README). The floors show the comparison saw the tree.
+SELECT 'main flow agrees with the lookup where nothing upstream is routed differently, bar at most 17 segments' AS test,
+  (SELECT comparable > 4000000 AND routed_alike > 4000000 FROM fwapg.mainflow_tree_area_qa_counts)
+  AND (SELECT count(*) FROM fwapg.mainflow_tree_area_qa WHERE class IS NULL) <= 17 AS result;
+
+-- the comparison can fail: it finds every reattached and followed segment (the
+-- lookup gives a side channel its river's area), and where it says something is
+-- routed differently the areas do differ (99.6% in the 2026-11 build)
+SELECT 'the lookup differs on side channels and where the tree routes differently' AS test,
+  (SELECT count(*) FROM fwapg.mainflow_tree_area_qa WHERE source != 'mainflow')
+    > 0.99 * (SELECT count(*) FROM whse_basemapping.fwa_stream_networks_mainflow_tree WHERE source != 'mainflow')
+  AND (SELECT routed_differently > 50000 AND routed_differently_and_differ > 0.99 * routed_differently
+       FROM fwapg.mainflow_tree_area_qa_counts) AS result;
+
+-- the ceilings are the 2026-11 counts (README) of the classes that are not about
+-- routing, so a regression cannot hide in one of them
+SELECT 'the classes that are not about routing are no larger than measured' AS test,
+  count(*) > 0
+  AND count(*) FILTER (WHERE class = 'lookup polygon at another local code') <= 53564
+  AND count(*) FILTER (WHERE class = 'lookup polygon on another stream') <= 7588
+  AND count(*) FILTER (WHERE class = 'no lookup row') <= 2353
+  AND count(*) FILTER (WHERE class = 'local codes out of order') <= 836
+  AND count(*) FILTER (WHERE class = 'segment local code more than one level deep') <= 138
+  AND count(*) FILTER (WHERE class = 'segment local code not under its watershed code') <= 27
+  AND count(*) FILTER (WHERE class = 'lookup row is not what its definition gives') <= 155 AS result
+FROM fwapg.mainflow_tree_area_qa;

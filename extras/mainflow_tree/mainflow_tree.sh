@@ -25,6 +25,10 @@ $PSQL -c "\copy (SELECT * FROM fwapg.mainflow_tree_qa ORDER BY kind, watershed_g
 # upstream area of every tree segment, after the topology QA its tests read
 $PSQL -f sql/mainflow_tree_area.sql
 
+# the area against the watershed lookup's, every difference with a class
+$PSQL -f sql/qa_area.sql
+$PSQL -c "\copy (SELECT * FROM fwapg.mainflow_tree_area_qa ORDER BY class, watershed_group_code, blue_line_key, downstream_route_measure) TO 'data/qa_area.csv' WITH (FORMAT csv, HEADER)"
+
 # a NULL result (a test over no rows) prints "name|" and fails too
 qa=$($PSQL -tXA -f sql/qa.sql)
 echo "$qa"

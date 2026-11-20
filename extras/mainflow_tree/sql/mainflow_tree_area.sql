@@ -113,12 +113,14 @@ CREATE INDEX ON area_down (downstream_id);
 ANALYZE area_down;
 
 -- 3. the polygons, with their area as the lookup sums it (ST_Area, not the
--- area_ha attribute). A polygon with no local code sits at its stream's mouth.
+-- area_ha attribute). A polygon with no local code, or with one that is not
+-- under its own watershed code (FWA_Upstream leaves those out, so the lookup
+-- counts them nowhere), sits at its stream's mouth.
 CREATE TEMPORARY TABLE area_poly AS
 SELECT
   w.watershed_feature_id,
   w.wscode_ltree,
-  coalesce(w.localcode_ltree, w.wscode_ltree) AS localcode_ltree,
+  CASE WHEN w.localcode_ltree <@ w.wscode_ltree THEN w.localcode_ltree ELSE w.wscode_ltree END AS localcode_ltree,
   ST_Area(w.geom) / 10000 AS area_ha
 FROM whse_basemapping.fwa_watersheds_poly w;
 
@@ -152,7 +154,10 @@ WITH grouped AS (
     ORDER BY c.localcode_ltree DESC
     LIMIT 1
   ) g ON true
+  -- a segment with no local code (a 6010 connector) is left out, so that it
+  -- does not end the run it sits in
   WHERE s.source = 'mainflow'
+  AND s.localcode_ltree IS NOT NULL
 ),
 started AS (
   SELECT *,
@@ -347,7 +352,9 @@ LEFT JOIN LATERAL (
 ) n ON q.watershed_feature_id IS NULL
 WHERE a.upstream_area_ha = 0;
 
-CREATE TEMPORARY TABLE area_zero_share AS
+DROP TABLE IF EXISTS fwapg.mainflow_tree_area_shares;
+
+CREATE TABLE fwapg.mainflow_tree_area_shares AS
 WITH other AS (
   -- tree segments in the same polygons that already carry area
   SELECT z.watershed_feature_id, sum(s.length_metre) AS length_metre
@@ -372,9 +379,11 @@ FROM area_zero z
 INNER JOIN total t ON t.watershed_feature_id = z.watershed_feature_id
 INNER JOIN fwapg.mainflow_tree_area_polygons p ON p.watershed_feature_id = z.watershed_feature_id;
 
+ALTER TABLE fwapg.mainflow_tree_area_shares ADD PRIMARY KEY (linear_feature_id);
+
 UPDATE fwapg.mainflow_tree_area a
 SET local_area_ha = z.share_ha, shared_area_ha = z.share_ha
-FROM area_zero_share z
+FROM fwapg.mainflow_tree_area_shares z
 WHERE a.linear_feature_id = z.linear_feature_id;
 
 -- taken from the segment the polygon was given to; a polygon given to none
@@ -383,7 +392,7 @@ UPDATE fwapg.mainflow_tree_area a
 SET local_area_ha = a.local_area_ha - g.share_ha, shared_area_ha = -g.share_ha
 FROM (
   SELECT p.linear_feature_id, sum(z.share_ha) AS share_ha
-  FROM area_zero_share z
+  FROM fwapg.mainflow_tree_area_shares z
   INNER JOIN fwapg.mainflow_tree_area_polygons p ON p.watershed_feature_id = z.watershed_feature_id
   WHERE p.linear_feature_id IS NOT NULL
   GROUP BY p.linear_feature_id
@@ -394,7 +403,7 @@ UPDATE fwapg.mainflow_tree_area_polygons p
 SET shared_ha = g.share_ha
 FROM (
   SELECT watershed_feature_id, sum(share_ha) AS share_ha
-  FROM area_zero_share
+  FROM fwapg.mainflow_tree_area_shares
   GROUP BY watershed_feature_id
 ) g
 WHERE p.watershed_feature_id = g.watershed_feature_id;
