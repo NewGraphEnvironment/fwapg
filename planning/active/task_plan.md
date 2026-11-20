@@ -286,9 +286,9 @@ that reaches the cap is repeated on a machine with more memory instead of with a
 
 ## Validation
 
-- [ ] Tests pass (`sql/qa.sql`, every line `|t`, inside `mainflow_tree.sh`)
-- [ ] `/code-check` clean (once over the branch with `/code-check branch`)
-- [ ] PWF checkboxes match landed work
+- [x] Tests pass (`sql/qa.sql`, every line `|t`, inside `mainflow_tree.sh`)
+- [x] `/code-check` clean (once over the branch with `/code-check branch`)
+- [x] PWF checkboxes match landed work
 - [ ] `/planning-archive` on completion
 
 How each change is proved: the area by the tests of Phase 2, two of which do not use the pointer that
