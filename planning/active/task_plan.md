@@ -28,7 +28,7 @@ Explored:
 - [x] Upgrade gq 0.22.0 → 0.24.0 (`pak::pak("NewGraphEnvironment/gq")`, with the stale `GITHUB_PAT` unset), `packageVersion` reads 0.24.0
 - [x] File a gq issue: NewGraphEnvironment/gq#123, Esri World Imagery as `"esri_satellite"` (the registry's id for the service)
 - [ ] gq branch `123-imagery-basemap-esri-satellite` off gq's `main`: `"esri_satellite"` in `gq_mapgl_basemap()` through a shared `esri_raster_style()` beside `esri_topo_style()`, a test in `tests/testthat/test-gq_mapgl_basemap.R`, roxygen (NEWS is written by gq's release step), `/code-check`, PR in gq (merge left to the owner)
-- [ ] Install gq from that branch, pinned to its commit, for the article's render
+- [x] Install gq from that branch, pinned to its commit, for the article's render
 - [x] Edit #55's body: Decisions (local only, extracts as text, imagery through gq#123), "What to build" and the gate questions removed
 - [x] `.gitignore`: `extras/mainflow_tree/article/*.html` (and the render's `*_files/` if any)
 
@@ -62,14 +62,14 @@ Plan review (`review-plan.md`, findings 2, 5, 8, 10) changed this phase: checks 
 - [x] Phase 2's checks pass on the extracts
 
 ## Phase 4: Maps and chart
-- [ ] One map per case: `gq_mapgl_basemap()` (`"esri_satellite"` for cases 1 and 3, positron otherwise unless imagery reads better), streams in log area classes through `gq_mapgl_layer(classes=)` (segments dropped from the tree in grey), polygons filled by `method` with outlines, `gq_mapgl_popup()` for segment id, source, tree area, lookup area, share, method, `gq_mapgl_controls()`
-- [ ] The chart: the confluence share, tree against lookup, over the 16,745 places (read the dataviz skill first; ggplot, log scale)
-- [ ] `article/article_render.sh`: checks up front that the installed gq has `esri_satellite` and prints the pinned install if not (review finding 9), then `rmarkdown::render()` to a self-contained `article/mainflow_tree_area.html`, run with `DATABASE_URL` unset
+- [x] One map per case: `gq_mapgl_basemap()` (`"esri_satellite"` for cases 1 and 3, positron otherwise unless imagery reads better), streams in log area classes through `gq_mapgl_layer(classes=)` (segments dropped from the tree in grey), polygons filled by `method` with outlines, `gq_mapgl_popup()` for segment id, source, tree area, lookup area, share, method, `gq_mapgl_controls()`
+- [x] The chart: the confluence share, tree against lookup, over the 16,745 places (read the dataviz skill first; ggplot, log scale)
+- [x] `article/article_render.sh`: checks up front that the installed gq has `esri_satellite` and prints the pinned install if not (review finding 9), then `rmarkdown::render()` to a self-contained `article/mainflow_tree_area.html`, run with `DATABASE_URL` unset
 
 ## Phase 5: Read the maps, write the verdicts
-- [ ] Screenshot each map with chromote (SwiftShader flags for WebGL, screenshots to the scratchpad; review finding 13) and look at it
-- [ ] Per case in the article: what the map shows, whether the rule looks right on the ground, and what it leaves for #53
-- [ ] `extras/mainflow_tree/README.md`: a short paragraph naming the article and its two commands
+- [x] Screenshot each map with chromote (SwiftShader flags for WebGL, screenshots to the scratchpad; review finding 13) and look at it
+- [x] Per case in the article: what the map shows, whether the rule looks right on the ground, and what it leaves for #53
+- [x] `extras/mainflow_tree/README.md`: a short paragraph naming the article and its two commands
 - [ ] #53's body: a pointer to the article and what the case-3 maps showed
 
 ## Owed at the end (reported, done after merge)

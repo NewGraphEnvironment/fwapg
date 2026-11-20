@@ -237,6 +237,22 @@ In the 2026-11 build (the 2026-10 tree; 3,245,453 watershed polygons):
   line paths, the tree and the topology QA about 35 min, the area build 5.5 min, the comparison with the lookup
   4.5 min, the tests and the export about 1 min.
 
+## Article: the upstream area on the ground
+
+`article/` holds a short article with an interactive map for each of seven cases of the upstream-area rules (a
+test side channel, a polygon moved up its line, side-channel land against mapped floodplain, the Beaver River
+cross-border polygon, a length share, a gap crossed and an outlet at BC's edge, and the main-flow difference the
+QA leaves without a class), plus a chart of the confluence share, tree against lookup
+(NewGraphEnvironment/fwapg#55). It renders from extracts committed beside it, with no database, and checks every
+number it quotes against this README; the page stays local (gitignored):
+
+    ./article/article_extract.sh     # needs DATABASE_URL; rewrites article/extracts/
+    ./article/article_render.sh      # writes article/mainflow_tree_area.html
+
+The maps need gq's `esri_satellite` basemap (NewGraphEnvironment/gq#123); the render script says how to install
+it if it is missing.
+
+
 ## SSNbler check
 
 SSNbler 1.1.2 on CRAN reports false node errors on FWA data (below). Install the fix from the
