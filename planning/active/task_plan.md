@@ -27,7 +27,7 @@ Explored:
 ## Phase 1: Setup, gq imagery, issue body
 - [x] Upgrade gq 0.22.0 → 0.24.0 (`pak::pak("NewGraphEnvironment/gq")`, with the stale `GITHUB_PAT` unset), `packageVersion` reads 0.24.0
 - [x] File a gq issue: NewGraphEnvironment/gq#123, Esri World Imagery as `"esri_satellite"` (the registry's id for the service)
-- [ ] gq branch `123-imagery-basemap-esri-satellite` off gq's `main`: `"esri_satellite"` in `gq_mapgl_basemap()` through a shared `esri_raster_style()` beside `esri_topo_style()`, a test in `tests/testthat/test-gq_mapgl_basemap.R`, roxygen (NEWS is written by gq's release step), `/code-check`, PR in gq (merge left to the owner)
+- [x] gq branch `123-imagery-basemap-esri-satellite` off gq's `main`: `"esri_satellite"` in `gq_mapgl_basemap()` through a shared `esri_raster_style()` beside `esri_topo_style()`, a test in `tests/testthat/test-gq_mapgl_basemap.R`, roxygen (NEWS is written by gq's release step), `/code-check`, PR in gq (merge left to the owner): NewGraphEnvironment/gq#124, at 02c6531
 - [x] Install gq from that branch, pinned to its commit, for the article's render
 - [x] Edit #55's body: Decisions (local only, extracts as text, imagery through gq#123), "What to build" and the gate questions removed
 - [x] `.gitignore`: `extras/mainflow_tree/article/*.html` (and the render's `*_files/` if any)
