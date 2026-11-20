@@ -1,0 +1,152 @@
+# Findings — Upstream area on the main-flow tree, so SSN additive functions need no hand overrides (#4)
+
+## Issue context
+
+**If we do it:** every segment of the main-flow tree (#2) carries the area that drains through it along the tree, so an SSN additive function (SSNbler `afv_edges(infl_col = ...)`) or any area weighting can be built for any watershed group with a join and no hand overrides. **If we never do:** the network is automatic but its weights are not: each project re-derives area per edge, and overrides side channels by hand wherever the tree reattached one (19,745 side channels province-wide).
+
+## Problem
+
+An SSN model built on the tree needs one area per edge: the land draining through the edge's downstream end. SSNbler turns these into segment proportional influences at each confluence (area of the edge / sum of areas of the edges meeting there), so they must be additive along the tree. Neither source FWA offers gives that on the tree.
+
+**1. `FWA_WatershedAtMeasure()` on secondary-flow segments** (edge type 1350, all with `watershed_key` 360887278, the Skeena) returns three different kinds of answer (measured when this issue was filed; re-measure in Phase 1):
+
+| blue_line_key | measure | edge_type | polygons | km² |
+|---|---|---|---|---|
+| 360216952 | 1100 | 1350 | 1 | 50,609 |
+| 360216952 | 1800, 2000, 2400, 2700, 3000 | 1350 | **0** | — |
+| 360216952 | 3300 | 1450 | **0** | — |
+| 360222215 | 60 | 1350 | 1 | 45,681 |
+| 360237491 | 150 | 1350 | 1 | 45,581 |
+| 360222216 | 1400 | 1350 | 1 | 19 |
+
+Empty on most of side channel 360216952, the whole parent river on others (double counts at a braid), a local area on one. It is also one call per edge, slow at the scale of a watershed group. Related upstream: `smnorris/fwapg#37` (fails at measure 0), and #49 (two unguarded scalar subqueries in the same function).
+
+**2. The lookup (`fwa_streams_watersheds_lut` joined to `fwa_watersheds_upstream_area`)** matches each segment to one fundamental watershed by its watershed codes (`wscode_ltree`, `localcode_ltree` and group, nearest centroid when several match), falling back to the polygon at the segment's midpoint only when no code matches; `fwa_watersheds_upstream_area` holds that polygon's upstream area (every polygon `FWA_Upstream` puts above it). Measured on the 2026-10 tree (4,510,368 segments), 2026-11-19:
+
+- **Side channels get their river's area.** A side channel carries its river's watershed codes, so the code match gives it one of the river's polygons. Every reattached segment of the four Skeena test side channels gets 4.2-5.1 million ha (the Skeena), where the water actually in them is one tributary's:
+
+  | side channel | lookup area (ha) | tributary entering it | its area (ha) |
+  |---|---|---|---|
+  | 360216952 | 5,059,365-5,111,821 | 360884603 | 51,420 |
+  | 360222215, 360222216 | 4,568,001-4,797,374 | 360883243 | 228,943 |
+  | 360237491 | 4,255,363-4,558,110 | 360881231 | 302,611 (first segment above its mouth) |
+
+- **Mouth segments can get their parent's area.** 8,111 tree segments are matched to a polygon whose watershed code is another stream's (the midpoint fallback) (7,592 main flow, 270 of them 1450 connectors; 515 reattached; 4 followed). Example: 360881231's mouth connector (`linear_feature_id` 87078680) is matched to a Skeena polygon and gets 4,558,110 ha; the next segment up gets 302,611.
+- **2,941 tree segments have no lookup row** (2,353 main flow, 584 reattached, 4 followed), so a left join gives them NULL and fwapg's own `fwa_streams`, which inner-joins the area table, leaves them out (#33).
+
+One stream-temperature project's SSNbler script hit all three: it overrode eight side-channel edges (two on each test side channel) with the area of the tributary entering them, moved one edge's point to measure 10 because the function failed lower down, and sampled each edge 10% above its bottom so two edges meeting at a confluence would not get the same area.
+
+## What to build
+
+A per-segment upstream area on the tree, built by `extras/mainflow_tree` and stored with it: the area of land whose water passes the segment's downstream end, routed along the tree.
+
+Two ways to compute it (a choice for the plan gate):
+
+- **A. Accumulate over the tree.** Assign each fundamental watershed polygon (`fwa_watersheds_poly`) to exactly one tree segment, then sum the polygons' own areas downstream through the tree. Additive at every confluence by construction (area below = sum of areas above + the local polygon), which is what SSNbler's proportional influences assume. Needs a rule for polygons that hold several segments, river polygons that hold side channels, and segments with no polygon. Leaning this way.
+- **B. Lookup area, patched.** Keep the lookup's area on main flow, and give each reattached segment the sum of the mouth areas of the lines entering its side channel at or above it (recursively for nested side channels). Reproduces the hand overrides and reuses numbers that match bcfishpass. It is not additive at a side channel's mouth: the river segment just above it already counts the tributary (its code puts it under the river), so that confluence counts it twice. The mouth segments in a parent's polygon still need their own fix.
+
+Decisions for the plan gate:
+
+- A or B.
+- Where it is stored: a column on `whse_basemapping.fwa_stream_networks_mainflow_tree` (`upstream_area_ha`), or a separate table keyed on `linear_feature_id`.
+- Units and precision (ha like the lookup, or m² as SSNbler projects have used).
+- What happens to `FWA_WatershedAtMeasure()`'s empty answer on side channels: fixed here, filed separately, or left (the tree area does not need it). Phase 1 checks whether it is #49's defect.
+
+## Done when
+
+- Every tree segment has a non-null, positive area.
+- **Additive:** at every tree node, the area of the segment below is at least the sum of the areas of the tree segments above it (equal within the local polygon's area under A). Downstream along each line, area never decreases.
+- **Skeena test side channels:** the reattached parts of 360216952, 360222215, 360222216 and 360237491 get the area of the tributaries entering them (table above, plus local area), not the Skeena's.
+- **Main flow agrees with the lookup** wherever the segment's polygon is its own and no reattached side channel lies above it; every other difference is attributed to a class by a query.
+- **SSNbler end to end:** on a group holding the test side channels (KLUM) and on the whole Skeena, `lines_to_lsn` then `afv_edges(infl_col = <the area>)` and `afv_sites` run with no zero or missing area warnings and no overrides; additive function values lie in (0, 1] and equal 1 at the outlet. Ideally `ssnbler_check.R` gains this as an optional step.
+- QA tests in `extras/mainflow_tree/sql/qa.sql` for the additivity and the test side channels; `README.md` and `research/fwa_mainflow_tree.md` ("Not settled") updated.
+- Runs inside `mainflow_tree.sh` in minutes, not hours.
+
+## Not in scope
+
+- Merging segments between confluences into longer SSN edges (a modelling choice; SSNbler accepts the segments as they are).
+- Covariates (air temperature and the like).
+- Filling the lookup itself (#33), unless option B needs it.
+
+## What it needs
+
+A database with the FWA, the blue line paths and the main-flow tree loaded (`extras/mainflow_tree/mainflow_tree.sh`), and SSNbler from the fork (`pak::pak("NewGraphEnvironment/SSNbler@37ca338")`) for the end-to-end check. Memory limits for SSNbler are in `extras/mainflow_tree/README.md` ("SSNbler check"); run one at a time.
+
+Follows #2. Related: #19 (SSNbler on every watershed group), #33 (lookup gaps), #34 (downstream walks over the tree).
+
+
+
+## Plan-time measurements (2026-11-20, read-only, local provincial database, PostgreSQL 17.5)
+
+Tree: 4,510,368 segments (4,451,744 main flow, 58,447 reattached, 177 followed). `fwa_watersheds_poly`
+about 3.25 million polygons; `fwa_watersheds_upstream_area` has `watershed_feature_id integer,
+upstream_area_ha double precision`. `fwapg.downstream_ids` (the #34 benchmark table) is not in the
+database; `fwapg.blk_parents`, `fwapg.blk_paths` and `fwapg.mainflow_tree_qa` (504 rows) are.
+
+Polygons by whether a tree segment shares their codes (`wscode_ltree`, `localcode_ltree`):
+
+| class | polygons | area (ha) |
+|---|---|---|
+| codes on a main-flow tree segment | 3,180,734 | 93,501,694 |
+| watershed code not in the tree | 53,225 | 841,820 |
+| codes on a reattached or followed segment only | 8,449 | 407,571 |
+| watershed code in the tree, local code not | 2,985 | 54,929 |
+| under `999` | 60 | 3,623 |
+
+Tree streams with no polygon at or under their watershed code (a proxy for "no area above"): 129
+main-flow segments on 84 streams, 92 km; 128 of them have a lookup row.
+
+The four test side channels through the lookup (tree segments only): every one reads its river's area,
+with a polygon of 2 to 303 ha that carries the Skeena's watershed code (`400`), which the side channel
+carries too.
+
+| side channel | tree segments (measure) | lookup polygon(s), ha | lookup area (ha) |
+|---|---|---|---|
+| 360216952 | 0 to 1676.5 (7 segments; 1699.6 and above are not in the tree) | 2.0, 7.4, 8.9 | 5,059,365 to 5,111,821 |
+| 360222215 | 0 to 194.0 (3; 297.7 and above not in the tree) | 19.3 | 4,568,001 |
+| 360222216 | 0 to 962.1 (4; 1386.5 and above not in the tree) | 64.6, 19.3 | 4,568,001 to 4,797,374 |
+| 360237491 | 0 to 191.8 (3; 325.3 and above not in the tree) | 27.5, 303.2 | 4,255,363 to 4,558,110 |
+
+The tributaries at their mouths: 360884603 51,420 ha; 360883243 228,943 ha; 360881231 4,558,110 ha on
+its mouth segment (87078680, matched to a Skeena polygon) and 302,611 ha on the next segment up
+(245024871, measure 392.6).
+
+## What the code already has (read at plan time)
+
+- **The export is not a committed file.** `extras/mainflow_tree/fwa_stream_networks_mainflow_tree.csv.gz`
+  is ignored (`.gitignore`, `*.gz`) and so is `extras/mainflow_tree/data/`. `load.sh` does not load the
+  tree. The export is `SELECT *` of the tree table, so a new column changes the file's shape and no loader.
+- **`sql/qa.sql`'s contract.** `mainflow_tree.sh` fails unless every test line ends `|t`; a NULL result
+  (a test over no rows) prints `name|` and fails too.
+- **The tree's outlets.** 8 cut-offs, 473 dead ends and 23 `no_parent` mouths inside BC, plus 26,690
+  mouths at BC's edge. The Nechako has 8 outlets, the Skeena 1.
+- **A downstream pointer has a worked form.** Rule 1 ("node") of
+  `planning/archive/2026-10-issue-34-measure-downstream-queries/scripts/sql/01_downstream_ids.sql`: the
+  tree segment whose upstream end is this segment's downstream end, nodes at 1 cm, unique because the
+  tree has no splits (asserted by `PRIMARY KEY (up_x, up_y)`). Its rule 3 ("junction") crosses gaps
+  through the blue line paths. The whole table took 142 s and 385 MB province-wide there; no shipped job
+  builds it.
+- **An accumulation has a worked form.** `extras/pcic_crosswalk/sql/pcic_crosswalk06_subbasins.sql`
+  gives each node a depth from the roots and refuses a tree with an unreached node;
+  `pcic_crosswalk06_daily.sql` sums from the deepest level up, one level a statement.
+- **The lookup's convention.** `load/fwa_streams_watersheds_lut.sql` matches a segment to a polygon by
+  codes and group, nearest centroid when several match, then by the polygon at the segment's midpoint.
+  `extras/lookups/sql/fwa_watersheds_upstream_area.sql` sums every polygon `FWA_Upstream` puts above a
+  polygon, the polygon included (area at the polygon's outlet).
+- **The SSNbler check.** `ssnbler_check.sh` exports `linear_feature_id, geom` only, and
+  `ssnbler_check.R` stops after `lines_to_lsn`. The installed SSNbler where this runs is 1.1.2 with no
+  GitHub remote recorded, so the pinned fork is installed before Phase 5.
+  `afv_edges(edges, lsn_path, infl_col, segpi_col, afv_col, save_local, overwrite)`,
+  `sites_to_lsn(sites, edges, snap_tolerance, save_local, lsn_path, file_name, overwrite, verbose)`,
+  `afv_sites(sites, edges, afv_col, save_local, lsn_path, overwrite)`.
+- **#49 is likely another defect.** Its two unguarded scalar subqueries raise `more than one row returned
+  by a subquery used as an expression` (291 of 293 failures at measure 0); this issue's symptom is an
+  empty result. Not measured yet.
+- **Recorded runtimes disagree.** The #2 archive README: paths 35 min, tree 1 min, topology QA about
+  35 min. `extras/mainflow_tree/README.md` (2026-10-10): 20 min in all (paths 16, tree 3, QA 1.5). #34
+  measured the paths at 992 s. "Minutes" is judged against the README's figures.
+
+## Errors Encountered
+
+| Error | Resolution |
+|-------|------------|
