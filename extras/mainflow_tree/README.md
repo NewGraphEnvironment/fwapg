@@ -52,14 +52,17 @@ plain main flow agrees with the lookup. In order:
    the next local code that has a polygon. A reach with no polygon of its own so takes the polygon below it on
    its stream, which it lies in.
 2. `pair_side`: a polygon whose codes are on reattached or followed segments only goes to the top one of them.
-3. `lower`: failing both, the top segment of the reach on its watershed code at the greatest local code at or
-   below its own.
-4. `ancestor`: failing that, on its nearest ancestor code in the tree, the top segment of the reach at the
-   greatest local code strictly below the code of the branch it lies on.
+3. `lower`: failing both, the top segment of the main-flow reach on its watershed code at the greatest local
+   code at or below its own.
+4. `ancestor`: failing that, on its nearest ancestor code in the tree, the top segment of the main-flow reach at
+   the greatest local code strictly below the code of the branch it lies on.
 
-A polygon with no local code, or with one that is not under its own watershed code, sits at its stream's mouth.
-A polygon none of the rules places (its watershed code and every ancestor of it are on no tree segment, or it is
-under `999`) is listed in `fwapg.mainflow_tree_area_unassigned`.
+Only rule 2 gives a polygon to a side channel, so a side channel carries what enters it and the polygons that are
+its own by their codes. A polygon with no local code, or with one that is not under its own watershed code, sits
+at its stream's mouth. A polygon none of the rules places is listed in `fwapg.mainflow_tree_area_unassigned` with
+the reason: under `999`; `no stream` (its watershed code and every ancestor of it are on no tree segment); or
+`below the tree` (its stream is in the tree, but it lies below the stream's lowest tree segment, on a stream that
+leaves BC further down).
 
 **Streams with no polygon of their own.** A segment with nothing above it after that lies in another stream's
 polygon. It takes a share of the polygon at its midpoint, in proportion to its length against the length of all
@@ -174,12 +177,14 @@ In the 2026-11 build (the 2026-10 tree; 3,245,453 watershed polygons):
 | `pair` | 3,181,977 | 93,747,827 |
 | `pair_side` | 8,431 | 407,068 |
 | `lower` | 1,754 | 15,985,977 |
-| `ancestor` | 22 | 2,130 |
-| unassigned, no stream of their code or an ancestor code in the tree | 53,209 | 838,871 |
+| `ancestor` | 20 | 2,128 |
+| unassigned, no stream of their code or an ancestor code in the tree | 53,208 | 838,859 |
 | unassigned, under `999` | 60 | 3,623 |
+| unassigned, below the lowest tree segment of their stream | 3 | 14 |
 
 - **Every tree segment has a positive area**, and area is additive at every node: a segment's area is its own
-  polygons plus what flows in. The areas at the tree's 27,097 outlets sum to the area assigned, 110,143,670 ha.
+  polygons plus what flows in. The areas at the tree's 27,097 outlets sum to the area assigned, 110,143,668 ha. Every sum is taken in a
+  fixed order, so two builds of the same inputs give the same area to the last bit.
 - **Steps down the tree:** 4,483,174 by node, 93 by junction (90 dead ends and 3 cut-offs) and 4 by line
   (cut-offs). The other 383 dead ends and 1 cut-off have no tree segment below them on any line of their path
   and are outlets, with the 23 mouths with no parent and the 26,690 at BC's edge.
@@ -188,7 +193,7 @@ In the 2026-11 build (the 2026-10 tree; 3,245,453 watershed polygons):
   (tributary 360883243, 228,943 ha); 360237491 reads 302,914 to 303,116 ha (tributary 360881231, 302,611 ha).
   The lookup gives all of them 4.26 to 5.11 million ha. 360881231's mouth connector, which the lookup gives
   4,558,110 ha, reads 302,611.
-- **Basins at their mouth:** Skeena 5,440,479 ha, Nechako 4,725,598 ha, Fraser 23,198,692 ha. The Skeena and
+- **Basins at their mouth:** Skeena 5,440,479 ha, Nechako 4,725,598 ha, Fraser 23,198,718 ha. The Skeena and
   the Nechako are within 0.01% of the polygons under their watershed code and the Fraser within 0.07%; the
   differences are streams a step across a gap brings in and dead ends inside the basin.
 - **Length shares:** 869 segments, 154,217 ha out of 494 polygons (median share 45 ha, the largest 37,633 ha,
@@ -211,8 +216,9 @@ In the 2026-11 build (the 2026-10 tree; 3,245,453 watershed polygons):
   | local codes out of order on the line | 836 |
   | lookup row not what its definition gives; segment code anomalies; not explained | 337 |
 
-- The area build takes about 5 min and the comparison with the lookup about 4.5 min (2026-11-20, the same
-  database).
+- The whole job took 47 min on 2026-11-20 (the same database, while another session was using it): the blue
+  line paths, the tree and the topology QA about 35 min, the area build 5.5 min, the comparison with the lookup
+  4.5 min, the tests and the export about 1 min.
 
 ## SSNbler check
 
@@ -329,11 +335,12 @@ Re-run on the fork at 37ca338 (2026-10-10 and 11), the same exports:
 - Following is geometric, so it can take a route the blue line paths would not (a side channel of a
   neighbouring tributary). It runs only where there is one way down.
 - Upstream area is the tree's: a segment below one of the 384 outlets inside BC where the network ends (383 dead
-  ends and 1 cut-off, 184,742 ha above them, the largest 50,535 ha) does not carry the area above it, and neither
+  ends and 1 cut-off, 184,716 ha above them, the largest 50,535 ha) does not carry the area above it, and neither
   does one below a mouth with no parent.
 - 869 segments on streams with no polygon of their own carry a length share of another stream's polygon
   (154,217 ha in all): an estimate, not a measured catchment.
-- 53,209 polygons (838,871 ha) belong to no tree segment: their watershed code is on no stream of the network
-  and has no ancestor in the tree (land that drains to the sea or out of BC with no mapped stream).
+- 53,208 polygons (838,859 ha) belong to no tree segment: their watershed code is on no stream of the network
+  and has no ancestor in the tree (land that drains to the sea or out of BC with no mapped stream). 3 more
+  (14 ha) lie below the lowest tree segment of their stream.
 - 17 main-flow segments on 11 lines differ from the lookup with nothing routed differently and no anomaly in
   their codes; they are not explained (`class IS NULL` in `fwapg.mainflow_tree_area_qa`).

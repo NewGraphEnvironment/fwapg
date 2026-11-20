@@ -20,13 +20,17 @@
 --                 polygon below it on its stream, which it lies in.
 --   2. pair_side: a polygon whose codes are on reattached or followed segments
 --                 only goes to the top one of them.
---   3. lower:     failing both, the top segment of the reach on its watershed
---                 code at the greatest local code at or below its own.
+--   3. lower:     failing both, the top segment of the main-flow reach on its
+--                 watershed code at the greatest local code at or below its own.
 --   4. ancestor:  failing that, on its nearest ancestor code in the tree, the
---                 top segment of the reach at the greatest local code strictly
---                 below the code of the branch it lies on (a tributary is not
---                 upstream of the reach that starts at its own junction).
--- A polygon none of these places is listed in fwapg.mainflow_tree_area_unassigned.
+--                 top segment of the main-flow reach at the greatest local code
+--                 strictly below the code of the branch it lies on (a tributary
+--                 is not upstream of the reach that starts at its own junction).
+-- Only rule 2 gives a polygon to a side channel, so a side channel carries what
+-- enters it and the polygons that are its own by their codes.
+-- A polygon none of these places is listed in fwapg.mainflow_tree_area_unassigned,
+-- with the reason: under 999, no stream of its code or an ancestor code in the
+-- tree, or below the lowest tree segment of its stream.
 --
 -- A segment with nothing above it after that lies in another stream's polygon
 -- (a stream with no polygon of its own). It takes a share of the polygon at its
@@ -114,8 +118,10 @@ ANALYZE area_down;
 
 -- 3. the polygons, with their area as the lookup sums it (ST_Area, not the
 -- area_ha attribute). A polygon with no local code, or with one that is not
--- under its own watershed code (FWA_Upstream leaves those out, so the lookup
--- counts them nowhere), sits at its stream's mouth.
+-- under its own watershed code, sits at its stream's mouth. (FWA_Upstream has
+-- guards on the local code in two of its three cases, so the lookup leaves
+-- such a polygon out at its stream's mouth reach and on every ancestor the
+-- local code is not under.)
 CREATE TEMPORARY TABLE area_poly AS
 SELECT
   w.watershed_feature_id,
@@ -190,19 +196,57 @@ ORDER BY wscode_ltree, localcode_ltree, bottom, blue_line_key;
 ALTER TABLE area_pair_top ADD PRIMARY KEY (wscode_ltree, localcode_ltree);
 ANALYZE area_pair_top;
 
--- the top segment of each reach (code pair) of the tree, for rules 2 to 4:
--- main flow before reattached before the rest
+-- the top segment of each main-flow reach (code pair), for rules 3 and 4: of
+-- the lowest run of segments with that pair, for the reason above
 CREATE TEMPORARY TABLE area_reach AS
+WITH started AS (
+  SELECT linear_feature_id, blue_line_key, drm, wscode_ltree, localcode_ltree,
+    (localcode_ltree IS DISTINCT FROM lag(localcode_ltree) OVER w OR wscode_ltree IS DISTINCT FROM lag(wscode_ltree) OVER w)::integer AS starts
+  FROM area_seg
+  WHERE source = 'mainflow'
+  AND localcode_ltree IS NOT NULL
+  WINDOW w AS (PARTITION BY blue_line_key ORDER BY drm)
+),
+numbered AS (
+  SELECT *, sum(starts) OVER (PARTITION BY blue_line_key ORDER BY drm) AS run
+  FROM started
+),
+runs AS (
+  SELECT
+    wscode_ltree,
+    localcode_ltree,
+    blue_line_key,
+    min(drm) AS bottom,
+    (array_agg(linear_feature_id ORDER BY drm DESC))[1] AS linear_feature_id
+  FROM numbered
+  GROUP BY wscode_ltree, localcode_ltree, blue_line_key, run
+)
 SELECT DISTINCT ON (wscode_ltree, localcode_ltree)
   wscode_ltree, localcode_ltree, linear_feature_id
-FROM area_seg
-WHERE localcode_ltree IS NOT NULL
-ORDER BY wscode_ltree, localcode_ltree,
-  CASE source WHEN 'mainflow' THEN 1 WHEN 'reattached' THEN 2 ELSE 3 END,
-  blue_line_key, drm DESC, linear_feature_id;
+FROM runs
+ORDER BY wscode_ltree, localcode_ltree, bottom, blue_line_key;
 
 ALTER TABLE area_reach ADD PRIMARY KEY (wscode_ltree, localcode_ltree);
 ANALYZE area_reach;
+
+-- rule 2's target: the top segment of each pair that is on reattached or
+-- followed segments and on no main-flow segment (reattached before followed)
+CREATE TEMPORARY TABLE area_side_top AS
+SELECT DISTINCT ON (s.wscode_ltree, s.localcode_ltree)
+  s.wscode_ltree, s.localcode_ltree, s.linear_feature_id
+FROM area_seg s
+WHERE s.source != 'mainflow'
+AND s.localcode_ltree IS NOT NULL
+AND NOT EXISTS (
+  SELECT 1 FROM area_reach r
+  WHERE r.wscode_ltree = s.wscode_ltree AND r.localcode_ltree = s.localcode_ltree
+)
+ORDER BY s.wscode_ltree, s.localcode_ltree,
+  CASE s.source WHEN 'reattached' THEN 1 ELSE 2 END,
+  s.blue_line_key, s.drm DESC, s.linear_feature_id;
+
+ALTER TABLE area_side_top ADD PRIMARY KEY (wscode_ltree, localcode_ltree);
+ANALYZE area_side_top;
 
 -- 5. each polygon to one segment
 DROP TABLE IF EXISTS fwapg.mainflow_tree_area_polygons;
@@ -210,10 +254,10 @@ DROP TABLE IF EXISTS fwapg.mainflow_tree_area_polygons;
 CREATE TABLE fwapg.mainflow_tree_area_polygons AS
 SELECT
   p.watershed_feature_id,
-  coalesce(m.linear_feature_id, a.linear_feature_id) AS linear_feature_id,
+  coalesce(m.linear_feature_id, sd.linear_feature_id, a.linear_feature_id) AS linear_feature_id,
   CASE
     WHEN m.linear_feature_id IS NOT NULL THEN 'pair'
-    WHEN a.levels_up = 0 AND a.localcode_ltree = p.localcode_ltree THEN 'pair_side'
+    WHEN sd.linear_feature_id IS NOT NULL THEN 'pair_side'
     WHEN a.levels_up = 0 THEN 'lower'
     WHEN a.levels_up > 0 THEN 'ancestor'
   END AS method,
@@ -222,6 +266,9 @@ SELECT
 FROM area_poly p
 LEFT JOIN area_pair_top m
   ON m.wscode_ltree = p.wscode_ltree AND m.localcode_ltree = p.localcode_ltree
+LEFT JOIN area_side_top sd
+  ON m.linear_feature_id IS NULL
+  AND sd.wscode_ltree = p.wscode_ltree AND sd.localcode_ltree = p.localcode_ltree
 LEFT JOIN LATERAL (
   SELECT x.linear_feature_id, x.localcode_ltree, x.levels_up
   FROM (
@@ -246,6 +293,7 @@ LEFT JOIN LATERAL (
   ORDER BY x.levels_up
   LIMIT 1
 ) a ON m.linear_feature_id IS NULL
+  AND sd.linear_feature_id IS NULL
   AND p.wscode_ltree IS NOT NULL
   AND NOT p.wscode_ltree <@ '999'::ltree;
 
@@ -278,7 +326,9 @@ WITH RECURSIVE tree AS (
   INNER JOIN tree t ON d.downstream_id = t.linear_feature_id
 ),
 local AS (
-  SELECT linear_feature_id, sum(area_ha) AS area_ha
+  -- every float sum here is taken in a fixed order, so that two builds of the
+  -- same inputs give the same area to the last bit
+  SELECT linear_feature_id, sum(area_ha ORDER BY watershed_feature_id) AS area_ha
   FROM fwapg.mainflow_tree_area_polygons
   WHERE linear_feature_id IS NOT NULL
   GROUP BY linear_feature_id
@@ -318,7 +368,7 @@ BEGIN
     UPDATE fwapg.mainflow_tree_area a
     SET upstream_area_ha = a.local_area_ha + c.area_ha
     FROM (
-      SELECT downstream_id, sum(upstream_area_ha) AS area_ha
+      SELECT downstream_id, sum(upstream_area_ha ORDER BY linear_feature_id) AS area_ha
       FROM fwapg.mainflow_tree_area
       WHERE depth = d + 1
       GROUP BY downstream_id
@@ -357,7 +407,7 @@ DROP TABLE IF EXISTS fwapg.mainflow_tree_area_shares;
 CREATE TABLE fwapg.mainflow_tree_area_shares AS
 WITH other AS (
   -- tree segments in the same polygons that already carry area
-  SELECT z.watershed_feature_id, sum(s.length_metre) AS length_metre
+  SELECT z.watershed_feature_id, sum(s.length_metre ORDER BY s.linear_feature_id) AS length_metre
   FROM (SELECT DISTINCT watershed_feature_id FROM area_zero WHERE watershed_feature_id IS NOT NULL) z
   INNER JOIN whse_basemapping.fwa_watersheds_poly w ON w.watershed_feature_id = z.watershed_feature_id
   INNER JOIN whse_basemapping.fwa_stream_networks_sp s
@@ -368,7 +418,7 @@ WITH other AS (
   GROUP BY z.watershed_feature_id
 ),
 total AS (
-  SELECT z.watershed_feature_id, sum(z.length_metre) + coalesce(max(o.length_metre), 0) AS length_metre
+  SELECT z.watershed_feature_id, sum(z.length_metre ORDER BY z.linear_feature_id) + coalesce(max(o.length_metre), 0) AS length_metre
   FROM area_zero z
   LEFT JOIN other o ON o.watershed_feature_id = z.watershed_feature_id
   WHERE z.watershed_feature_id IS NOT NULL
@@ -386,12 +436,14 @@ SET local_area_ha = z.share_ha, shared_area_ha = z.share_ha
 FROM fwapg.mainflow_tree_area_shares z
 WHERE a.linear_feature_id = z.linear_feature_id;
 
--- taken from the segment the polygon was given to; a polygon given to none
--- keeps the rest of its area unassigned
+-- taken from the segment the polygon was given to (which keeps what is left,
+-- never less than nothing: where the shares are the whole polygon the
+-- difference is float noise of either sign); a polygon given to none keeps the
+-- rest of its area unassigned
 UPDATE fwapg.mainflow_tree_area a
-SET local_area_ha = a.local_area_ha - g.share_ha, shared_area_ha = -g.share_ha
+SET local_area_ha = greatest(a.local_area_ha - g.share_ha, 0), shared_area_ha = -g.share_ha
 FROM (
-  SELECT p.linear_feature_id, sum(z.share_ha) AS share_ha
+  SELECT p.linear_feature_id, sum(z.share_ha ORDER BY z.linear_feature_id) AS share_ha
   FROM fwapg.mainflow_tree_area_shares z
   INNER JOIN fwapg.mainflow_tree_area_polygons p ON p.watershed_feature_id = z.watershed_feature_id
   WHERE p.linear_feature_id IS NOT NULL
@@ -402,7 +454,7 @@ WHERE a.linear_feature_id = g.linear_feature_id;
 UPDATE fwapg.mainflow_tree_area_polygons p
 SET shared_ha = g.share_ha
 FROM (
-  SELECT watershed_feature_id, sum(share_ha) AS share_ha
+  SELECT watershed_feature_id, sum(share_ha ORDER BY linear_feature_id) AS share_ha
   FROM fwapg.mainflow_tree_area_shares
   GROUP BY watershed_feature_id
 ) g
@@ -411,6 +463,12 @@ WHERE p.watershed_feature_id = g.watershed_feature_id;
 SELECT pg_temp.mainflow_tree_area_sum();
 
 -- 8. polygons no rule places, by class
+CREATE TEMPORARY TABLE area_tree_codes AS
+SELECT DISTINCT wscode_ltree FROM area_seg;
+
+ALTER TABLE area_tree_codes ADD PRIMARY KEY (wscode_ltree);
+ANALYZE area_tree_codes;
+
 DROP TABLE IF EXISTS fwapg.mainflow_tree_area_unassigned;
 
 CREATE TABLE fwapg.mainflow_tree_area_unassigned AS
@@ -423,8 +481,29 @@ SELECT
   p.shared_ha,
   CASE
     WHEN w.wscode_ltree <@ '999'::ltree THEN '999'
-    -- its watershed code, and every ancestor of it, is on no tree segment
-    WHEN w.wscode_ltree IS NOT NULL THEN 'no stream'
+    -- its watershed code, and every ancestor of it, is on no tree segment. A
+    -- polygon left unplaced although its stream is in the tree has no class,
+    -- which qa.sql does not accept.
+    WHEN NOT EXISTS (
+      SELECT 1
+      FROM generate_series(1, nlevel(w.wscode_ltree)) AS g(n)
+      INNER JOIN area_tree_codes c ON c.wscode_ltree = subpath(w.wscode_ltree, 0, g.n)
+    ) THEN 'no stream'
+    -- its stream or an ancestor is in the tree, but no main-flow reach is at or
+    -- below it by its codes: it lies below the lowest tree segment (a stream
+    -- that leaves BC further down)
+    WHEN NOT EXISTS (
+      SELECT 1 FROM area_reach r
+      WHERE r.wscode_ltree = w.wscode_ltree
+      AND r.localcode_ltree <= CASE WHEN w.localcode_ltree <@ w.wscode_ltree THEN w.localcode_ltree ELSE w.wscode_ltree END
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM generate_series(1, nlevel(w.wscode_ltree) - 1) AS g(n)
+      INNER JOIN area_reach r
+        ON r.wscode_ltree = subpath(w.wscode_ltree, 0, g.n)
+        AND r.localcode_ltree < subpath(w.wscode_ltree, 0, g.n + 1)
+    ) THEN 'below the tree'
   END AS class
 FROM fwapg.mainflow_tree_area_polygons p
 INNER JOIN whse_basemapping.fwa_watersheds_poly w ON w.watershed_feature_id = p.watershed_feature_id
@@ -432,9 +511,19 @@ WHERE p.linear_feature_id IS NULL;
 
 ALTER TABLE fwapg.mainflow_tree_area_unassigned ADD PRIMARY KEY (watershed_feature_id);
 
--- 9. the area on the tree (the column is added here for a tree built before it
--- was part of the table)
-ALTER TABLE whse_basemapping.fwa_stream_networks_mainflow_tree ADD COLUMN IF NOT EXISTS upstream_area_ha double precision;
+-- 9. the area on the tree. The column is added here for a tree built before it
+-- was part of the table, and only then: ADD COLUMN IF NOT EXISTS takes its lock
+-- before it looks, and would wait behind any reader of the tree.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_attribute
+    WHERE attrelid = 'whse_basemapping.fwa_stream_networks_mainflow_tree'::regclass
+    AND attname = 'upstream_area_ha' AND NOT attisdropped
+  ) THEN
+    ALTER TABLE whse_basemapping.fwa_stream_networks_mainflow_tree ADD COLUMN upstream_area_ha double precision;
+  END IF;
+END $$;
 
 UPDATE whse_basemapping.fwa_stream_networks_mainflow_tree t
 SET upstream_area_ha = a.upstream_area_ha

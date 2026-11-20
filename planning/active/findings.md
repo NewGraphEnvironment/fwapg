@@ -437,6 +437,46 @@ the outlet) hold for any positive areas, so this is the check that can tell (the
 its time grows with the square of the edge count: 262,000 edges is about 112 times KLUM, about 6.5 h,
 after the 54 min `lines_to_lsn` took on the fork. Its memory at that size is not measured.
 
+## Phase 7: the whole job, and review round 1 (2026-11-20)
+
+**`./mainflow_tree.sh` end to end** on the provincial database, before round 1's fixes: exit 0, every test
+`t`, 46 min 34 s (15:49:56Z to 16:36:30Z). `data/qa_topology.csv` was written at 16:25Z, so the blue line
+paths, the tree and the topology QA took about 35 min and the area build, the comparison, the tests and
+the export about 11. Another session was running its tests on the database throughout. The export has
+five columns, `upstream_area_ha` last.
+
+**Round 1** (`review-round1.md`, a reading round: the job was being timed). Twelve findings; verdicts:
+
+| finding | verdict | what was done |
+|---|---|---|
+| the basin and side-channel tests use `bool_and()`, which skips a NULL member | right | counted with `FILTER` instead |
+| `lower` and `ancestor` polygons can land on a side channel, with no marker | right: 56 `lower` (158,932 ha) and 2 `ancestor` (2 ha) polygons were on reattached segments | rules 3 and 4 read main-flow reaches only; the marker is by where a polygon is, not by its rule |
+| "`FWA_Upstream` leaves them out, so the lookup counts them nowhere" | right, it was wrong as written | the function has guards in two of its three cases: out at the mouth reach and on ancestors the local code is not under |
+| the lowest-run fix was in rule 1 only | right | `area_reach` takes the lowest run of the exact pair |
+| the SSNbler side-channel check holds three literal ids and says nothing when it holds none | right | the three ids checked against the network (each a mouth, measure 0); the line now says "none in this subset, not checked"; the step refuses edges with no `linear_feature_id` |
+| a segment that gives a share can be left with float noise as its whole area | possible, not live: 5 givers are left with 0 to 1.8e-15 ha of their own, all with inflow | `greatest(..., 0)`, and the share test refuses a giver whose whole area is under 1e-6 ha |
+| figures quoted for the final build that the record holds only for the prototype | right | re-measured below, by `scripts/10_final_figures.sql` |
+| float sums in no fixed order | right, measured: two builds of the same code gave different column checksums (`bad9bb4a…`, `e6438e4c…`) | every sum ordered; two builds since give the same (`92bd48cb…`) |
+| `no stream` assigned by elimination | right, and it hid something: 3 polygons (14 ha) lie below the lowest tree segment of their stream (SIML and KUSR; the stream leaves BC further down). Two of them had been given to a side channel by the `ancestor` rule | classes are now the property they name; the new class is `below the tree` |
+| exit 0 not tied to an `area: ok` line | right, no live route | tied |
+| "run after" headers short | right | fixed |
+| `ADD COLUMN IF NOT EXISTS` takes its lock before it looks | right, low | added only where the column is missing |
+
+**The build after round 1** (`scripts/10_final_figures.sql`, 2026-11-20T17:00Z, column checksum `92bd48cb…`):
+polygons `pair` 3,181,977 (93,747,827 ha), `pair_side` 8,431 (407,068), `lower` 1,754 (15,985,977),
+`ancestor` 20 (2,128); unassigned `no stream` 53,208 (838,859 ha, 667 out as shares), `999` 60 (3,623),
+`below the tree` 3 (14). Steps node 4,483,174, junction 93 (90 dead ends, 3 cut-offs), line 4 (cut-offs),
+none 27,097. Outlets: BC's edge 26,690 (109,953,592 ha, largest 23,198,718), dead ends 383 (184,499 ha,
+largest 50,535), `no_parent` 23 (5,360), cut-off 1 (217); 110,143,668 ha in all, depth to 4,380. Side
+channels: 360216952 1,681.2 above the entry, 53,122.7 below, 53,174.5 at the mouth; 360222215 228,962.1;
+360222216 228,962.1 and 229,062.7; 360237491 302,913.7 and 303,115.7; 87078680 302,610.5. Tributaries by
+the polygons under their code: 51,419.5, 228,942.8, 302,610.5. Basins at the mouth against the polygons
+under their code: Skeena 5,440,478.9 / 5,440,334.4, Nechako 4,725,598.1 / 4,725,795.1, Fraser
+23,198,717.8 / 23,215,086.5. Shares 869 segments, 154,217 ha, 494 polygons, median 45.3 ha, largest
+37,633. Bad-code polygons 1,457 (45,175 ha). The comparison's counts and classes are as in Phase 4
+(4,362,376 / 4,290,355 / 337 / 72,021 / 71,748; 17 not explained on 11 lines, 3,169 ha). All 23 tests
+print `t`; all 13 restore-the-bug checks fire.
+
 ## Errors Encountered
 
 | Error | Resolution |

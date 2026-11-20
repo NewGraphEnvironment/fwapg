@@ -1,5 +1,8 @@
 -- QA tests for the main-flow tree, all should return result = t. Run after
--- qa_topology.sql; mainflow_tree.sh stops before export if any is f.
+-- qa_topology.sql, mainflow_tree_area.sql and qa_area.sql, in that order, as
+-- mainflow_tree.sh does (run after a rebuild of one of them alone, the tests
+-- read the others' tables from the build before); mainflow_tree.sh stops before
+-- export if any is f.
 
 SELECT 'the tree has main-flow, reattached and followed segments' AS test,
   count(DISTINCT source) FILTER (WHERE source IN ('mainflow', 'reattached', 'followed')) = 3 AS result
@@ -205,14 +208,17 @@ SELECT 'the outlets'' areas sum to the area assigned' AS test,
     - (SELECT sum(CASE WHEN linear_feature_id IS NOT NULL THEN area_ha ELSE shared_ha END) FROM fwapg.mainflow_tree_area_polygons)
   ) <= 1e-9 * (SELECT sum(area_ha) FROM fwapg.mainflow_tree_area_polygons) AS result;
 
--- the ceilings are the 2026-11 counts (README): polygons whose watershed code is
--- on no stream of the network and has no ancestor in the tree, and those under 999
-SELECT 'every unassigned polygon has a class, at most 53,209 with no stream and 60 under 999' AS test,
+-- the ceilings are the 2026-11 counts (README): polygons whose watershed code
+-- and every ancestor of it are on no tree segment, those under 999, and those
+-- below the lowest tree segment of their stream. Each class is the property it
+-- names (mainflow_tree_area.sql), so a polygon a rule should have placed has none.
+SELECT 'every unassigned polygon has a class: at most 53,208 with no stream, 60 under 999, 3 below the tree' AS test,
   count(*) > 0
   AND count(*) FILTER (WHERE class IS NULL) = 0
-  AND count(*) FILTER (WHERE class = 'no stream') <= 53209
+  AND count(*) FILTER (WHERE class = 'no stream') <= 53208
   AND count(*) FILTER (WHERE class = '999') <= 60
-  AND count(*) FILTER (WHERE class NOT IN ('no stream', '999')) = 0 AS result
+  AND count(*) FILTER (WHERE class = 'below the tree') <= 3
+  AND count(*) FILTER (WHERE class NOT IN ('no stream', '999', 'below the tree')) = 0 AS result
 FROM fwapg.mainflow_tree_area_unassigned;
 
 -- a step across a gap (line, junction) starts only at a dead end or cut-off the
@@ -253,7 +259,9 @@ mouth AS (
   FROM basin b
 )
 SELECT 'the Skeena and the Nechako carry the polygons under their code at their mouth, within 0.01%' AS test,
-  count(*) = 2 AND coalesce(bool_and(abs(tree_ha - polygons_ha) <= 1e-4 * polygons_ha), false) AS result
+  -- counted, not bool_and(): a basin with no mouth or no polygons gives NULL,
+  -- which bool_and() would skip
+  count(*) FILTER (WHERE abs(tree_ha - polygons_ha) <= 1e-4 * polygons_ha) = 2 AS result
 FROM mouth;
 
 -- the test side channels (fwapg#4): below where the tributary enters, each
@@ -283,8 +291,9 @@ measured AS (
   FROM expected e
 )
 SELECT 'four Skeena side channels carry the area of the tributary entering them' AS test,
-  count(*) = 4
-  AND coalesce(bool_and(tributary_ha > 50000 AND area_ha >= 0.999 * tributary_ha AND area_ha <= 1.05 * tributary_ha), false) AS result
+  count(*) FILTER (
+    WHERE tributary_ha > 50000 AND area_ha >= 0.999 * tributary_ha AND area_ha <= 1.05 * tributary_ha
+  ) = 4 AS result
 FROM measured;
 
 -- 360881231's mouth connector lies in a Skeena polygon, and the lookup gives it
@@ -301,11 +310,15 @@ WHERE t.linear_feature_id = 87078680;
 
 -- the ceilings are the 2026-11 counts (README): steps across a gap, and segments
 -- with nothing above them that were given a length share of the polygon they lie in
+-- A segment that gives a share keeps what is left of the polygon; where the
+-- shares are the whole polygon that is float noise, which must not be the
+-- segment's whole area (it would read as positive).
 SELECT 'at most 97 steps across a gap and 869 segments given a length share' AS test,
-  (SELECT count(*) FROM fwapg.mainflow_tree_area WHERE downstream_method IN ('line', 'junction')) <= 97
-  AND (SELECT count(*) FROM fwapg.mainflow_tree_area_shares) <= 869
+  (SELECT count(*) FROM fwapg.mainflow_tree_area WHERE downstream_method IN ('line', 'junction')) BETWEEN 1 AND 97
+  AND (SELECT count(*) FROM fwapg.mainflow_tree_area_shares) BETWEEN 1 AND 869
   AND (SELECT count(*) FROM fwapg.mainflow_tree_area WHERE shared_area_ha > 0)
-    = (SELECT count(*) FROM fwapg.mainflow_tree_area_shares) AS result;
+    = (SELECT count(*) FROM fwapg.mainflow_tree_area_shares)
+  AND (SELECT count(*) FROM fwapg.mainflow_tree_area WHERE shared_area_ha < 0 AND upstream_area_ha < 1e-6) = 0 AS result;
 
 -- Against the lookup (qa_area.sql). Where a main-flow segment's lookup polygon
 -- has both its codes and nothing upstream is routed differently by the tree than

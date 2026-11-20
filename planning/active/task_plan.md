@@ -251,7 +251,7 @@ that reaches the cap is repeated on a machine with more memory instead of with a
 
 ## Phase 7: Whole job, review, PR
 
-- [ ] `./mainflow_tree.sh` end to end on the provincial database, when no other job is writing to it
+- [x] `./mainflow_tree.sh` end to end on the provincial database, when no other job is writing to it
       (it rebuilds the blue line paths and drops the tree table); every test `t`; time recorded
 - [ ] `/code-check branch`, fixes as follow-up commits
 - [ ] `/planning-archive` with a README that carries Measurement and Evidence, wrong turns kept

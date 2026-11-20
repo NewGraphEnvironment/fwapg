@@ -1,6 +1,8 @@
 -- The tree's upstream area against the lookup's (fwa_streams_watersheds_lut
 -- with fwa_watersheds_upstream_area), every difference with a class, for review
--- and for the tests in qa.sql. Run after mainflow_tree_area.sql.
+-- and for the tests in qa.sql. Run after qa_topology.sql and
+-- mainflow_tree_area.sql, both of whose tables it reads, on a database with the
+-- lookup loaded.
 --
 -- The lookup routes area by watershed codes (FWA_Upstream): a polygon or a
 -- tributary counts for every segment whose codes put it below. The tree routes
@@ -24,8 +26,9 @@
 --   side polygon  a polygon given to a reattached or followed segment
 --   share         a length share given to a stream with no polygon of its own
 --   bad code      a polygon whose local code is not under its watershed code:
---                 FWA_Upstream leaves it out, the tree places it by its
---                 watershed code
+--                 FWA_Upstream leaves it out at its stream's mouth reach and on
+--                 ancestors the local code is not under, the tree places it at
+--                 its stream's mouth
 --
 -- Before those, by what the segment and its lookup polygon are: reattached or
 -- followed (the lookup gives a side channel its river's area), no lookup row,
@@ -157,7 +160,9 @@ INSERT INTO qa_marker (kind, at_id, wscode_ltree, localcode_ltree)
 SELECT 7, p.linear_feature_id, w.wscode_ltree, coalesce(w.localcode_ltree, w.wscode_ltree)
 FROM fwapg.mainflow_tree_area_polygons p
 INNER JOIN whse_basemapping.fwa_watersheds_poly w ON w.watershed_feature_id = p.watershed_feature_id
-WHERE p.method = 'pair_side'
+INNER JOIN qa_seg s ON s.linear_feature_id = p.linear_feature_id
+-- by where the polygon is, whichever rule put it there
+WHERE s.source != 'mainflow'
 UNION ALL
 SELECT 8, z.linear_feature_id, w.wscode_ltree, coalesce(w.localcode_ltree, w.wscode_ltree)
 FROM fwapg.mainflow_tree_area_shares z
