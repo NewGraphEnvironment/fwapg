@@ -1,5 +1,8 @@
 -- QA tests for the main-flow tree, all should return result = t. Run after
--- qa_topology.sql; mainflow_tree.sh stops before export if any is f.
+-- qa_topology.sql, mainflow_tree_area.sql and qa_area.sql, in that order, as
+-- mainflow_tree.sh does (run after a rebuild of one of them alone, the tests
+-- read the others' tables from the build before); mainflow_tree.sh stops before
+-- export if any is f.
 
 SELECT 'the tree has main-flow, reattached and followed segments' AS test,
   count(DISTINCT source) FILTER (WHERE source IN ('mainflow', 'reattached', 'followed')) = 3 AS result
@@ -127,3 +130,317 @@ SELECT 'the Chilako reaches the Nechako through the tree' AS test,
     SELECT 1 FROM fwapg.mainflow_tree_qa q
     WHERE q.blue_line_key IN (SELECT blk FROM upto)
   ) AS result;
+
+-- Upstream area (mainflow_tree_area.sql, fwapg#4). Each test below is one
+-- aggregate with no GROUP BY, so it always prints a line.
+
+SELECT 'every tree segment has a positive upstream area' AS test,
+  count(*) > 0
+  AND count(*) FILTER (WHERE t.upstream_area_ha > 0) = count(*)
+  AND count(*) FILTER (WHERE a.upstream_area_ha IS NOT DISTINCT FROM t.upstream_area_ha) = count(*) AS result
+FROM whse_basemapping.fwa_stream_networks_mainflow_tree t
+LEFT JOIN fwapg.mainflow_tree_area a ON a.linear_feature_id = t.linear_feature_id;
+
+-- what flows into a segment is taken from the network geometry here (the tree
+-- segments whose downstream node is its upstream node, nodes at 1 cm, as in
+-- qa_topology.sql), not from the pointer the area was summed along; only the
+-- steps across a gap, which geometry cannot give, are read from the table
+WITH nodes AS (
+  SELECT
+    t.linear_feature_id,
+    t.upstream_area_ha,
+    round(ST_X(ST_StartPoint(s.geom)) * 100)::bigint AS dn_x,
+    round(ST_Y(ST_StartPoint(s.geom)) * 100)::bigint AS dn_y,
+    round(ST_X(ST_EndPoint(s.geom)) * 100)::bigint AS up_x,
+    round(ST_Y(ST_EndPoint(s.geom)) * 100)::bigint AS up_y
+  FROM whse_basemapping.fwa_stream_networks_sp s
+  INNER JOIN whse_basemapping.fwa_stream_networks_mainflow_tree t ON t.linear_feature_id = s.linear_feature_id
+),
+inflow AS (
+  SELECT b.linear_feature_id, a.upstream_area_ha
+  FROM nodes a
+  INNER JOIN nodes b ON b.up_x = a.dn_x AND b.up_y = a.dn_y AND b.linear_feature_id != a.linear_feature_id
+  UNION ALL
+  SELECT g.downstream_id, g.upstream_area_ha
+  FROM fwapg.mainflow_tree_area g
+  WHERE g.downstream_method IN ('line', 'junction')
+),
+total AS (
+  SELECT linear_feature_id, sum(upstream_area_ha) AS area_ha
+  FROM inflow
+  GROUP BY linear_feature_id
+)
+SELECT 'area is additive at every node: local area plus what flows in' AS test,
+  count(*) > 0
+  AND count(*) FILTER (
+    WHERE abs(a.upstream_area_ha - a.local_area_ha - coalesce(i.area_ha, 0)) <= 1e-9 * greatest(a.upstream_area_ha, 1)
+  ) = count(*) AS result
+FROM fwapg.mainflow_tree_area a
+LEFT JOIN total i ON i.linear_feature_id = a.linear_feature_id;
+
+-- along a blue line, by measure: where two tree segments of a line touch, the
+-- lower one carries at least the upper one's area
+-- (2,967,528 touching pairs in the 2026-11 build; the floor shows the test saw them)
+WITH line AS (
+  SELECT
+    t.upstream_area_ha,
+    s.downstream_route_measure AS drm,
+    lag(t.upstream_area_ha) OVER w AS lower_area_ha,
+    lag(s.downstream_route_measure + s.length_metre) OVER w AS lower_top
+  FROM whse_basemapping.fwa_stream_networks_sp s
+  INNER JOIN whse_basemapping.fwa_stream_networks_mainflow_tree t ON t.linear_feature_id = s.linear_feature_id
+  WINDOW w AS (PARTITION BY s.blue_line_key ORDER BY s.downstream_route_measure)
+)
+SELECT 'area never decreases downstream along a blue line' AS test,
+  count(*) FILTER (WHERE abs(lower_top - drm) < 0.01) > 2000000
+  AND count(*) FILTER (
+    WHERE abs(lower_top - drm) < 0.01
+    AND lower_area_ha < upstream_area_ha - 1e-9 * greatest(upstream_area_ha, 1)
+  ) = 0 AS result
+FROM line;
+
+-- nothing is lost or added on the way down: the areas at the tree's outlets sum
+-- to the polygons given to a segment, plus what streams with no polygon of their
+-- own were given out of polygons the codes give to no segment
+SELECT 'the outlets'' areas sum to the area assigned' AS test,
+  abs(
+    (SELECT sum(upstream_area_ha) FROM fwapg.mainflow_tree_area WHERE downstream_id IS NULL)
+    - (SELECT sum(CASE WHEN linear_feature_id IS NOT NULL THEN area_ha ELSE shared_ha END) FROM fwapg.mainflow_tree_area_polygons)
+  ) <= 1e-9 * (SELECT sum(area_ha) FROM fwapg.mainflow_tree_area_polygons) AS result;
+
+-- the ceilings are the 2026-11 counts (README): polygons whose watershed code
+-- and every ancestor of it are on no tree segment, those under 999, and those
+-- below the lowest main-flow tree segment of their stream. Each class is the property it
+-- names (mainflow_tree_area.sql), so a polygon a rule should have placed has none.
+SELECT 'every unassigned polygon has a class: at most 53,208 with no stream, 60 under 999, 20 below the tree' AS test,
+  count(*) > 0
+  AND count(*) FILTER (WHERE class IS NULL) = 0
+  AND count(*) FILTER (WHERE class = 'no stream') <= 53208
+  AND count(*) FILTER (WHERE class = '999') <= 60
+  AND count(*) FILTER (WHERE class = 'below the tree') <= 20
+  AND count(*) FILTER (WHERE class NOT IN ('no stream', '999', 'below the tree')) = 0 AS result
+FROM fwapg.mainflow_tree_area_unassigned;
+
+-- a step across a gap (line, junction) starts only at a dead end or cut-off the
+-- topology QA found from geometry, none of those has a node step, and a segment
+-- with no step at all is an outlet: at most the 383 dead ends and 1 cut-off the
+-- paths lead nowhere from, and the mouths with no parent
+SELECT 'steps across a gap start at dead ends and cut-offs only' AS test,
+  count(*) FILTER (WHERE a.downstream_method IN ('line', 'junction')) > 0
+  AND count(*) FILTER (WHERE a.downstream_method IN ('line', 'junction') AND q.kind IS NULL) = 0
+  AND count(*) FILTER (WHERE a.downstream_method = 'node' AND q.kind IS NOT NULL) = 0
+  AND count(*) FILTER (WHERE a.downstream_id IS NULL AND q.kind = 'dead_end') <= 383
+  AND count(*) FILTER (WHERE a.downstream_id IS NULL AND q.kind = 'cut_off') <= 1 AS result
+FROM fwapg.mainflow_tree_area a
+LEFT JOIN (
+  SELECT DISTINCT linear_feature_id, kind FROM fwapg.mainflow_tree_qa WHERE kind IN ('dead_end', 'cut_off')
+) q ON q.linear_feature_id = a.linear_feature_id;
+
+-- independent of the pointer and of which segment a polygon was given to: a
+-- basin's area at its mouth against the polygons under its watershed code. Not
+-- equal: steps across a gap bring in streams of another code, and a dead end
+-- inside the basin keeps its area (0.003% and 0.004% in the 2026-11 build).
+WITH basin (name, code) AS (
+  VALUES ('Skeena', '400'::ltree), ('Nechako', '100.567134'::ltree)
+),
+mouth AS (
+  SELECT b.name, b.code, (
+    SELECT t.upstream_area_ha
+    FROM whse_basemapping.fwa_stream_networks_sp s
+    INNER JOIN whse_basemapping.fwa_stream_networks_mainflow_tree t ON t.linear_feature_id = s.linear_feature_id
+    WHERE s.wscode_ltree = b.code AND s.blue_line_key = s.watershed_key
+    ORDER BY s.downstream_route_measure
+    LIMIT 1
+  ) AS tree_ha, (
+    SELECT sum(ST_Area(w.geom)) / 10000
+    FROM whse_basemapping.fwa_watersheds_poly w
+    WHERE w.wscode_ltree <@ b.code
+  ) AS polygons_ha
+  FROM basin b
+)
+SELECT 'the Skeena and the Nechako carry the polygons under their code at their mouth, within 0.01%' AS test,
+  -- counted, not bool_and(): a basin with no mouth or no polygons gives NULL,
+  -- which bool_and() would skip
+  count(*) FILTER (WHERE abs(tree_ha - polygons_ha) <= 1e-4 * polygons_ha) = 2 AS result
+FROM mouth;
+
+-- the test side channels (fwapg#4): below where the tributary enters, each
+-- carries the tributary's area (the polygons under the tributary's code: 51,420,
+-- 228,943 and 302,611 ha) and at most 5% more from its own polygons and other
+-- water entering it, where the lookup gave it the Skeena's 4 to 5 million ha
+WITH expected (side_channel, entry, tributary) AS (
+  VALUES
+    (360222215, 297.7, '400.195432'::ltree),
+    (360237491, 325.3, '400.221484'::ltree),
+    (360222216, 1386.5, '400.195432'::ltree),
+    (360216952, 1017.0, '400.107640'::ltree)
+),
+measured AS (
+  SELECT e.side_channel, (
+    SELECT t.upstream_area_ha
+    FROM whse_basemapping.fwa_stream_networks_sp s
+    INNER JOIN whse_basemapping.fwa_stream_networks_mainflow_tree t ON t.linear_feature_id = s.linear_feature_id
+    WHERE s.blue_line_key = e.side_channel AND s.downstream_route_measure < e.entry - 1
+    ORDER BY s.downstream_route_measure DESC
+    LIMIT 1
+  ) AS area_ha, (
+    SELECT sum(ST_Area(w.geom)) / 10000
+    FROM whse_basemapping.fwa_watersheds_poly w
+    WHERE w.wscode_ltree <@ e.tributary
+  ) AS tributary_ha
+  FROM expected e
+)
+SELECT 'four Skeena side channels carry the area of the tributary entering them' AS test,
+  count(*) FILTER (
+    WHERE tributary_ha > 50000 AND area_ha >= 0.999 * tributary_ha AND area_ha <= 1.05 * tributary_ha
+  ) = 4 AS result
+FROM measured;
+
+-- 360881231's mouth connector lies in a Skeena polygon, and the lookup gives it
+-- 4,558,110 ha
+SELECT 'a tributary mouth inside its river''s polygon carries the tributary''s area' AS test,
+  count(*) = 1
+  AND coalesce(bool_and(abs(t.upstream_area_ha - (
+    SELECT sum(ST_Area(w.geom)) / 10000
+    FROM whse_basemapping.fwa_watersheds_poly w
+    WHERE w.wscode_ltree <@ '400.221484'
+  )) <= 1e-3 * t.upstream_area_ha), false) AS result
+FROM whse_basemapping.fwa_stream_networks_mainflow_tree t
+WHERE t.linear_feature_id = 87078680;
+
+-- Where a side channel flows into main flow, the share of the confluence it
+-- carries (its area over the areas of the segments flowing into the same
+-- segment) is what a stream network model's weights are made of. With the
+-- tree's area it is small: 15,864 of 16,745 such places carry under a fifth,
+-- the median 0.5% (2026-11 build). With the watershed lookup's area, which gives
+-- a side channel its river's, the median is 50%. The three places the Skeena
+-- test side channels meet the river carry 1%, 5% and 7%.
+WITH side AS (
+  SELECT a.linear_feature_id, a.downstream_id, a.upstream_area_ha
+  FROM fwapg.mainflow_tree_area a
+  INNER JOIN whse_basemapping.fwa_stream_networks_mainflow_tree t ON t.linear_feature_id = a.linear_feature_id
+  INNER JOIN whse_basemapping.fwa_stream_networks_mainflow_tree d ON d.linear_feature_id = a.downstream_id
+  WHERE t.source != 'mainflow' AND d.source = 'mainflow' AND a.downstream_method = 'node'
+),
+mouth AS (
+  -- joined, not a subquery per row: the area table has no index on downstream_id
+  SELECT s.linear_feature_id, s.upstream_area_ha / sum(i.upstream_area_ha) AS share
+  FROM side s
+  INNER JOIN fwapg.mainflow_tree_area i ON i.downstream_id = s.downstream_id
+  GROUP BY s.linear_feature_id, s.upstream_area_ha
+)
+SELECT 'side channels carry a small share of the confluence where they meet main flow' AS test,
+  count(*) > 10000
+  AND count(*) FILTER (WHERE share < 0.2) > 0.9 * count(*)
+  AND count(*) FILTER (WHERE linear_feature_id IN (123043588, 87082084, 87078272) AND share > 0 AND share < 0.1) = 3 AS result
+FROM mouth;
+
+-- each polygon is on a segment its rule allows, read from the polygon's and the
+-- segment's codes (mainflow_tree_area.sql's header has the rules). Only
+-- pair_side may put a polygon on a side channel.
+SELECT 'every polygon is on a segment its rule allows, and only pair_side on a side channel' AS test,
+  count(*) FILTER (WHERE p.method = 'pair') > 3000000
+  AND count(*) FILTER (WHERE p.method = 'pair_side') > 0
+  AND count(*) FILTER (WHERE p.method = 'range') > 0
+  AND count(*) FILTER (WHERE p.method = 'lower') > 0
+  AND count(*) FILTER (WHERE p.method = 'ancestor') > 0
+  AND count(*) FILTER (WHERE (
+    CASE p.method
+      WHEN 'pair' THEN t.source = 'mainflow' AND s.wscode_ltree = w.wscode_ltree AND s.localcode_ltree >= w.code
+      WHEN 'pair_side' THEN t.source != 'mainflow' AND s.wscode_ltree = w.wscode_ltree AND s.localcode_ltree = w.code
+      WHEN 'range' THEN t.source = 'mainflow' AND s.wscode_ltree = w.wscode_ltree AND s.localcode_ltree > w.code
+      WHEN 'lower' THEN t.source = 'mainflow' AND s.wscode_ltree = w.wscode_ltree AND s.localcode_ltree < w.code
+      WHEN 'ancestor' THEN t.source = 'mainflow' AND w.wscode_ltree <@ s.wscode_ltree AND w.wscode_ltree != s.wscode_ltree
+        AND s.localcode_ltree < subpath(w.wscode_ltree, 0, nlevel(s.wscode_ltree) + 1)
+    END) IS NOT TRUE) = 0 AS result
+FROM fwapg.mainflow_tree_area_polygons p
+INNER JOIN (
+  SELECT watershed_feature_id, wscode_ltree,
+    CASE WHEN localcode_ltree <@ wscode_ltree THEN localcode_ltree ELSE wscode_ltree END AS code
+  FROM whse_basemapping.fwa_watersheds_poly
+) w ON w.watershed_feature_id = p.watershed_feature_id
+INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = p.linear_feature_id
+INNER JOIN whse_basemapping.fwa_stream_networks_mainflow_tree t ON t.linear_feature_id = p.linear_feature_id
+WHERE p.linear_feature_id IS NOT NULL;
+
+-- by geometry, not by codes: a polygon placed away from the place its codes
+-- give (rule 1 up its line, rule 2, rule 3 on a side channel) is on a segment
+-- that lies in it, its midpoint inside the polygon. Codes alone put 6,368
+-- polygons on a segment up their line that did not touch them, and 5,470 on a
+-- side channel that did not. The floor shows the test saw such placements.
+SELECT 'a polygon placed above its own reach, or on a side channel, is on a segment that lies in it' AS test,
+  count(*) > 10000
+  AND count(*) FILTER (
+    WHERE ST_Intersects(w.geom, ST_LineInterpolatePoint(s.geom, 0.5))
+  ) = count(*) AS result
+FROM fwapg.mainflow_tree_area_polygons p
+INNER JOIN whse_basemapping.fwa_watersheds_poly w ON w.watershed_feature_id = p.watershed_feature_id
+INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = p.linear_feature_id
+WHERE p.method = 'pair_side'
+OR (
+  p.method IN ('pair', 'range')
+  AND s.localcode_ltree > CASE WHEN w.localcode_ltree <@ w.wscode_ltree THEN w.localcode_ltree ELSE w.wscode_ltree END
+);
+
+-- a polygon on a side channel holds no main flow of its own stream: where both
+-- lie in it, it is the river's. By geometry, over every polygon on a side
+-- channel; the floor shows the test saw them.
+SELECT 'no polygon on a side channel has main flow of its own stream lying in it' AS test,
+  count(*) > 1000
+  AND count(*) FILTER (WHERE EXISTS (
+    SELECT 1
+    FROM whse_basemapping.fwa_stream_networks_sp m
+    INNER JOIN whse_basemapping.fwa_stream_networks_mainflow_tree mt ON mt.linear_feature_id = m.linear_feature_id
+    WHERE ST_Intersects(w.geom, m.geom)
+    AND mt.source = 'mainflow'
+    AND m.wscode_ltree = w.wscode_ltree
+    AND ST_Intersects(w.geom, ST_LineInterpolatePoint(m.geom, 0.5))
+  )) = 0 AS result
+FROM fwapg.mainflow_tree_area_polygons p
+INNER JOIN whse_basemapping.fwa_watersheds_poly w ON w.watershed_feature_id = p.watershed_feature_id
+INNER JOIN whse_basemapping.fwa_stream_networks_mainflow_tree t ON t.linear_feature_id = p.linear_feature_id
+WHERE t.source != 'mainflow';
+
+-- the ceilings are the 2026-11 counts (README): steps across a gap, and segments
+-- with nothing above them that were given a length share of the polygon they lie in
+-- A segment that gives a share keeps what is left of the polygon; where the
+-- shares are the whole polygon that is float noise, which must not be the
+-- segment's whole area (it would read as positive).
+SELECT 'at most 97 steps across a gap and 1,898 segments given a length share' AS test,
+  (SELECT count(*) FROM fwapg.mainflow_tree_area WHERE downstream_method IN ('line', 'junction')) BETWEEN 1 AND 97
+  AND (SELECT count(*) FROM fwapg.mainflow_tree_area_shares) BETWEEN 1 AND 1898
+  AND (SELECT count(*) FROM fwapg.mainflow_tree_area WHERE shared_area_ha > 0)
+    = (SELECT count(*) FROM fwapg.mainflow_tree_area_shares)
+  AND (SELECT count(*) FROM fwapg.mainflow_tree_area WHERE shared_area_ha < 0 AND upstream_area_ha < 1e-6) = 0 AS result;
+
+-- Against the lookup (qa_area.sql). Where a main-flow segment's lookup polygon
+-- has both its codes and nothing upstream is routed differently by the tree than
+-- by the codes, the two areas are equal: every difference there has a class
+-- (a code anomaly on the segment, or a lookup row that is not what its own
+-- definition gives), bar 1 segment in the 2026-11 build that is not explained
+-- (README). The floors show the comparison saw the tree.
+SELECT 'main flow agrees with the lookup where nothing upstream is routed differently, bar at most 1 segment' AS test,
+  (SELECT comparable > 4000000 AND routed_alike > 4000000 FROM fwapg.mainflow_tree_area_qa_counts)
+  AND (SELECT count(*) FROM fwapg.mainflow_tree_area_qa WHERE class IS NULL) <= 1 AS result;
+
+-- the comparison can fail: it finds every reattached and followed segment (the
+-- lookup gives a side channel its river's area), and where it says something is
+-- routed differently the areas do differ (99.6% in the 2026-11 build)
+SELECT 'the lookup differs on side channels and where the tree routes differently' AS test,
+  (SELECT count(*) FROM fwapg.mainflow_tree_area_qa WHERE source != 'mainflow')
+    > 0.99 * (SELECT count(*) FROM whse_basemapping.fwa_stream_networks_mainflow_tree WHERE source != 'mainflow')
+  AND (SELECT routed_differently > 50000 AND routed_differently_and_differ > 0.99 * routed_differently
+       FROM fwapg.mainflow_tree_area_qa_counts) AS result;
+
+-- the ceilings are the 2026-11 counts (README) of the classes that are not about
+-- routing, so a regression cannot hide in one of them
+SELECT 'the classes that are not about routing are no larger than measured' AS test,
+  count(*) > 0
+  AND count(*) FILTER (WHERE class = 'lookup polygon at another local code') <= 53591
+  AND count(*) FILTER (WHERE class = 'lookup polygon on another stream') <= 7587
+  AND count(*) FILTER (WHERE class = 'no lookup row') <= 2353
+  AND count(*) FILTER (WHERE class = 'local codes out of order') <= 492
+  AND count(*) FILTER (WHERE class = 'segment local code more than one level deep') <= 138
+  AND count(*) FILTER (WHERE class = 'segment local code not under its watershed code') <= 0
+  AND count(*) FILTER (WHERE class = 'lookup row is not what its definition gives') <= 154 AS result
+FROM fwapg.mainflow_tree_area_qa;

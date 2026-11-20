@@ -32,7 +32,8 @@ CREATE TABLE whse_basemapping.fwa_stream_networks_mainflow_tree (
   linear_feature_id bigint PRIMARY KEY,
   watershed_group_code text,
   blue_line_key integer,
-  source text  -- mainflow, reattached, followed, override
+  source text,  -- mainflow, reattached, followed, override
+  upstream_area_ha double precision  -- filled by mainflow_tree_area.sql
 );
 
 CREATE TEMPORARY TABLE net_nodes AS

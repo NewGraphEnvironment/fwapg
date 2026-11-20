@@ -11,6 +11,17 @@
 # two or the edge relationships do not number one per edge less the outlets, or if
 # [expected outlets] is given and the network has a different number of outlets.
 #
+# With SSNBLER_AREA=1 in the environment and an upstream_area_ha column in the
+# streams file (the tree's upstream area, fwapg#4), a clean network also gets
+# additive function values from that area (afv_edges, then afv_sites on a fixed
+# sample of points), with no overrides. The step prints one "area:" line and
+# exits 6 if it fails: an edge with no area or none above zero, an additive
+# function value outside (0, 1] or different from the same value worked out by
+# plain arithmetic, an outlet edge whose value is not 1, or a test side channel
+# whose share of its confluence is not small. Only that last check
+# can tell a wrong area from a right one, and it runs only where the subset
+# holds one of the three Skeena test side channels; the line says how many.
+#
 # SSNbler needs its parallel path at 46,340 lines or more. Below that it runs
 # serially, with memory growing as the square of the lines (52 GB at 30,000).
 # SSNbler 1.1.2 reports false errors at segments a few cm long, and on the
@@ -91,3 +102,92 @@ cat("relationships:", nrow(rel), " expected:", nrow(streams) - n_outlets, " edge
 cat("node errors:", n_errors, " outlets:", n_outlets, "\n")
 if (n_errors > 0 || n_split > 0 || nrow(rel) != nrow(streams) - n_outlets) quit(status = 1)
 if (length(args) == 3 && n_outlets != as.integer(args[3])) quit(status = 1)
+
+if (!identical(Sys.getenv("SSNBLER_AREA"), "1")) quit(status = 0)
+
+# Any positive areas give additive function values in (0, 1] and 1 at the
+# outlets, so those limits alone cannot tell a wrong area from a right one. What
+# can: where a test side channel's mouth meets the Skeena, its share of the
+# confluence (segment proportional influence) is the tributary's area over the
+# river's, a few percent. With the watershed lookup's area, which gives a side
+# channel its river's area, it is about a half. The segments where 360216952
+# (through side channel 360216962, whose mouth this is), 360222216 and 360237491
+# meet the Skeena, checked where the subset holds them.
+side_channel_mouths <- c(123043588, 87082084, 87078272)
+
+area <- tryCatch({
+  if (!"upstream_area_ha" %in% names(streams)) stop("the streams file has no upstream_area_ha column")
+  edges <- sf::st_read(file.path(args[2], "edges.gpkg"), quiet = TRUE)
+  # without the ids the side-channel check below would hold no edge and say nothing
+  if (!"linear_feature_id" %in% names(edges)) stop("the edges have no linear_feature_id column")
+  a <- edges$upstream_area_ha
+  if (anyNA(a) || any(!is.finite(a)) || any(a <= 0)) {
+    stop(sum(is.na(a) | !is.finite(a) | a <= 0), " edges have no area above zero")
+  }
+  edges <- SSNbler::afv_edges(
+    edges,
+    lsn_path = args[2],
+    infl_col = "upstream_area_ha",
+    segpi_col = "areaPI",
+    afv_col = "afvArea",
+    save_local = FALSE,
+    overwrite = TRUE
+  )
+  afv <- edges$afvArea
+  if (nrow(edges) != nrow(streams) || anyNA(afv) || any(afv <= 0 | afv > 1)) {
+    stop("additive function values outside (0, 1] on ", sum(is.na(afv) | afv <= 0 | afv > 1), " edges")
+  }
+  # the same values by plain arithmetic, with none of SSNbler's code: an edge's
+  # share is its area over the areas of the edges that flow into the same edge,
+  # and its value is its share times the value of the edge below, 1 at an outlet
+  a <- edges$upstream_area_ha
+  to <- rel$toedge[match(edges$rid, rel$fromedge)]
+  below <- match(to, edges$rid)
+  share <- ifelse(is.na(to), 1, a / tapply(a, to, sum)[as.character(to)])
+  expected <- ifelse(is.na(to), 1, NA_real_)
+  repeat {
+    ready <- is.na(expected) & !is.na(expected[below])
+    if (!any(ready)) break
+    expected[ready] <- share[ready] * expected[below[ready]]
+  }
+  if (anyNA(expected) || max(abs(expected - afv)) > 1e-9 || max(abs(share - edges$areaPI)) > 1e-9) {
+    stop("additive function values differ from plain arithmetic on ", sum(is.na(expected) | abs(expected - afv) > 1e-9), " edges")
+  }
+  # an outlet is an edge that flows into none
+  at_outlet <- !edges$rid %in% rel$fromedge
+  if (sum(at_outlet) != n_outlets || any(abs(afv[at_outlet] - 1) > 1e-9)) {
+    stop("an outlet edge has an additive function value other than 1")
+  }
+  held <- edges$linear_feature_id %in% side_channel_mouths
+  if (any(edges$areaPI[held] > 0.2)) {
+    stop("a test side channel carries ", round(max(edges$areaPI[held]), 3), " of its confluence")
+  }
+  # sites: the midpoint of up to 200 edges, evenly spaced through the edge table
+  pick <- unique(round(seq(1, nrow(edges), length.out = min(nrow(edges), 200))))
+  sites <- sf::st_sf(
+    site_id = pick,
+    geometry = sf::st_line_sample(sf::st_geometry(edges)[pick], sample = 0.5)
+  )
+  sites <- sf::st_cast(sites, "POINT", warn = FALSE)
+  sites <- SSNbler::sites_to_lsn(
+    sites,
+    edges,
+    snap_tolerance = 1,
+    save_local = FALSE,
+    lsn_path = args[2],
+    overwrite = TRUE,
+    verbose = FALSE
+  )
+  sites <- SSNbler::afv_sites(list(obs = sites), edges, afv_col = "afvArea", save_local = FALSE)$obs
+  if (nrow(sites) != length(pick) || anyNA(sites$afvArea) || any(sites$afvArea <= 0 | sites$afvArea > 1)) {
+    stop("additive function values missing or outside (0, 1] at the sites")
+  }
+  # a subset that holds none of the test side channels has only the limits above
+  sprintf(
+    "area: ok  afv: %.3g to %.3g, equal to plain arithmetic on %d edges  sites: %d  side channels: %d (%s)",
+    min(afv), max(afv), nrow(edges), nrow(sites), sum(held),
+    if (any(held)) paste("largest share", format(round(max(edges$areaPI[held]), 4))) else "none in this subset, not checked"
+  )
+}, error = function(e) paste("area: failed,", conditionMessage(e)))
+cat(area, "\n")
+if (startsWith(area, "area: failed")) quit(status = 6)
