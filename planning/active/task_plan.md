@@ -256,7 +256,11 @@ that reaches the cap is repeated on a machine with more memory instead of with a
 - [x] `ssnbler_check.R`: optional step after `lines_to_lsn`: `afv_edges(infl_col = "upstream_area_ha")`,
       a fixed sample of sites through `sites_to_lsn` and `afv_sites`; fail on a zero or missing area
       warning, an AFV outside (0, 1], or an outlet edge whose AFV is not 1
-- [ ] KLUM (three of the four test side channels), then the whole Skeena, no overrides; numbers
+- [x] (changed by the owner, 2026-11-20: no whole-Skeena run, "design the best suite for us to understand the
+      most, then we can run areas after") Four subsets instead: the small tributary basin, KLUM, the Bulkley
+      (parallel path) and LTRE (dead ends), each with SSNbler's values held equal to plain arithmetic on every
+      edge; the side-channel share measured in SQL at all 16,745 places; LSKE left for a machine with more
+      memory. Was: KLUM (three of the four test side channels), then the whole Skeena, no overrides; numbers
       (lines, minutes, peak GB, AFV range) into `findings.md`
 
 ## Phase 6: Documents
@@ -272,7 +276,7 @@ that reaches the cap is repeated on a machine with more memory instead of with a
 
 - [x] `./mainflow_tree.sh` end to end on the provincial database, when no other job is writing to it
       (it rebuilds the blue line paths and drops the tree table); every test `t`; time recorded
-- [ ] `/code-check branch`, fixes as follow-up commits
+- [x] `/code-check branch`, fixes as follow-up commits (five rounds, ended on an enumeration; findings.md)
 - [ ] `/planning-archive` with a README that carries Measurement and Evidence, wrong turns kept
 - [ ] `/gh-pr-push` with `--base newgraph`
 

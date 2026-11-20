@@ -19,5 +19,13 @@
 - Phase 5 in progress: the pinned SSNbler fork installed; the area step added to `ssnbler_check.R` and
   `ssnbler_check.sh` (switched on by `SSNBLER_AREA=1`, exit status 6 when it fails); clean on a
   3,190-line tributary basin; KLUM running
-- Next: KLUM result and the lookup control, the whole Skeena, then Phase 7 (the whole job, `/code-check
-  branch`, archive, PR)
+- Phase 5: KLUM clean; the lookup's area on KLUM's network fails the side-channel check (30f2846)
+- Phase 7: `./mainflow_tree.sh` end to end, 46 min 34 s, every test `t`
+- `/code-check branch`: five rounds (1aacbf1, 55ca8dd, 6dcacac, e3ea45f, 97e99ed and the commits between).
+  Rounds 3 to 5 each found a polygon rule that went by codes where geometry disagreed; the rules now
+  move a polygon only to a segment that lies in it. Three owner decisions on the way (8, 9, and no
+  whole-Skeena SSNbler run). Seven reviewer agents in all
+- Filed on the way: #52 (the function's empty answer), #53 (side channels and floodplain, the owner's
+  question), and an issue in the dotfiles repo about a stale GitHub token in long-lived shells
+- SSNbler suite on the final build: four subsets clean, values equal to plain arithmetic on every edge
+- Next: review verdict, `/planning-archive`, `/gh-pr-push`

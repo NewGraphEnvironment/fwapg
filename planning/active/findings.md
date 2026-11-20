@@ -659,6 +659,30 @@ share of the confluence is 0.50% and 15,864 are under a fifth (210 between 0.4 a
 lookup's area the median is 50.0% and 15,261 of 16,034 are between 0.4 and 0.6 (390 under a fifth). All
 27 tests print `t`; all 18 restore-the-bug cases fire.
 
+## Phase 5, final: the SSNbler suite (2026-11-20, the fork at 37ca338, the final build)
+
+The owner asked for no whole-Skeena run and the suite that tells the most. Each run: `SSNBLER_AREA=1
+./ssnbler_check.sh 34 <name> <wscode> [group] [outlets]`, one at a time, 0 node errors, no overrides, 200
+sites with a value in (0, 1], and SSNbler's `afvArea` and `areaPI` equal within 1e-9 to plain arithmetic
+on every edge (the reviewer measured the difference on the smallest at 3.9e-16).
+
+| subset | lines | minutes | peak GB | outlets | AFV | side channels held |
+|---|---|---|---|---|---|---|
+| `400.107640` | 3,190 | under 1 | 0.6 | 1 | 2.43e-05 to 1 | none |
+| `400`, KLUM | 24,732 | 8 | 28.0 | 1 | 1.29e-07 to 1 | 2, largest share 0.0664 |
+| `400.431358` (Bulkley, parallel path) | 52,293 | 21 | 2.8 | 1 | 1.9e-07 to 1 | none |
+| `100.567134`, LTRE | 8,484 | 1 | 3.1 | 3 | 5.35e-07 to 1 | none |
+
+LTRE: by the build's pointer the subset has one way out and two steps across a gap (two dead ends);
+SSNbler, which sees geometry only, has three outlets. The three subsets' areas were checksummed before
+and after round 5's rebuild and are unchanged, so the runs describe the final build.
+
+One mistake found on the way: the check's literal for 360216952 was its mouth segment (123041439), which
+flows into another side channel (360216962) and has a share of 1; the place its water meets the Skeena
+is 123043588, share 0.0104. On LSKE the first would have failed the step for the wrong reason. Not run:
+LSKE (about 29,000 lines, serial path, more memory than was free beside the database) and the whole
+Skeena (`afv_edges` is quadratic: hours).
+
 ## Errors Encountered
 
 | Error | Resolution |

@@ -280,13 +280,29 @@ confluence. That last check runs only where the subset holds a segment where 360
 
     SSNBLER_AREA=1 ./ssnbler_check.sh 40 klum_area 400 KLUM 1
 
-Any positive areas give values in (0, 1] and 1 at the outlets, so the last check is the one that can tell a
-wrong area: where a side channel's mouth meets the Skeena, its segment proportional influence is the
-tributary's area over the river's. On KLUM (24,732 lines, 2026-11-20, the fork at 37ca338): 0 node errors, 1
-outlet, values from 1.3e-07 to 1, and the mouths of 360222216 and 360237491 take 0.048 and 0.067 of their
-confluence. With the watershed lookup's area on the same network both take 0.5. The run took 8 min and peaked
-at 28.0 GB. `afv_edges` took about 3.5 min of it and its time grows with the square of the edge count, so the
-whole Skeena (262,000 edges) is hours, not minutes.
+Any positive areas give values in (0, 1] and 1 at the outlets, so two of the checks are the ones that can
+tell a wrong result. The equality with plain arithmetic holds SSNbler's value on every edge to what the areas
+say. And where a side channel meets its river, its segment proportional influence is the tributary's area over
+the river's: with the watershed lookup's area on KLUM's network the two side channels there take 0.5 of their
+confluence, with the tree's 0.048 and 0.066. `sql/qa.sql` measures the same share in SQL at all 16,745 places a
+side channel flows into main flow: a median of 0.5% with the tree's area (15,864 under a fifth), 50% with the
+lookup's.
+
+Four subsets, 2026-11-20, the fork at 37ca338, each with 0 node errors, no overrides, 200 sites, and values
+equal to plain arithmetic on every edge:
+
+| subset | lines | minutes | peak GB | outlets | values | covers |
+|---|---|---|---|---|---|---|
+| tributary 360884603's basin (`400.107640`) | 3,190 | under 1 | 0.6 | 1 | 2.4e-05 to 1 | the smallest case |
+| KLUM (`400`, group KLUM) | 24,732 | 8 | 28.0 | 1 | 1.3e-07 to 1 | side channels, one flowing into another; 360222216 and 360237491 meet the Skeena here |
+| the Bulkley (`400.431358`) | 52,293 | 21 | 2.8 | 1 | 1.9e-07 to 1 | SSNbler's parallel path |
+| LTRE (`100.567134`, group LTRE) | 8,484 | 1 | 3.1 | 3 | 5.4e-07 to 1 | two dead ends: three outlets to SSNbler, and the area carried across both gaps |
+
+Not run: LSKE, which holds the place 360216952's water meets the Skeena (about 29,000 lines on the serial path,
+more memory than the machine these ran on had free); its share there is 0.0104 in SQL. And the whole Skeena:
+`afv_edges` finds each edge's path to the outlet and tests every edge against it, so its time grows with the
+square of the edge count (about 3.5 min at 24,732 edges), which is hours at 262,000. The plain arithmetic in
+`ssnbler_check.R` gives the same values in one pass.
 
 SSNbler takes one of two paths, and they differ:
 
