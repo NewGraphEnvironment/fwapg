@@ -146,6 +146,72 @@ its mouth segment (87078680, matched to a Skeena polygon) and 302,611 ha on the 
   35 min. `extras/mainflow_tree/README.md` (2026-10-10): 20 min in all (paths 16, tree 3, QA 1.5). #34
   measured the paths at 992 s. "Minutes" is judged against the README's figures.
 
+## Phase 1 (2026-11-20): `FWA_WatershedAtMeasure()` on the test side channels
+
+`scripts/01_watershedatmeasure.sql`. The same as the issue's table:
+
+| blue_line_key | measure | edge_type | rows | km² | refine_method |
+|---|---|---|---|---|---|
+| 360216952 | 1100 | 1350 | 1 | 50,608.7 | CUT |
+| 360216952 | 1800, 2000, 2400, 2700, 3000 | 1350 | 0 | | |
+| 360216952 | 3300 | 1450 | 0 | | |
+| 360222215 | 60 | 1350 | 1 | 45,680.7 | CUT |
+| 360237491 | 150 | 1350 | 1 | 45,580.9 | CUT |
+| 360222216 | 1400 | 1350 | 1 | 19.2 | CUT |
+
+**Why it is empty** (`scripts/02_watershedatmeasure_trace.sql`, which counts the function's own CTEs at a
+point). The empty points are on segments with a watershed code (`400`) and no local code: the seven
+segments of 360216952 from measure 1699.6 up. The function finds everything upstream with
+`FWA_Upstream(a.wscode_ltree, a.localcode_ltree, ...)`, which is NULL when the local code is NULL
+(checked: `FWA_Upstream('400', NULL, '400.5', '400.5')` is NULL), so no basin, group or polygon is
+collected. `ref_point`, the polygons within 5 m and the covered segments are all found (7 segments
+covered at 1800), so `refine_method` is `CUT`, and the result is only what
+`FWA_SliceWatershedAtPoint()` returns: 19.2 km² at 360222216 measure 1400 (also no local code), nothing
+at 360216952 measure 1800 to 3300, where the slice is empty. So the 19 km² "local area" in the issue is
+the same path as the empty answers, not a third kind.
+
+It is not #49's defect: that one raises `more than one row returned by a subquery used as an
+expression`; this returns quietly. Filed as #52.
+
+158,188 network segments have a watershed code (not under `999`) and no local code: 110 main-flow tree
+segments (all edge type 6010) and 158,078 outside the tree. No reattached or followed segment has a NULL
+local code, so the kept part of a side channel always carries one.
+
+## Phase 1: tree segments by what the lookup gives them
+
+`scripts/03_lookup_classes.sql`, query A. "Another stream's polygon" sums to the issue's 8,111 and "no
+lookup row" to its 2,941.
+
+| source | own codes | own watershed code, another local code | another stream's polygon | no lookup row |
+|---|---|---|---|---|
+| mainflow | 4,387,951 | 53,848 | 7,592 (270 are 1450) | 2,353 (110 with no local code) |
+| reattached | 39,867 | 17,481 | 515 (513 are 1450) | 584 |
+| followed | 96 | 73 | 4 | 4 |
+
+A class the issue does not name: 71,402 tree segments are matched to a polygon on their own watershed
+code at another local code (the midpoint fallback, where no polygon carries the segment's code pair).
+
+Tree segments with no lookup row, by edge type: 1250, 1,414; 1200, 667; 1450, 564; 6010, 150 (110 with
+no local code); 1350, 87; 1300, 47; 1475, 12.
+
+## Phase 1: polygons whose watershed code is on no tree segment
+
+`scripts/03_lookup_classes.sql`, query C (query D was cancelled after 12 min; the prototype answers it).
+None of the 53,225 has its watershed code on the network at all, and all are land polygons: 38,163
+(373,186 ha) have a code more than one label deep, so an ancestor code can place them; 15,062
+(468,634 ha) have a one-label code, with no ancestor to fall back to.
+
+## Plan review (Plan agent, 2026-11-20; report in `review-4.md`)
+
+Verdicts so far; the rest wait on the prototype (`scripts/04_prototype.sql`).
+
+| finding | verdict | checked against |
+|---|---|---|
+| B1: decision 4 carries about 90 dead ends, not 473 + 8 | right | the #34 archive's `findings.md`: 383 of the 473 dead ends join a parent exactly at the parent's lowest segment start, as does every later line on their path, so the network ends there; 90 take a junction step onto the tree; the 8 cut-offs step to the next segment of their own side channel, off the tree. The count in the plan was mine and not measured. |
+| G4, G7: the assignment rule's order, strictness and area source | right, adopted | `FWA_Upstream` in `db/schema.sql`; the prototype states the rule in its terms (own stream: the reach at the greatest local code at or below the polygon's; an ancestor: strictly below the branch's code) and sums `ST_Area(geom) / 10000` as the lookup does |
+| A8: a test that returns no rows prints nothing and passes | right | `mainflow_tree.sh` checks that the output is not empty and that no line fails to end `|t`, so one test's missing line is not seen |
+| G1: "own" must mean both codes | right | query A above: 71,402 tree segments on their own watershed code at another local code |
+
 ## Errors Encountered
 
 | Error | Resolution |

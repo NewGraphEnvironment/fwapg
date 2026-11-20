@@ -95,12 +95,13 @@ Decisions 3 and 6 are defaults stated in the plan and approved with it.
 
 One-off SQL lives in `planning/active/scripts/`, numbers in `findings.md`.
 
-- [ ] Re-measure Problem 1: `FWA_WatershedAtMeasure()` at the issue's nine points (blue line, measure),
+- [x] Re-measure Problem 1: `FWA_WatershedAtMeasure()` at the issue's nine points (blue line, measure),
       polygons returned and area
-- [ ] Trace the empty answers (360216952 at 1800 to 3300) to the branch of the function that returns no
+- [x] Trace the empty answers (360216952 at 1800 to 3300) to the branch of the function that returns no
       row, and say whether it is #49's defect (that one raises `more than one row`, so likely not)
-- [ ] File what the trace finds as its own issue on NewGraphEnvironment/fwapg (decision 5), linked from #4
-- [ ] Re-measure Problem 2: tree segments by lookup class (polygon of its own code, another stream's, no
+- [x] File what the trace finds as its own issue on NewGraphEnvironment/fwapg (decision 5), linked from #4
+      (#52)
+- [x] Re-measure Problem 2: tree segments by lookup class (polygon of its own code, another stream's, no
       row) by `source`, against the issue's 8,111 and 2,941
 - [ ] Break down the 53,225 polygons whose watershed code is not in the tree and the 2,985 whose local
       code is not (dropped side channels, waterbodies, coast, cross-border), and settle decision 6's
