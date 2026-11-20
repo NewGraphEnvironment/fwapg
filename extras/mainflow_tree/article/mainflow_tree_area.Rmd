@@ -1,0 +1,88 @@
+---
+title: "Does the main-flow tree's upstream area make sense on the ground?"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    self_contained: true
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(sf)
+sf_use_s2(FALSE)
+ex <- function(f) file.path("extracts", f)
+read_case <- function(case, what) sf::read_sf(ex(paste0(case, "_", what, ".geojson")))
+```
+
+```{r checks, include = FALSE}
+# The numbers the article quotes, held to the README of extras/mainflow_tree
+# (the 2026-11 build). A render whose extracts disagree stops here.
+need <- function(ok, msg) if (!isTRUE(ok)) stop("check failed: ", msg, call. = FALSE)
+near <- function(x, want, tol = 0.5) length(x) == 1L && !is.na(x) && abs(x - want) <= tol
+area_of <- function(s, id) s$upstream_area_ha[s$linear_feature_id == id]
+
+# case 1: a Skeena test side channel and the tributary that enters it
+s1 <- read_case("case1", "streams")
+need(near(area_of(s1, 123039830), 53007), "case 1: 123039830 reads 53,007 ha")
+need(near(area_of(s1, 123039760), 51420), "case 1: tributary 360884603's mouth segment reads 51,420 ha")
+need(near(area_of(s1, 123039759), 1580) && near(area_of(s1, 123039469), 1580),
+     "case 1: 123039759 and 123039469 read 1,580 ha")
+need(near(area_of(s1, 123041439), 53058) && near(area_of(s1, 123040995), 53058),
+     "case 1: the bottom two segments read 53,058 ha")
+lk1 <- s1$lookup_area_ha[s1$blue_line_key == 360216952 & s1$tree]
+need(length(lk1) > 0 && all(lk1 >= 4.26e6 & lk1 < 5.115e6), "case 1: the lookup gives 360216952 within the README's 4.26 to 5.11 million ha")
+cs <- read.csv(ex("confluence_share.csv"))
+need(near(cs$share_tree[cs$linear_feature_id == 123043588], 0.0104, 0.0005),
+     "case 1: side-channel mouth 123043588 carries about 0.0104 of its confluence")
+
+# case 2: a polygon moved up its line
+p2 <- read_case("case2", "polygons")
+f2 <- p2[p2$focus, ]
+need(nrow(f2) == 1 && f2$method == "pair" && isTRUE(f2$moved), "case 2: one `pair` polygon moved up its line")
+
+# case 3: side-channel land, three kinds
+p3 <- read_case("case3", "polygons")
+need(setequal(p3$kind[!is.na(p3$kind)], c("runs_through", "touches", "not_touching")) &&
+       sum(!is.na(p3$kind)) == 3, "case 3: one polygon of each kind")
+need(p3$method[p3$kind %in% "runs_through"] == "pair_side", "case 3: the polygon a side channel runs through is `pair_side`")
+fp3 <- sf::read_sf(ex("case3_floodplain.geojson"))
+need(nrow(fp3) > 0, "case 3: mapped floodplain in the view")
+
+# case 4: the Beaver River cross-border polygon
+p4 <- read_case("case4", "polygons")
+b4 <- p4[p4$watershed_feature_id == 1000002557, ]
+need(nrow(b4) == 1 && b4$method == "lower" && b4$assigned_blue_line_key == 359572098 &&
+       near(b4$area_ha, 767000, 1000), "case 4: 1000002557 is `lower` on blue line 359572098, about 767,000 ha")
+
+# case 5: a length share
+sh5 <- read.csv(ex("case5_shares.csv"))
+p5 <- read_case("case5", "polygons")
+src5 <- p5[p5$focus, ]
+need(nrow(src5) == 1 && near(sum(sh5$share_ha), src5$shared_ha, 1e-6),
+     "case 5: the polygon's shares sum to its shared_ha")
+s5 <- read_case("case5", "streams")
+need(any(s5$focus) && near(s5$shared_area_ha[s5$focus],
+                           sh5$share_ha[sh5$linear_feature_id == s5$linear_feature_id[s5$focus]], 1e-6),
+     "case 5: the segment's share is its shares row")
+
+# case 6: a gap crossed and a network that ends
+s6 <- read_case("case6", "streams")
+need(any(s6$qa_kind %in% "dead_end" & s6$downstream_method %in% "junction"), "case 6: a dead end carried across a gap")
+need(any(s6$qa_kind %in% "dead_end" & is.na(s6$downstream_method)), "case 6: a dead end that is an outlet")
+
+# case 7: the one main-flow difference not explained
+s7 <- read_case("case7", "streams")
+u7 <- s7[s7$linear_feature_id == 212038783, ]
+need(nrow(u7) == 1 && near(u7$upstream_area_ha, 863.6, 0.1) && near(u7$lookup_area_ha, 865.3, 0.1),
+     "case 7: 212038783 reads 863.6 ha against the lookup's 865.3")
+
+# the chart: the share of the confluence a side channel takes
+need(nrow(cs) == 16745, "chart: 16,745 places")
+need(sum(cs$share_tree < 0.2) == 15864, "chart: 15,864 under a fifth")
+need(near(median(cs$share_tree), 0.005, 0.001), "chart: tree median about 0.5%")
+need(near(median(cs$share_lookup, na.rm = TRUE), 0.5, 0.01), "chart: lookup median about 50%")
+```
+
+Every number on this page is checked against `extras/mainflow_tree/README.md` when the page renders.
