@@ -615,9 +615,54 @@ Its findings, each fixed:
 (98,338 ha), `range` 12 (164,282 ha), shares 1,898 segments (181,075 ha). The comparison's counts and
 classes are unchanged. All 25 tests print `t`; all 16 restore-the-bug cases fire.
 
+## Review round 5 (2026-11-20, `review-round5.md`): the changes since round 4
+
+One finding, the mechanism once more in a narrower place: "no main-flow segment in the polygon's code
+range lies in it" had been taken for "no main-flow segment lies in it". Of 1,824 `pair_side` polygons,
+1,181 hold the midpoint of a main-flow segment: for 1,177 it is another stream's main flow only (a
+tributary crossing to the side channel), and 4 polygons (2,478 ha: BABL 7706821 with 2,323.5 ha, REVL,
+COAL, KHOR) held main flow of their own watershed code. Fixed: rule 3 skips a polygon that a main-flow
+segment of its own watershed code lies in. Checked by comparing placements before and after: exactly
+those four moved, to `lower`. A test now counts, by geometry, polygons on a side channel that hold their
+own stream's main flow (0), and its defect check fires. Wording that said more than the code did is
+corrected in the SQL header, the README and the tests' comments.
+
+Everything else the round checked holds: SSNbler's values equal the plain arithmetic to 3.9e-16 on the
+3,190-edge basin (re-run by the reviewer on a copy of the finished network); the new province-wide test
+prints `f` with the lookup's area restored on the side-channel segments (760 of 16,745 under a fifth,
+median 0.5000) and `t` after rollback; the swap keeps every polygon whose pair is on main flow as `pair`;
+the weights' two conditions are the right ones; every figure it re-derived agrees.
+
+**How the review ended.** Rounds 3, 4 and 5 each found a defect inside the previous round's fix, all of
+one mechanism, so a quiet round could not end it. What ends it is the enumeration: every polygon that
+is away from the place its codes give (17,699 of 3,245,453) is on a segment whose midpoint is inside it,
+and no polygon on a side channel holds main flow of its own stream. Round 4 re-derived the first over
+every polygon with its own queries; both are now tests over the whole set, by geometry, and each fires
+when its defect is restored. Seven reviewer agents in all (the Plan review, rounds 1 to 5, and a
+replacement for round 3), past the usual five: rounds 3 to 5 each found a real misplacement, the largest
+780,000 ha on the wrong river.
+
+**The final build** (`scripts/10_final_figures.sql`, 2026-11-20T21:38Z, column checksum `0e553e9e…`):
+polygons `pair` 3,181,977 (93,747,827 ha; 15,867 of them, 3,547,842 ha, above their own reach), `range`
+12 (164,282), `pair_side` 1,820 (95,860), `lower` 8,336 (16,132,566), `ancestor` 20 (2,128); unassigned
+`no stream` 53,208 (838,859), `999` 60 (3,623), `below the tree` 20 (351). Steps node 4,483,174,
+junction 93, line 4, none 27,097. Outlets: BC's edge 26,690 (109,958,939 ha, largest 23,203,431), dead
+ends 383 (179,414, largest 50,535), `no_parent` 23 (4,761), cut-off 1 (217); 110,143,331 ha in all. Side
+channels and basins as after round 3. Shares 1,898 segments, 181,075 ha, 1,116 polygons, median 13.7,
+largest 37,633 (of a 42,667 ha polygon). Comparison: 4,362,376 comparable; 4,288,277 routed alike, 293
+of them differ (154, 138, 1 not explained); 74,099 routed differently, 73,808 differ; 217,655 rows:
+reattached 58,447, followed 177, another local code 53,591, another stream 7,587, no row 2,353, one
+kind 57,136 (side channel 32,742, bad code 16,525, share 3,212, edge 2,926, other place 1,627, outlet
+95, side polygon 5, other stream 4), several kinds 37,579, out of order 492. Side channels where they
+meet main flow (`scripts/11_side_channel_share.sql`): 16,745 places; with the tree's area the median
+share of the confluence is 0.50% and 15,864 are under a fifth (210 between 0.4 and 0.6); with the
+lookup's area the median is 50.0% and 15,261 of 16,034 are between 0.4 and 0.6 (390 under a fifth). All
+27 tests print `t`; all 18 restore-the-bug cases fire.
+
 ## Errors Encountered
 
 | Error | Resolution |
 |-------|------------|
 | A classification query with a correlated `EXISTS` over 3.2 million polygons ran 12 min without finishing (`03_lookup_classes.sql`, query D) | Cancelled; the prototype's assignment answers the same question in 1 min 40 s with an indexed lateral lookup |
+| A test written with a subquery per row over `fwapg.mainflow_tree_area` by `downstream_id` (no index) did not finish in 10 minutes for 16,745 rows | Written as a join; 42 s for the whole test file |
 | Piping `psql` through `grep` to a file hid rows until exit (grep block-buffers when not on a terminal) | Read the result after the command ends, or write psql's output to the file directly |

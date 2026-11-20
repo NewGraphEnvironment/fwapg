@@ -53,10 +53,12 @@ plain main flow agrees with the lookup. In order:
    next that has a polygon.
 2. `range`: a polygon whose codes are on no main-flow segment goes to the highest main-flow segment in its
    range that lies in it (on the line with the lowest `blue_line_key`, where two lines have one).
-3. `pair_side`: failing that, a polygon whose codes are on reattached or followed segments goes to the top one
-   of them that lies in it (reattached before followed, then the lowest `blue_line_key`: 100 polygons, 3,226 ha,
-   have such segments on several lines). Main flow comes first because a polygon that holds both is the
-   river's: one polygon had a 48 m side-channel segment and 18 km of main flow in it.
+3. `pair_side`: failing that, a polygon whose codes are on reattached or followed segments, and that no
+   main-flow segment of its own watershed code lies in, goes to the top one of them that lies in it (reattached
+   before followed, then the lowest `blue_line_key`, where such segments are on several lines). Main flow of
+   its own stream comes first because a polygon that holds both is the river's: one polygon had a 48 m
+   side-channel segment and 18 km of main flow in it. Main flow of another stream in the polygon (a tributary
+   crossing to the side channel) does not count.
 4. `lower`: failing those, the top segment of the main-flow reach on its watershed code at the greatest local
    code at or below its own.
 5. `ancestor`: failing that, on its nearest ancestor code in the tree, the top segment of the main-flow reach at
@@ -68,7 +70,7 @@ put a polygon on a segment up its line that did not touch it for 6,368 of 23,897
 that did not touch it for 5,470 of 8,431, and moved three cross-border polygons of 63,000 to 767,000 ha onto
 the wrong lines. So a polygon leaves the place its codes give (rules 4 and 5, and the top of its own reach)
 only for a segment that lies in it. Only rule 3 gives a polygon to a side channel, so a side channel carries
-what enters it and the polygons it alone lies in.
+what enters it and the polygons that it, and not its river, lies in.
 
 A polygon with no local code, or with one that is not under its own watershed code, is placed as if its local
 code were its stream's mouth code (1,435 of the 1,457 such polygons end on a mouth-reach segment; 19 go up their
@@ -189,8 +191,8 @@ In the 2026-11 build (the 2026-10 tree; 3,245,453 watershed polygons):
 |---|---|---|
 | `pair` (15,867 of them, 3,547,842 ha, moved up their line to a segment that lies in them) | 3,181,977 | 93,747,827 |
 | `range` | 12 | 164,282 |
-| `pair_side` | 1,824 | 98,338 |
-| `lower` | 8,332 | 16,130,088 |
+| `pair_side` | 1,820 | 95,860 |
+| `lower` | 8,336 | 16,132,566 |
 | `ancestor` | 20 | 2,128 |
 | unassigned, no stream of their code or an ancestor code in the tree | 53,208 | 838,859 |
 | unassigned, under `999` | 60 | 3,623 |
@@ -226,8 +228,8 @@ In the 2026-11 build (the 2026-10 tree; 3,245,453 watershed polygons):
   | the lookup's polygon is on the segment's stream at another local code | 53,591 |
   | the lookup's polygon is on another stream | 7,587 |
   | no lookup row | 2,353 |
-  | routed differently: one kind (`side channel` 32,740, `bad code` 16,525, `share` 3,212, `edge` 2,926, `other place` 1,627, `outlet` 95, `side polygon` 5, `other stream` 4) | 57,134 |
-  | routed differently: several kinds | 37,581 |
+  | routed differently: one kind (`side channel` 32,742, `bad code` 16,525, `share` 3,212, `edge` 2,926, `other place` 1,627, `outlet` 95, `side polygon` 5, `other stream` 4) | 57,136 |
+  | routed differently: several kinds | 37,579 |
   | local codes out of order on the line | 492 |
   | lookup row not what its definition gives; segment code more than one level deep; not explained | 293 |
 
@@ -358,7 +360,8 @@ Re-run on the fork at 37ca338 (2026-10-10 and 11), the same exports:
   (181,075 ha in all): an estimate, not a measured catchment.
 - "Lies in" is a midpoint test. Land between a river and its side channels (bars, islands, floodplain) has
   codes that do not say which channel it drains to; here it stays with the river unless a side-channel segment's
-  midpoint is inside the polygon.
+  midpoint is inside the polygon and no main-flow segment of the polygon's own stream is
+  (NewGraphEnvironment/fwapg#53).
 - 53,208 polygons (838,859 ha) belong to no tree segment: their watershed code is on no stream of the network
   and has no ancestor in the tree (land that drains to the sea or out of BC with no mapped stream). 20 more
   (351 ha) lie below the lowest main-flow tree segment of their stream.

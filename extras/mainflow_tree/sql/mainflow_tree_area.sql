@@ -21,15 +21,18 @@
 --   2. range:     a polygon whose codes are on no main-flow segment goes to
 --                 the highest main-flow segment in its range that lies in it.
 --   3. pair_side: failing that, a polygon whose codes are on reattached or
---                 followed segments goes to the top one of them that lies in it.
+--                 followed segments, and that no main-flow segment of its own
+--                 watershed code lies in, goes to the top one of them that
+--                 lies in it.
 --   4. lower:     failing those, the top segment of the main-flow reach on its
 --                 watershed code at the greatest local code at or below its own.
 --   5. ancestor:  failing that, on its nearest ancestor code in the tree, the
 --                 top segment of the main-flow reach at the greatest local code
 --                 strictly below the code of the branch it lies on (a tributary
 --                 is not upstream of the reach that starts at its own junction).
--- Only rule 3 gives a polygon to a side channel, so a side channel carries what
--- enters it and the polygons it alone lies in.
+-- Only rule 3 gives a polygon to a side channel, and only where no main flow
+-- of the polygon's own stream lies in it, so a side channel carries what enters
+-- it and the polygons that it, and not its river, lies in.
 -- "Lies in it" is geometry, not codes: the segment's midpoint is inside the
 -- polygon (the test the lookup's own fallback uses). Codes say which segments
 -- could lie in a polygon; of the 23,897 polygons a codes-only version of rule 1
@@ -304,10 +307,14 @@ FROM area_lift l
 WHERE l.watershed_feature_id = p.watershed_feature_id;
 
 -- Rule 3: a polygon whose pair is on side-channel segments only, and that no
--- main-flow segment lies in, goes to the top side-channel segment of the pair
--- that lies in it: reattached before followed, then the lowest blue line key.
--- Main flow comes first because a polygon that holds both is the river's: one
--- polygon had a 48 m side-channel segment and 18 km of main flow in it.
+-- main-flow segment of its own watershed code lies in, goes to the top
+-- side-channel segment of the pair that lies in it: reattached before followed,
+-- then the lowest blue line key. Main flow of its own stream comes first
+-- because a polygon that holds both is the river's: one polygon had a 48 m
+-- side-channel segment and 18 km of main flow in it, and four more held main
+-- flow that was outside their code range. (Main flow of another stream in the
+-- polygon, a tributary crossing to the side channel, does not count: 1,177
+-- polygons.)
 CREATE TEMPORARY TABLE area_side_hit AS
 SELECT DISTINCT ON (p.watershed_feature_id)
   p.watershed_feature_id, g.linear_feature_id
@@ -319,6 +326,15 @@ INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = g.
 WHERE p.method IS DISTINCT FROM 'pair'
 AND p.method IS DISTINCT FROM 'range'
 AND ST_Intersects(w.geom, ST_LineInterpolatePoint(s.geom, 0.5))
+AND NOT EXISTS (
+  SELECT 1
+  FROM whse_basemapping.fwa_stream_networks_sp m
+  INNER JOIN area_seg ms ON ms.linear_feature_id = m.linear_feature_id
+  WHERE ST_Intersects(w.geom, m.geom)
+  AND ms.source = 'mainflow'
+  AND ms.wscode_ltree = c.wscode_ltree
+  AND ST_Intersects(w.geom, ST_LineInterpolatePoint(m.geom, 0.5))
+)
 ORDER BY p.watershed_feature_id, g.source_rank, g.blue_line_key, g.drm DESC, g.linear_feature_id;
 
 UPDATE fwapg.mainflow_tree_area_polygons p

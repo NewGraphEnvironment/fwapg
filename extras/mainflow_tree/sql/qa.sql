@@ -337,8 +337,7 @@ FROM mouth;
 
 -- each polygon is on a segment its rule allows, read from the polygon's and the
 -- segment's codes (mainflow_tree_area.sql's header has the rules). Only
--- pair_side may put a polygon on a side channel: a side channel carries what
--- enters it and the polygons it alone lies in.
+-- pair_side may put a polygon on a side channel.
 SELECT 'every polygon is on a segment its rule allows, and only pair_side on a side channel' AS test,
   count(*) FILTER (WHERE p.method = 'pair') > 3000000
   AND count(*) FILTER (WHERE p.method = 'pair_side') > 0
@@ -382,6 +381,25 @@ OR (
   p.method IN ('pair', 'range')
   AND s.localcode_ltree > CASE WHEN w.localcode_ltree <@ w.wscode_ltree THEN w.localcode_ltree ELSE w.wscode_ltree END
 );
+
+-- a polygon on a side channel holds no main flow of its own stream: where both
+-- lie in it, it is the river's. By geometry, over every polygon on a side
+-- channel; the floor shows the test saw them.
+SELECT 'no polygon on a side channel has main flow of its own stream lying in it' AS test,
+  count(*) > 1000
+  AND count(*) FILTER (WHERE EXISTS (
+    SELECT 1
+    FROM whse_basemapping.fwa_stream_networks_sp m
+    INNER JOIN whse_basemapping.fwa_stream_networks_mainflow_tree mt ON mt.linear_feature_id = m.linear_feature_id
+    WHERE ST_Intersects(w.geom, m.geom)
+    AND mt.source = 'mainflow'
+    AND m.wscode_ltree = w.wscode_ltree
+    AND ST_Intersects(w.geom, ST_LineInterpolatePoint(m.geom, 0.5))
+  )) = 0 AS result
+FROM fwapg.mainflow_tree_area_polygons p
+INNER JOIN whse_basemapping.fwa_watersheds_poly w ON w.watershed_feature_id = p.watershed_feature_id
+INNER JOIN whse_basemapping.fwa_stream_networks_mainflow_tree t ON t.linear_feature_id = p.linear_feature_id
+WHERE t.source != 'mainflow';
 
 -- the ceilings are the 2026-11 counts (README): steps across a gap, and segments
 -- with nothing above them that were given a length share of the polygon they lie in

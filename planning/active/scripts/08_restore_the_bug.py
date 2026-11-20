@@ -49,6 +49,9 @@ CASES = [
     ("every polygon is on a segment its rule allows",
      "UPDATE fwapg.mainflow_tree_area_polygons SET linear_feature_id = 123039830 WHERE watershed_feature_id = "
      "(SELECT min(watershed_feature_id) FROM fwapg.mainflow_tree_area_polygons WHERE method = 'lower')"),
+    # a polygon holding its own stream's main flow, given to a side channel (round 5: BABL 7706821)
+    ("no polygon on a side channel has main flow of its own stream lying in it",
+     "UPDATE fwapg.mainflow_tree_area_polygons SET linear_feature_id = 4020241, method = 'pair_side' WHERE watershed_feature_id = 7706821"),
     # a polygon on a side channel that does not lie in it (what a codes-only rule 2 did)
     ("is on a segment that lies in it",
      "UPDATE fwapg.mainflow_tree_area_polygons SET linear_feature_id = 87082084 WHERE watershed_feature_id = "
