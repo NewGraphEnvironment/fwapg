@@ -48,12 +48,15 @@ Which segment a polygon goes to follows the lookup's own rule (`FWA_Upstream`, a
 plain main flow agrees with the lookup. In order:
 
 1. `pair`: a polygon whose codes (watershed code and local code) are on main-flow segments goes to the top
-   segment of that reach, and from there up its line, through reaches with no polygon of their own code, to the
-   highest segment that lies in it.
-2. `pair_side`: a polygon whose codes are on reattached or followed segments only goes to the top one of them
-   that lies in it; where none does, rules 3 to 5 place it on main flow.
-3. `range`: a polygon whose codes are on no segment goes to the highest main-flow segment in its range (local
-   codes above its own and below the next that has a polygon) that lies in it.
+   segment of that reach, and from there up its line to the highest segment in its range that lies in it. Its
+   range: segments with no polygon of their own code, whose local code is above the polygon's and below the
+   next that has a polygon.
+2. `range`: a polygon whose codes are on no main-flow segment goes to the highest main-flow segment in its
+   range that lies in it (on the line with the lowest `blue_line_key`, where two lines have one).
+3. `pair_side`: failing that, a polygon whose codes are on reattached or followed segments goes to the top one
+   of them that lies in it (reattached before followed, then the lowest `blue_line_key`: 100 polygons, 3,226 ha,
+   have such segments on several lines). Main flow comes first because a polygon that holds both is the
+   river's: one polygon had a 48 m side-channel segment and 18 km of main flow in it.
 4. `lower`: failing those, the top segment of the main-flow reach on its watershed code at the greatest local
    code at or below its own.
 5. `ancestor`: failing that, on its nearest ancestor code in the tree, the top segment of the main-flow reach at
@@ -64,10 +67,12 @@ say where a polygon could be; they do not say where it is. A version of these ru
 put a polygon on a segment up its line that did not touch it for 6,368 of 23,897 polygons, on a side channel
 that did not touch it for 5,470 of 8,431, and moved three cross-border polygons of 63,000 to 767,000 ha onto
 the wrong lines. So a polygon leaves the place its codes give (rules 4 and 5, and the top of its own reach)
-only for a segment that lies in it. Only rule 2 gives a polygon to a side channel, so a side channel carries
-what enters it and the polygons it lies in.
+only for a segment that lies in it. Only rule 3 gives a polygon to a side channel, so a side channel carries
+what enters it and the polygons it alone lies in.
 
-A polygon with no local code, or with one that is not under its own watershed code, sits at its stream's mouth.
+A polygon with no local code, or with one that is not under its own watershed code, is placed as if its local
+code were its stream's mouth code (1,435 of the 1,457 such polygons end on a mouth-reach segment; 19 go up their
+line by rule 1 and 3 are `ancestor`).
 A polygon none of the rules places is listed in `fwapg.mainflow_tree_area_unassigned` with the reason: under
 `999`; `no stream` (its watershed code and every ancestor of it are on no tree segment); or `below the tree`
 (no main-flow reach is at or below it by its codes: it lies below its stream's lowest main-flow tree segment,
@@ -183,8 +188,8 @@ In the 2026-11 build (the 2026-10 tree; 3,245,453 watershed polygons):
 | polygons | | area (ha) |
 |---|---|---|
 | `pair` (15,867 of them, 3,547,842 ha, moved up their line to a segment that lies in them) | 3,181,977 | 93,747,827 |
-| `pair_side` | 1,825 | 108,013 |
-| `range` | 11 | 154,608 |
+| `range` | 12 | 164,282 |
+| `pair_side` | 1,824 | 98,338 |
 | `lower` | 8,332 | 16,130,088 |
 | `ancestor` | 20 | 2,128 |
 | unassigned, no stream of their code or an ancestor code in the tree | 53,208 | 838,859 |
@@ -205,8 +210,8 @@ In the 2026-11 build (the 2026-10 tree; 3,245,453 watershed polygons):
 - **Basins at their mouth:** Skeena 5,440,479 ha, Nechako 4,725,749 ha, Fraser 23,203,431 ha. The Skeena and
   the Nechako are within 0.01% of the polygons under their watershed code and the Fraser within 0.06%; the
   differences are streams a step across a gap brings in and dead ends inside the basin.
-- **Length shares:** 1,899 segments, 181,108 ha out of 1,116 polygons (median share 14 ha, the largest
-  37,633 ha, in a cross-border polygon that size). 1,457 polygons (45,175 ha) have a local code that is not
+- **Length shares:** 1,898 segments, 181,075 ha out of 1,116 polygons (median share 14 ha; the largest is
+  37,633 ha of a 42,667 ha polygon). 1,457 polygons (45,175 ha) have a local code that is not
   under their watershed code.
 - **Against the lookup** (`sql/qa_area.sql`): of 4,362,376 main-flow segments whose lookup polygon has both
   their codes and whose local code is in order on their line, 4,288,277 have nothing upstream routed
@@ -347,8 +352,8 @@ Re-run on the fork at 37ca338 (2026-10-10 and 11), the same exports:
 - Upstream area is the tree's: a segment below one of the 384 outlets inside BC where the network ends (383 dead
   ends and 1 cut-off, 179,631 ha above them, the largest 50,535 ha) does not carry the area above it, and neither
   does one below a mouth with no parent.
-- 1,899 segments with no polygon at or above them carry a length share of the polygon they lie in
-  (181,108 ha in all): an estimate, not a measured catchment.
+- 1,898 segments with no polygon at or above them carry a length share of the polygon they lie in
+  (181,075 ha in all): an estimate, not a measured catchment.
 - "Lies in" is a midpoint test. Land between a river and its side channels (bars, islands, floodplain) has
   codes that do not say which channel it drains to; here it stays with the river unless a side-channel segment's
   midpoint is inside the polygon.

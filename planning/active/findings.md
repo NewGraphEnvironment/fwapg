@@ -581,6 +581,40 @@ comparison with the lookup, which `mainflow_tree.sh` runs before the tests. Held
 the comparison only: the order of rules 2 and 3 where both could apply; which run of a reappearing pair
 is taken; rule 2's tie-breaks.
 
+## Review round 4 (2026-11-20, `review-round4.md`): the enumeration
+
+The reviewer re-derived every polygon's code position, and every move away from it, with its own
+queries, and compared with the build, for all 3,245,453 polygons (commit 6dcacac):
+
+| method | polygons (ha) | at code position | elsewhere | elsewhere: midpoint inside | elsewhere: not touching |
+|---|---|---|---|---|---|
+| `pair` | 3,181,977 (93,747,827) | 3,166,110 | 15,867 (3,547,842 ha) | 15,867 | 0 |
+| `pair_side` | 1,825 (108,013) | 0 | 1,825 | 1,825 | 0 |
+| `range` | 11 (154,608) | 0 | 11 | 11 | 0 |
+| `lower` | 8,332 (16,130,088) | 8,332 | 0 | | |
+| `ancestor` | 20 (2,128) | 20 | 0 | | |
+| unassigned | 53,288 (842,833) | 53,288 (no rule gives a segment) | 0 | | |
+
+So the mechanism of rounds 1 to 3 (a relation between codes taken for a place) has no instance left:
+every polygon away from its code position is on a segment that lies in it. This is what ends the loop.
+Where a tie-break was needed the reviewer used the documented one, so agreement shows the build does
+what it says, not that the tie-break is right.
+
+Its findings, each fixed:
+
+| finding | what was done |
+|---|---|
+| one polygon (9941495, TATR, 9,674 ha) where a side-channel segment and 18 km of main flow both lie in it went to the 48 m side-channel segment; 76 main-flow segments read about 9,400 to 12,000 ha low | main flow comes before a side channel (`range` before `pair_side`); checked by comparing placements before and after: exactly this polygon moved |
+| "a bad-code polygon sits at its stream's mouth" is not true of 22 of 1,457 | reworded: placed as if its local code were the mouth's (19 then go up their line by rule 1, 3 are `ancestor`) |
+| the largest length share's polygon is 42,667 ha, not "that size" | corrected |
+| tie-breaks the text did not state (rule 3 across lines; rule 2's side-channel pick; rule 1 passing a segment with its own polygon) | stated in the README and the SQL header |
+| SQL comments left behind where the README was rewritten | fixed |
+| marker weights: a 40-bit hash is not guaranteed unique | 48 bits, and the comparison stops if two markers share a number or a kind has 65,536 markers or more |
+
+**The build after round 4** (column checksum `a7fe4b7c…`): as after round 3 except `pair_side` 1,824
+(98,338 ha), `range` 12 (164,282 ha), shares 1,898 segments (181,075 ha). The comparison's counts and
+classes are unchanged. All 25 tests print `t`; all 16 restore-the-bug cases fire.
+
 ## Errors Encountered
 
 | Error | Resolution |

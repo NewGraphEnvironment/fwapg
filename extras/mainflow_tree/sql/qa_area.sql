@@ -178,10 +178,12 @@ WHERE p.linear_feature_id IS NOT NULL
 AND NOT w.localcode_ltree <@ w.wscode_ltree;
 
 -- Each marker gets a number of its own, in a slot of its kind: 2^64 per slot,
--- the number under 2^40, so the sum over any set of markers is exact and two
+-- the number a 48-bit hash, so the sum over any set of markers is exact and two
 -- sums are equal in a slot only when the two sets of that kind are the same
 -- (counts would let a marker the tree has and the codes lack cancel one the
--- other way round).
+-- other way round). Two things that must hold are checked below: no two
+-- markers share a number, and a kind has fewer than 2^16 markers, so no sum
+-- can leave its slot.
 CREATE TEMPORARY TABLE qa_slot AS
 WITH RECURSIVE slot (kind, base) AS (
   SELECT 1, 1::numeric
@@ -193,7 +195,7 @@ SELECT kind, base FROM slot;
 ALTER TABLE qa_marker ADD COLUMN weight numeric;
 
 UPDATE qa_marker m
-SET weight = (1 + ('x' || substr(md5(n.n::text), 1, 10))::bit(40)::bigint) * sl.base
+SET weight = (1 + ('x' || substr(md5(n.n::text), 1, 12))::bit(48)::bigint) * sl.base
 FROM (
   SELECT ctid AS row_id, row_number() OVER (ORDER BY kind, at_id, wscode_ltree, localcode_ltree) AS n
   FROM qa_marker
@@ -201,6 +203,18 @@ FROM (
 INNER JOIN qa_slot sl ON true
 WHERE n.row_id = m.ctid
 AND sl.kind = m.kind;
+
+DO $$
+DECLARE
+  repeated bigint;
+  largest bigint;
+BEGIN
+  SELECT count(*) - count(DISTINCT weight) INTO repeated FROM qa_marker;
+  SELECT max(n) INTO largest FROM (SELECT count(*) AS n FROM qa_marker GROUP BY kind) k;
+  IF repeated > 0 OR largest >= 65536 THEN
+    RAISE EXCEPTION 'marker weights: % repeated, % markers in the largest kind (limit 65,535)', repeated, largest;
+  END IF;
+END $$;
 
 -- the positions a marker's codes put it above, as FWA_Upstream has it: on its
 -- own stream at its local code and below (own, polygons only), and on each

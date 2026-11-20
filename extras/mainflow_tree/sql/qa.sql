@@ -311,7 +311,7 @@ WHERE t.linear_feature_id = 87078680;
 -- each polygon is on a segment its rule allows, read from the polygon's and the
 -- segment's codes (mainflow_tree_area.sql's header has the rules). Only
 -- pair_side may put a polygon on a side channel: a side channel carries what
--- enters it and the polygons that are its own by their codes.
+-- enters it and the polygons it alone lies in.
 SELECT 'every polygon is on a segment its rule allows, and only pair_side on a side channel' AS test,
   count(*) FILTER (WHERE p.method = 'pair') > 3000000
   AND count(*) FILTER (WHERE p.method = 'pair_side') > 0
@@ -338,7 +338,7 @@ INNER JOIN whse_basemapping.fwa_stream_networks_mainflow_tree t ON t.linear_feat
 WHERE p.linear_feature_id IS NOT NULL;
 
 -- by geometry, not by codes: a polygon placed away from the place its codes
--- give (rule 1 up its line, rule 2 on a side channel, rule 3) is on a segment
+-- give (rule 1 up its line, rule 2, rule 3 on a side channel) is on a segment
 -- that lies in it, its midpoint inside the polygon. Codes alone put 6,368
 -- polygons on a segment up their line that did not touch them, and 5,470 on a
 -- side channel that did not. The floor shows the test saw such placements.
@@ -361,9 +361,9 @@ OR (
 -- A segment that gives a share keeps what is left of the polygon; where the
 -- shares are the whole polygon that is float noise, which must not be the
 -- segment's whole area (it would read as positive).
-SELECT 'at most 97 steps across a gap and 1,899 segments given a length share' AS test,
+SELECT 'at most 97 steps across a gap and 1,898 segments given a length share' AS test,
   (SELECT count(*) FROM fwapg.mainflow_tree_area WHERE downstream_method IN ('line', 'junction')) BETWEEN 1 AND 97
-  AND (SELECT count(*) FROM fwapg.mainflow_tree_area_shares) BETWEEN 1 AND 1899
+  AND (SELECT count(*) FROM fwapg.mainflow_tree_area_shares) BETWEEN 1 AND 1898
   AND (SELECT count(*) FROM fwapg.mainflow_tree_area WHERE shared_area_ha > 0)
     = (SELECT count(*) FROM fwapg.mainflow_tree_area_shares)
   AND (SELECT count(*) FROM fwapg.mainflow_tree_area WHERE shared_area_ha < 0 AND upstream_area_ha < 1e-6) = 0 AS result;

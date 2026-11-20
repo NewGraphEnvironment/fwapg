@@ -50,7 +50,7 @@ CASES = [
     ("is on a segment that lies in it",
      "UPDATE fwapg.mainflow_tree_area_polygons SET linear_feature_id = 87082084 WHERE watershed_feature_id = "
      "(SELECT min(watershed_feature_id) FROM fwapg.mainflow_tree_area_polygons WHERE method = 'pair_side' AND linear_feature_id != 87082084)"),
-    ("at most 97 steps across a gap and 1,899 segments given a length share",
+    ("at most 97 steps across a gap and 1,898 segments given a length share",
      f"INSERT INTO fwapg.mainflow_tree_area_shares SELECT linear_feature_id, NULL, 1 FROM {AREA} "
      "WHERE shared_area_ha IS NULL LIMIT 1"),
     ("main flow agrees with the lookup where nothing upstream is routed differently",

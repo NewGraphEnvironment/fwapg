@@ -14,32 +14,32 @@
 -- terms, in order:
 --   1. pair:      a polygon whose codes (watershed code, local code) are on
 --                 main-flow segments goes to the top segment of that reach,
---                 and from there up its line, through reaches with no polygon
---                 of their own code, to the highest segment that lies in it.
---   2. pair_side: a polygon whose codes are on reattached or followed segments
---                 only goes to the top one of them that lies in it; where none
---                 does, rules 3 to 5 place it on main flow.
---   3. range:     a polygon whose codes are on no segment goes to the highest
---                 main-flow segment in its range (local codes above its own and
---                 below the next that has a polygon) that lies in it.
+--                 and from there up its line to the highest segment in its
+--                 range that lies in it. Its range: segments with no polygon
+--                 of their own code, whose local code is above the polygon's
+--                 and below the next that has a polygon.
+--   2. range:     a polygon whose codes are on no main-flow segment goes to
+--                 the highest main-flow segment in its range that lies in it.
+--   3. pair_side: failing that, a polygon whose codes are on reattached or
+--                 followed segments goes to the top one of them that lies in it.
 --   4. lower:     failing those, the top segment of the main-flow reach on its
 --                 watershed code at the greatest local code at or below its own.
 --   5. ancestor:  failing that, on its nearest ancestor code in the tree, the
 --                 top segment of the main-flow reach at the greatest local code
 --                 strictly below the code of the branch it lies on (a tributary
 --                 is not upstream of the reach that starts at its own junction).
--- Only rule 2 gives a polygon to a side channel, so a side channel carries what
--- enters it and the polygons that are its own by their codes.
+-- Only rule 3 gives a polygon to a side channel, so a side channel carries what
+-- enters it and the polygons it alone lies in.
 -- "Lies in it" is geometry, not codes: the segment's midpoint is inside the
 -- polygon (the test the lookup's own fallback uses). Codes say which segments
 -- could lie in a polygon; of the 23,897 polygons a codes-only version of rule 1
 -- moved up their line, the segment they landed on did not touch the polygon for
--- 6,368; for rule 3 it was 67 of 96, three of them cross-border polygons of
--- 63,000 to 767,000 ha; and of the 8,431 a codes-only rule 2 gave to a side
+-- 6,368; for rule 2 it was 67 of 96, three of them cross-border polygons of
+-- 63,000 to 767,000 ha; and of the 8,431 a codes-only rule 3 gave to a side
 -- channel, no side-channel segment of the pair was in or touching 5,470.
 -- A polygon none of these places is listed in fwapg.mainflow_tree_area_unassigned,
 -- with the reason: under 999, no stream of its code or an ancestor code in the
--- tree, or below the lowest tree segment of its stream.
+-- tree, or no main-flow reach at or below it by its codes.
 --
 -- A segment with nothing above it after that lies in another stream's polygon
 -- (a stream with no polygon of its own). It takes a share of the polygon at its
@@ -127,7 +127,8 @@ ANALYZE area_down;
 
 -- 3. the polygons, with their area as the lookup sums it (ST_Area, not the
 -- area_ha attribute). A polygon with no local code, or with one that is not
--- under its own watershed code, sits at its stream's mouth. (FWA_Upstream has
+-- under its own watershed code, is placed as if its local code were its
+-- stream's mouth code. (FWA_Upstream has
 -- guards on the local code in two of its three cases, so the lookup leaves
 -- such a polygon out at its stream's mouth reach and on every ancestor the
 -- local code is not under.)
@@ -213,7 +214,7 @@ ORDER BY wscode_ltree, localcode_ltree, line_segments DESC, blue_line_key, botto
 ALTER TABLE area_reach ADD PRIMARY KEY (wscode_ltree, localcode_ltree);
 ANALYZE area_reach;
 
--- rule 2's candidates: reattached and followed segments whose pair is on no
+-- rule 3's candidates: reattached and followed segments whose pair is on no
 -- main-flow segment
 CREATE TEMPORARY TABLE area_side AS
 SELECT s.wscode_ltree, s.localcode_ltree, s.linear_feature_id, s.blue_line_key, s.drm,
@@ -276,30 +277,12 @@ LEFT JOIN LATERAL (
 ALTER TABLE fwapg.mainflow_tree_area_polygons ADD PRIMARY KEY (watershed_feature_id);
 
 -- then by where it is (a segment lies in a polygon when its midpoint is inside
--- it). Rule 2: a polygon whose pair is on side-channel segments only goes to
--- the top one that lies in it, reattached before followed.
-CREATE TEMPORARY TABLE area_side_hit AS
-SELECT DISTINCT ON (p.watershed_feature_id)
-  p.watershed_feature_id, g.linear_feature_id
-FROM fwapg.mainflow_tree_area_polygons p
-INNER JOIN area_poly c ON c.watershed_feature_id = p.watershed_feature_id
-INNER JOIN area_side g ON g.wscode_ltree = c.wscode_ltree AND g.localcode_ltree = c.localcode_ltree
-INNER JOIN whse_basemapping.fwa_watersheds_poly w ON w.watershed_feature_id = p.watershed_feature_id
-INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = g.linear_feature_id
-WHERE p.method IS DISTINCT FROM 'pair'
-AND ST_Intersects(w.geom, ST_LineInterpolatePoint(s.geom, 0.5))
-ORDER BY p.watershed_feature_id, g.source_rank, g.blue_line_key, g.drm DESC, g.linear_feature_id;
-
-UPDATE fwapg.mainflow_tree_area_polygons p
-SET linear_feature_id = l.linear_feature_id, method = 'pair_side'
-FROM area_side_hit l
-WHERE l.watershed_feature_id = p.watershed_feature_id;
-
--- Rules 1 and 3: up to the highest main-flow segment in its range that lies in
--- it. For rule 1 that is a segment above its reach on the same line; for a
--- polygon whose codes are on no segment (rule 3) any main-flow segment in its
--- range, which replaces what rules 4 and 5 gave it, or gives it a segment where
--- they gave none.
+-- it). Rules 1 and 2: up to the highest main-flow segment in its range that
+-- lies in it. For rule 1 that is a segment above its reach on the same line;
+-- for a polygon whose codes are on no main-flow segment (rule 2) any main-flow
+-- segment in its range, on the line with the lowest key where two lines have
+-- one; it replaces what rules 4 and 5 gave the polygon, or gives it a segment
+-- where they gave none.
 CREATE TEMPORARY TABLE area_lift AS
 SELECT DISTINCT ON (p.watershed_feature_id)
   p.watershed_feature_id, g.linear_feature_id
@@ -309,8 +292,7 @@ INNER JOIN area_above g ON g.wscode_ltree = c.wscode_ltree AND g.grp = c.localco
 LEFT JOIN area_seg t ON t.linear_feature_id = p.linear_feature_id
 INNER JOIN whse_basemapping.fwa_watersheds_poly w ON w.watershed_feature_id = p.watershed_feature_id
 INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = g.linear_feature_id
-WHERE p.method IS DISTINCT FROM 'pair_side'
-AND (p.method IS DISTINCT FROM 'pair' OR (g.blue_line_key = t.blue_line_key AND g.drm > t.drm))
+WHERE (p.method IS DISTINCT FROM 'pair' OR (g.blue_line_key = t.blue_line_key AND g.drm > t.drm))
 AND ST_Intersects(w.geom, ST_LineInterpolatePoint(s.geom, 0.5))
 ORDER BY p.watershed_feature_id, g.blue_line_key, g.drm DESC, g.linear_feature_id;
 
@@ -319,6 +301,29 @@ SET
   linear_feature_id = l.linear_feature_id,
   method = CASE WHEN p.method = 'pair' THEN 'pair' ELSE 'range' END
 FROM area_lift l
+WHERE l.watershed_feature_id = p.watershed_feature_id;
+
+-- Rule 3: a polygon whose pair is on side-channel segments only, and that no
+-- main-flow segment lies in, goes to the top side-channel segment of the pair
+-- that lies in it: reattached before followed, then the lowest blue line key.
+-- Main flow comes first because a polygon that holds both is the river's: one
+-- polygon had a 48 m side-channel segment and 18 km of main flow in it.
+CREATE TEMPORARY TABLE area_side_hit AS
+SELECT DISTINCT ON (p.watershed_feature_id)
+  p.watershed_feature_id, g.linear_feature_id
+FROM fwapg.mainflow_tree_area_polygons p
+INNER JOIN area_poly c ON c.watershed_feature_id = p.watershed_feature_id
+INNER JOIN area_side g ON g.wscode_ltree = c.wscode_ltree AND g.localcode_ltree = c.localcode_ltree
+INNER JOIN whse_basemapping.fwa_watersheds_poly w ON w.watershed_feature_id = p.watershed_feature_id
+INNER JOIN whse_basemapping.fwa_stream_networks_sp s ON s.linear_feature_id = g.linear_feature_id
+WHERE p.method IS DISTINCT FROM 'pair'
+AND p.method IS DISTINCT FROM 'range'
+AND ST_Intersects(w.geom, ST_LineInterpolatePoint(s.geom, 0.5))
+ORDER BY p.watershed_feature_id, g.source_rank, g.blue_line_key, g.drm DESC, g.linear_feature_id;
+
+UPDATE fwapg.mainflow_tree_area_polygons p
+SET linear_feature_id = l.linear_feature_id, method = 'pair_side'
+FROM area_side_hit l
 WHERE l.watershed_feature_id = p.watershed_feature_id;
 
 CREATE INDEX ON fwapg.mainflow_tree_area_polygons (linear_feature_id);
@@ -513,7 +518,7 @@ SELECT
       INNER JOIN area_tree_codes c ON c.wscode_ltree = subpath(w.wscode_ltree, 0, g.n)
     ) THEN 'no stream'
     -- its stream or an ancestor is in the tree, but no main-flow reach is at or
-    -- below it by its codes: it lies below the lowest tree segment (a stream
+    -- below it by its codes: it lies below the lowest main-flow tree segment (a stream
     -- that leaves BC further down)
     WHEN NOT EXISTS (
       SELECT 1 FROM area_reach r
