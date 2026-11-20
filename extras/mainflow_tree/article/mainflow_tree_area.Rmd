@@ -120,9 +120,9 @@ case_map <- function(case, basemap = "positron", extra = list(), fit_ids = NULL)
 ```
 
 ```{r checks, include = FALSE}
-# Every number the article takes from the extracts, held to what it says and,
-# where the README quotes it, to the README of extras/mainflow_tree (the
-# 2026-11 build). A render whose extracts disagree stops here.
+# The key figures of each case and the chart, held to the extracts and, where
+# the README of extras/mainflow_tree quotes one, to the README (the 2026-11
+# build). A render whose extracts disagree stops here.
 need <- function(ok, msg) if (!isTRUE(ok)) stop("check failed: ", msg, call. = FALSE)
 near <- function(x, want, tol = 0.5) length(x) == 1L && !is.na(x) && abs(x - want) <= tol
 area_of <- function(s, id) s$upstream_area_ha[s$linear_feature_id == id]
@@ -148,8 +148,9 @@ need(near(area_of(s1, 123040522), 51.8, 0.05) && s1$downstream_id[s1$linear_feat
 lk1 <- s1$lookup_area_ha[s1$blue_line_key == 360216952 & s1$tree]
 need(length(lk1) > 0 && all(lk1 >= 4.26e6 & lk1 < 5.115e6), "case 1: the lookup gives 360216952 within the README's 4.26 to 5.11 million ha")
 cs <- read.csv(ex("confluence_share.csv"))
-need(near(cs$share_tree[cs$linear_feature_id == 123043588], 0.0104, 0.0005),
-     "case 1: side-channel mouth 123043588 carries about 0.0104 of its confluence")
+need(near(cs$share_tree[cs$linear_feature_id == 123043588], 0.0104, 0.0005) &&
+       near(cs$share_lookup[cs$linear_feature_id == 123043588], 0.5, 0.001),
+     "case 1: side-channel mouth 123043588 carries about 0.0104 of its confluence, half with the lookup")
 
 # case 2: a polygon moved up its line
 p2 <- read_case("case2", "polygons")
@@ -238,6 +239,8 @@ p7 <- read_case("case7", "polygons")
 two7 <- p7[p7$watershed_feature_id %in% c(8628560, 8632200), ]
 code7 <- function(id) s7$localcode[s7$linear_feature_id == id]
 need(nrow(two7) == 2 && all(two7$linear_feature_id == 212038745) &&
+       near(two7$area_ha[two7$watershed_feature_id == 8628560], 0.214, 0.0005) &&
+       near(two7$area_ha[two7$watershed_feature_id == 8632200], 1.418, 0.0005) &&
        near(sum(two7$area_ha), u7$lookup_area_ha - u7$upstream_area_ha, 1e-6),
      "case 7: polygons 8628560 and 8632200 go to 212038745 and are the whole difference")
 need(identical(code7(212038745), code7(212038783)) && code7(212038785) < code7(212038783),
@@ -255,7 +258,7 @@ need(sum(is.na(cs$share_lookup)) == 711 && all(cs$lookup_missing[is.na(cs$share_
 
 The main-flow tree (`extras/mainflow_tree`) gives every segment an upstream area: each fundamental watershed polygon goes to one tree segment, and the areas are summed down the tree. Its rules were written from watershed codes and then corrected from counts. This page puts seven of them on a map, one case each, so the rules can be judged on the ground.
 
-How to read a map. Streams are coloured by the tree's upstream area, over a white casing, and a segment the tree leaves out is grey. Polygons are filled by the rule that placed them (`pair`, `range`, `pair_side`, `lower`, `ancestor`). The case's own segments sit under an orange halo, and its polygon has a black outline. Click a stream or a polygon for its numbers, and use the switch at the top right to hide a layer. The data are extracts of the 2026-11 build (`article_extract.sh`), and the numbers each case and the chart take from the extracts are checked when the page renders, against `extras/mainflow_tree/README.md` where it quotes one. The province-wide counts are the README's. Some facts are from the database as it was when this was written, since the extracts cannot show them: case 2's three segments crossed, case 3's midpoint margins (4e-11 m inside, 0 m outside), case 4's polygon lying outside BC, case 6's mouth on BC's edge and its 1.6 km and 42 m, and case 7's measures along its line.
+How to read a map. Streams are coloured by the tree's upstream area, over a white casing, and a segment the tree leaves out is grey. Polygons are filled by the rule that placed them (`pair`, `range`, `pair_side`, `lower`, `ancestor`). The case's own segments sit under an orange halo, and its polygon has a black outline. Click a stream or a polygon for its numbers, and use the switch at the top right to hide a layer. The data are extracts of the 2026-11 build (`article_extract.sh`), and when the page renders, a `checks` chunk holds the key figures of each case and of the chart to the extracts, and to `extras/mainflow_tree/README.md` where it quotes one. The province-wide counts are the README's. The other figures in the readings were measured against the database on 2026-11-20, among them the ones the extracts cannot show: case 3's midpoint margins (4e-11 m inside, 0 m outside), case 4's polygon lying outside BC, and case 6's mouth on BC's edge.
 
 ## 1. A Skeena test side channel
 
@@ -279,7 +282,7 @@ case_map("case1", "esri_satellite")
 f2 <- prep_polys(f2)
 ```
 
-A polygon whose codes are on main flow goes to the top segment of its reach, and from there up its line to the highest segment in its range whose midpoint is inside it. Of the polygons rule 1 placed, 15,867 (3,547,842 ha) moved up their line this way. Polygon `r f2$polygon` (LSKE, `r ha(f2$area_ha)`) is the one in LSKE or KLUM, 50 to 500 ha, that crossed the most segments: its local code is `r f2$localcode`, and it went to segment `r f2$given_to`, three segments up its line.
+A polygon whose codes are on main flow goes to the top segment of its reach, and from there up its line to the highest segment in its range whose midpoint is inside it. Of the polygons rule 1 placed, 15,867 (3,547,842 ha) moved up their line this way. Polygon `r f2$polygon` (LSKE, `r ha(f2$area_ha)`) is the one in LSKE or KLUM, 50 to 500 ha, that crossed the most segments: its local code is `r f2$localcode`, and it went to segment `r f2$given_to`, past three segments of its line that have no polygon of their own.
 
 ```{r case2-map, fig.height = 5}
 case_map("case2")

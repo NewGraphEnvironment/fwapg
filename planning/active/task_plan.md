@@ -78,7 +78,7 @@ Plan review (`review-plan.md`, findings 2, 5, 8, 10) changed this phase: checks 
 ## Validation
 - [x] Tests pass: the `checks` chunk; and with one extract number changed by hand, the render stops (restore the bug)
 - [x] Clean-checkout render: in a `git worktree` of the branch, `env -u DATABASE_URL -u PGSERVER ./article_render.sh` exits 0 and writes the HTML
-- [ ] `/code-check` clean (once over the branch, `/code-check branch`)
+- [x] `/code-check` clean (once over the branch, `/code-check branch`)
 - [ ] PWF checkboxes match landed work
 - [ ] `/planning-archive` on completion
 
