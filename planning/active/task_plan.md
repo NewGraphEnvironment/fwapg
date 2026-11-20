@@ -194,22 +194,22 @@ Each is `SELECT '<name>' AS test, <boolean> AS result`, non-NULL over no rows (`
 
 New file `extras/mainflow_tree/sql/mainflow_tree_area.sql`, in the style of `sql/mainflow_tree.sql`.
 
-- [ ] Downstream pointer over tree segments: the tree segment whose upstream node is this segment's
+- [x] Downstream pointer over tree segments: the tree segment whose upstream node is this segment's
       downstream node, nodes at 1 cm (the rule and the `PRIMARY KEY (up_x, up_y)` assertion from
       `planning/archive/2026-10-issue-34-measure-downstream-queries/scripts/sql/01_downstream_ids.sql`)
-- [ ] Junction steps for dead ends and cut-offs from `fwapg.blk_parents` (decision 4), each with its
+- [x] Junction steps for dead ends and cut-offs from `fwapg.blk_parents` (decision 4), each with its
       method; refuse a cycle (every segment reachable from an outlet, as
       `extras/pcic_crosswalk/sql/pcic_crosswalk06_subbasins.sql` checks its tree)
-- [ ] Assign polygons to segments by decision 6; unassigned polygons to
+- [x] Assign polygons to segments by decision 6; unassigned polygons to
       `fwapg.mainflow_tree_area_unassigned` with a class
-- [ ] Local area per segment, then accumulate from the top of the tree down by depth (the level loop of
+- [x] Local area per segment, then accumulate from the top of the tree down by depth (the level loop of
       `pcic_crosswalk06_daily.sql`); if that is not minutes, sum along each blue line first and loop over
       lines
-- [ ] Write `upstream_area_ha` to the tree table and keep `fwapg.mainflow_tree_area`
+- [x] Write `upstream_area_ha` to the tree table and keep `fwapg.mainflow_tree_area`
       (`linear_feature_id`, `downstream_id`, `downstream_method`, `local_area_ha`, `upstream_area_ha`)
 - [ ] Run it from `mainflow_tree.sh` after `sql/mainflow_tree.sql`; record its time against the job's
       20 min
-- [ ] (owner, decision 7) Streams with no polygon of their own take a share of the polygon they lie in,
+- [x] (owner, decision 7) Streams with no polygon of their own take a share of the polygon they lie in,
       by length, recorded by method
 
 ## Phase 4: Compare with the lookup, by class

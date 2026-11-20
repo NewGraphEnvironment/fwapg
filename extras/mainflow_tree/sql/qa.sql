@@ -177,6 +177,7 @@ LEFT JOIN total i ON i.linear_feature_id = a.linear_feature_id;
 
 -- along a blue line, by measure: where two tree segments of a line touch, the
 -- lower one carries at least the upper one's area
+-- (2,967,528 touching pairs in the 2026-11 build; the floor shows the test saw them)
 WITH line AS (
   SELECT
     t.upstream_area_ha,
@@ -188,7 +189,7 @@ WITH line AS (
   WINDOW w AS (PARTITION BY s.blue_line_key ORDER BY s.downstream_route_measure)
 )
 SELECT 'area never decreases downstream along a blue line' AS test,
-  count(*) FILTER (WHERE abs(lower_top - drm) < 0.01) > 4000000
+  count(*) FILTER (WHERE abs(lower_top - drm) < 0.01) > 2000000
   AND count(*) FILTER (
     WHERE abs(lower_top - drm) < 0.01
     AND lower_area_ha < upstream_area_ha - 1e-9 * greatest(upstream_area_ha, 1)

@@ -309,6 +309,21 @@ name it.
 | G10: the fallback's unit must be a piece of a line | not needed | the level loop is fast enough, so the per-line fallback is not built |
 | gate question on the exit status | not the owner's | a script's contract; decided in Phase 5 |
 
+## Phase 3: the build (`extras/mainflow_tree/sql/mainflow_tree_area.sql`, 2026-11-20)
+
+Run alone on the existing tree with the server's default settings: 8 min 27 s the first time, 5 min 18 s
+once the steps across a gap were worked out only for the 27,000 segments with no node step (the lateral
+had been evaluated for all 4.5 million: 2 min 45 s for that statement). The longer steps now: the
+main-flow groups and runs 61 s, polygon assignment 83 s, the two sums 21 s each, writing the column to
+the tree 39 s.
+
+After rule 1 as restated, 1,171 segments have nothing above them (18,489 before it) and take a length
+share. All 19 tests in `sql/qa.sql` print `t`.
+
+One wrong turn: "area never decreases downstream along a blue line" printed `f` on the first run with no
+segment breaking it. The test's floor for the number of touching pairs was a guess (over 4 million); the
+tree has 2,967,528 (4,510,368 segments less one per line). The floor is now 2 million.
+
 ## Errors Encountered
 
 | Error | Resolution |
