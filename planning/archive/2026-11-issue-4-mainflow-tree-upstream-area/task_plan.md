@@ -278,7 +278,7 @@ that reaches the cap is repeated on a machine with more memory instead of with a
       (it rebuilds the blue line paths and drops the tree table); every test `t`; time recorded
 - [x] `/code-check branch`, fixes as follow-up commits (five rounds, ended on an enumeration; findings.md)
 - [x] `/planning-archive` with a README that carries Measurement and Evidence, wrong turns kept
-- [ ] `/gh-pr-push` with `--base newgraph`
+- [x] `/gh-pr-push` with `--base newgraph` (PR #54)
 
 ## Owed at the end (reported, done after merge)
 

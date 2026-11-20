@@ -28,4 +28,5 @@
 - Filed on the way: #52 (the function's empty answer), #53 (side channels and floodplain, the owner's
   question), and an issue in the dotfiles repo about a stale GitHub token in long-lived shells
 - SSNbler suite on the final build: four subsets clean, values equal to plain arithmetic on every edge
-- Next: review verdict, `/planning-archive`, `/gh-pr-push`
+- Review verdict written (five rounds, ended on an enumeration), planning archived, PR #54 opened into `newgraph`
+- Next: the merge is the owner's; after it, close #4 by hand and run LSKE where there is memory

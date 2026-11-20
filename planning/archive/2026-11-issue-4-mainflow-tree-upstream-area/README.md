@@ -42,4 +42,4 @@ On the provincial tree (4,510,368 segments, 3,245,453 polygons), final build, 20
 
 Follow-ups filed: #52 (`FWA_WatershedAtMeasure()` and segments with no local code), #53 (side channels and floodplain: which channel the land between them drains to). #33's body says what the tree's area no longer needs from the lookup.
 
-Closed by: the pull request from branch `4-upstream-area-on-the-main-flow-tree-so-s` into `newgraph`.
+Closed by: PR #54 (branch `4-upstream-area-on-the-main-flow-tree-so-s` into `newgraph`).
