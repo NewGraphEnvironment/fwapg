@@ -16,4 +16,4 @@ A local article (`extras/mainflow_tree/article/`) puts seven cases of the main-f
 
 - After the gq PR merges and releases: name the gq version the article needs in `article/` and the README
 
-Closed by: PR to follow (this branch)
+Closed by: PR #58
