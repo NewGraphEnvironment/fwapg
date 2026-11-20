@@ -16,8 +16,9 @@
 # additive function values from that area (afv_edges, then afv_sites on a fixed
 # sample of points), with no overrides. The step prints one "area:" line and
 # exits 6 if it fails: an edge with no area or none above zero, an additive
-# function value outside (0, 1], an outlet edge whose value is not 1, or a test
-# side channel whose share of its confluence is not small. Only that last check
+# function value outside (0, 1] or different from the same value worked out by
+# plain arithmetic, an outlet edge whose value is not 1, or a test side channel
+# whose share of its confluence is not small. Only that last check
 # can tell a wrong area from a right one, and it runs only where the subset
 # holds one of the three Skeena test side channels; the line says how many.
 #
@@ -109,9 +110,10 @@ if (!identical(Sys.getenv("SSNBLER_AREA"), "1")) quit(status = 0)
 # can: where a test side channel's mouth meets the Skeena, its share of the
 # confluence (segment proportional influence) is the tributary's area over the
 # river's, a few percent. With the watershed lookup's area, which gives a side
-# channel its river's area, it is about a half. The mouth segments of 360216952,
-# 360222216 and 360237491, checked where the subset holds them.
-side_channel_mouths <- c(123041439, 87082084, 87078272)
+# channel its river's area, it is about a half. The segments where 360216952
+# (through side channel 360216962, whose mouth this is), 360222216 and 360237491
+# meet the Skeena, checked where the subset holds them.
+side_channel_mouths <- c(123043588, 87082084, 87078272)
 
 area <- tryCatch({
   if (!"upstream_area_ha" %in% names(streams)) stop("the streams file has no upstream_area_ha column")
@@ -134,6 +136,22 @@ area <- tryCatch({
   afv <- edges$afvArea
   if (nrow(edges) != nrow(streams) || anyNA(afv) || any(afv <= 0 | afv > 1)) {
     stop("additive function values outside (0, 1] on ", sum(is.na(afv) | afv <= 0 | afv > 1), " edges")
+  }
+  # the same values by plain arithmetic, with none of SSNbler's code: an edge's
+  # share is its area over the areas of the edges that flow into the same edge,
+  # and its value is its share times the value of the edge below, 1 at an outlet
+  a <- edges$upstream_area_ha
+  to <- rel$toedge[match(edges$rid, rel$fromedge)]
+  below <- match(to, edges$rid)
+  share <- ifelse(is.na(to), 1, a / tapply(a, to, sum)[as.character(to)])
+  expected <- ifelse(is.na(to), 1, NA_real_)
+  repeat {
+    ready <- is.na(expected) & !is.na(expected[below])
+    if (!any(ready)) break
+    expected[ready] <- share[ready] * expected[below[ready]]
+  }
+  if (anyNA(expected) || max(abs(expected - afv)) > 1e-9 || max(abs(share - edges$areaPI)) > 1e-9) {
+    stop("additive function values differ from plain arithmetic on ", sum(is.na(expected) | abs(expected - afv) > 1e-9), " edges")
   }
   # an outlet is an edge that flows into none
   at_outlet <- !edges$rid %in% rel$fromedge
@@ -166,8 +184,8 @@ area <- tryCatch({
   }
   # a subset that holds none of the test side channels has only the limits above
   sprintf(
-    "area: ok  afv: %.3g to %.3g  sites: %d  side channels: %d (%s)",
-    min(afv), max(afv), nrow(sites), sum(held),
+    "area: ok  afv: %.3g to %.3g, equal to plain arithmetic on %d edges  sites: %d  side channels: %d (%s)",
+    min(afv), max(afv), nrow(edges), nrow(sites), sum(held),
     if (any(held)) paste("largest share", format(round(max(edges$areaPI[held]), 4))) else "none in this subset, not checked"
   )
 }, error = function(e) paste("area: failed,", conditionMessage(e)))

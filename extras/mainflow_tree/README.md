@@ -270,9 +270,11 @@ outside), 6 when the topology is clean and the area step failed, and 129, 130 or
 `upstream_area_ha`, and after a clean topology check the script computes additive function values from it with
 no overrides: `afv_edges(infl_col = "upstream_area_ha")`, then `sites_to_lsn` and `afv_sites` on the midpoints
 of up to 200 edges. It prints one `area:` line, which `runs.log` carries too, and the run exits 6 when the
-step fails: an edge with no area above zero, an additive function value outside (0, 1], an outlet edge whose
-value is not 1, or a test side channel that takes more than 0.2 of its confluence. That last check runs only
-where the subset holds the mouth of 360216952, 360222216 or 360237491; the `area:` line says how many it held.
+step fails: an edge with no area above zero, an additive function value outside (0, 1] or different from the
+same value worked out by plain arithmetic (an edge's share of the edges flowing into the same edge, multiplied
+down to the outlet), an outlet edge whose value is not 1, or a test side channel that takes more than 0.2 of its
+confluence. That last check runs only where the subset holds a segment where 360216952 (through 360216962),
+360222216 or 360237491 meets the Skeena; the `area:` line says how many it held.
 
     SSNBLER_AREA=1 ./ssnbler_check.sh 40 klum_area 400 KLUM 1
 

@@ -42,6 +42,9 @@ CASES = [
      f"UPDATE {TREE} SET upstream_area_ha = 5059365 WHERE linear_feature_id = 123039830"),
     ("a tributary mouth inside its river",
      f"UPDATE {TREE} SET upstream_area_ha = 4558110 WHERE linear_feature_id = 87078680"),
+    # a test side channel carrying the river's area where it meets the Skeena
+    ("side channels carry a small share of the confluence",
+     f"UPDATE {AREA} SET upstream_area_ha = 5000000 WHERE linear_feature_id = 123043588"),
     # round 1's second finding: a fallback rule putting a polygon on a side channel
     ("every polygon is on a segment its rule allows",
      "UPDATE fwapg.mainflow_tree_area_polygons SET linear_feature_id = 123039830 WHERE watershed_feature_id = "

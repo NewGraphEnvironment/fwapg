@@ -17,7 +17,7 @@ tree_area <- edges$upstream_area_ha
 m <- match(edges$linear_feature_id, lookup$linear_feature_id)
 # a segment with no lookup row keeps the tree's area, so afv_edges can run
 edges$upstream_area_ha <- ifelse(is.na(lookup$lookup_area_ha[m]), tree_area, lookup$lookup_area_ha[m])
-mouths <- c(123041439, 87082084, 87078272)
+mouths <- c(123043588, 87082084, 87078272)
 pi_of <- function(e) {
   e <- SSNbler::afv_edges(e, lsn_path = args[1], infl_col = "upstream_area_ha",
     segpi_col = "areaPI", afv_col = "afvArea", save_local = FALSE, overwrite = TRUE)

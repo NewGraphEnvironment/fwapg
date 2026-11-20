@@ -308,6 +308,33 @@ SELECT 'a tributary mouth inside its river''s polygon carries the tributary''s a
 FROM whse_basemapping.fwa_stream_networks_mainflow_tree t
 WHERE t.linear_feature_id = 87078680;
 
+-- Where a side channel flows into main flow, the share of the confluence it
+-- carries (its area over the areas of the segments flowing into the same
+-- segment) is what a stream network model's weights are made of. With the
+-- tree's area it is small: 15,864 of 16,745 such places carry under a fifth,
+-- the median 0.5% (2026-11 build). With the watershed lookup's area, which gives
+-- a side channel its river's, the median is 50%. The three places the Skeena
+-- test side channels meet the river carry 1%, 5% and 7%.
+WITH side AS (
+  SELECT a.linear_feature_id, a.downstream_id, a.upstream_area_ha
+  FROM fwapg.mainflow_tree_area a
+  INNER JOIN whse_basemapping.fwa_stream_networks_mainflow_tree t ON t.linear_feature_id = a.linear_feature_id
+  INNER JOIN whse_basemapping.fwa_stream_networks_mainflow_tree d ON d.linear_feature_id = a.downstream_id
+  WHERE t.source != 'mainflow' AND d.source = 'mainflow' AND a.downstream_method = 'node'
+),
+mouth AS (
+  -- joined, not a subquery per row: the area table has no index on downstream_id
+  SELECT s.linear_feature_id, s.upstream_area_ha / sum(i.upstream_area_ha) AS share
+  FROM side s
+  INNER JOIN fwapg.mainflow_tree_area i ON i.downstream_id = s.downstream_id
+  GROUP BY s.linear_feature_id, s.upstream_area_ha
+)
+SELECT 'side channels carry a small share of the confluence where they meet main flow' AS test,
+  count(*) > 10000
+  AND count(*) FILTER (WHERE share < 0.2) > 0.9 * count(*)
+  AND count(*) FILTER (WHERE linear_feature_id IN (123043588, 87082084, 87078272) AND share > 0 AND share < 0.1) = 3 AS result
+FROM mouth;
+
 -- each polygon is on a segment its rule allows, read from the polygon's and the
 -- segment's codes (mainflow_tree_area.sql's header has the rules). Only
 -- pair_side may put a polygon on a side channel: a side channel carries what
