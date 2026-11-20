@@ -301,7 +301,7 @@ Segment 212038783 (TUTR) is the one main-flow segment whose area differs from th
 case_map("case7")
 ```
 
-**On the ground:** it has an explanation. Blue line 360860536 carries local code `…077907` on two reaches, at measures 314 and 667, with a lower code (`…059087`) at 506 between them: its local codes are out of order. The tree gives the code's two polygons (8628560, 0.214 ha, and 8632200, 1.418 ha) to the lower reach, 212038745; the lookup counts them above 212038783. The difference, 1.632 ha, is exactly those two polygons. `qa_area.sql` gives the segment between them the class "local codes out of order" but leaves 212038783 without a class.
+**On the ground:** it has an explanation. Blue line 360860536 carries local code `…077907` on two reaches, at measures 314 and 667, with a lower code (`…059087`) at 506 between them: its local codes are out of order. The tree gives the code's two polygons (8628560, 0.214 ha, and 8632200, 1.418 ha) to the lower reach, 212038745; the lookup counts them above 212038783. The difference, 1.632 ha, is exactly those two polygons. `qa_area.sql` gives the segment between them the class "local codes out of order" but leaves 212038783 without a class (#57).
 
 ## The share of the confluence a side channel takes
 

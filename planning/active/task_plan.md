@@ -70,7 +70,7 @@ Plan review (`review-plan.md`, findings 2, 5, 8, 10) changed this phase: checks 
 - [x] Screenshot each map with chromote (SwiftShader flags for WebGL, screenshots to the scratchpad; review finding 13) and look at it
 - [x] Per case in the article: what the map shows, whether the rule looks right on the ground, and what it leaves for #53
 - [x] `extras/mainflow_tree/README.md`: a short paragraph naming the article and its two commands
-- [ ] #53's body: a pointer to the article and what the case-3 maps showed
+- [x] #53's body: a pointer to the article and what the case-3 maps showed
 
 ## Owed at the end (reported, done after merge)
 - [ ] After the gq PR merges and releases: name the gq version the article needs in `article/` and the README
