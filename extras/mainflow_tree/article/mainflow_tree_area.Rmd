@@ -127,11 +127,12 @@ need <- function(ok, msg) if (!isTRUE(ok)) stop("check failed: ", msg, call. = F
 near <- function(x, want, tol = 0.5) length(x) == 1L && !is.na(x) && abs(x - want) <= tol
 area_of <- function(s, id) s$upstream_area_ha[s$linear_feature_id == id]
 albers <- function(x) sf::st_transform(x, 3005)
-# "lies in" as the build tests it: ST_Intersects with the midpoint
-# (mainflow_tree_area.sql), within 1 cm, since the extracts are rounded to
-# 6 decimals and a midpoint can sit on a polygon's edge
+# A midpoint within 5 cm of a polygon (the extracts' 6 decimals of a degree
+# move a point by up to about 5 cm). Not the build's test, which a rounded
+# extract cannot reproduce on a polygon's edge; used only where the midpoint
+# is far from the edge (case 2: 720 m).
 mid <- function(x) sf::st_line_sample(sf::st_cast(sf::st_geometry(albers(x)), "LINESTRING"), sample = 0.5)
-lies_in <- function(pts, poly) sf::st_is_within_distance(pts, poly, 0.01, sparse = FALSE)[, 1]
+lies_in <- function(pts, poly) sf::st_is_within_distance(pts, poly, 0.05, sparse = FALSE)[, 1]
 mouth <- function(x) sf::st_line_sample(sf::st_cast(sf::st_geometry(albers(x)), "LINESTRING"), sample = 0)
 
 # case 1: a Skeena test side channel and the tributary that enters it
@@ -155,7 +156,7 @@ p2 <- read_case("case2", "polygons")
 f2 <- p2[p2$focus, ]
 s2 <- read_case("case2", "streams")
 g2 <- s2[s2$linear_feature_id %in% f2$linear_feature_id, ]
-need(nrow(f2) == 1 && f2$method == "pair" && nrow(g2) == 1 &&
+need(nrow(f2) == 1 && f2$method == "pair" && nrow(g2) == 1 && near(f2$area_ha, 363) &&
        startsWith(f2$localcode, paste0(f2$wscode, ".")) && g2$wscode == f2$wscode &&
        g2$localcode != f2$localcode,
      "case 2: one `pair` polygon given to a segment of another local code on its own watershed code")
@@ -167,6 +168,7 @@ need(isTRUE(as.logical(lies_in(mid(g2), albers(f2)))) && near(d2, 720, 5) &&
 
 # case 3: side-channel land, three kinds
 p3 <- read_case("case3", "polygons")
+# the three labels are case3.sql's own: this checks the selection, not the kinds
 need(setequal(p3$kind[!is.na(p3$kind)], c("midpoint_inside", "midpoint_outside", "not_touching")) &&
        sum(!is.na(p3$kind)) == 3, "case 3: one polygon of each kind")
 need(p3$method[p3$kind %in% "midpoint_inside"] == "pair_side", "case 3: the polygon with a side-channel midpoint in it is `pair_side`")
@@ -191,7 +193,8 @@ need(near(kk("midpoint_outside", "fp_share"), 0.98, 0.005) && near(kk("midpoint_
        near(kk("midpoint_outside", "edge_m"), 113, 5) && p3$method[p3$kind %in% "midpoint_outside"] == "lower",
      "case 3: midpoint outside: 98% floodplain, 113 m of side channel, all of it on the polygon's edge, `lower`")
 need(near(kk("not_touching", "fp_share"), 0.05, 0.005) && kk("not_touching", "side_m") == 0 &&
-       p3$method[p3$kind %in% "not_touching"] == "lower", "case 3: not touching: 5% floodplain, no side channel, `lower`")
+       near(min(as.numeric(sf::st_distance(sf::st_geometry(k3x)[k3x$kind == "not_touching"], sc3))), 44.3, 0.5) &&
+       p3$method[p3$kind %in% "not_touching"] == "lower", "case 3: not touching: 5% floodplain, 44 m from the side channel, `lower`")
 
 # case 4: the Beaver River cross-border polygon
 p4 <- read_case("case4", "polygons")
@@ -207,8 +210,8 @@ need(nrow(g4) == 1 && d4 > 0 && d4 < 1.5, "case 4: the connector's midpoint is a
 sh5 <- read.csv(ex("case5_shares.csv"))
 p5 <- read_case("case5", "polygons")
 src5 <- p5[p5$focus, ]
-need(nrow(src5) == 1 && near(sum(sh5$share_ha), src5$shared_ha, 1e-6),
-     "case 5: the polygon's shares sum to its shared_ha")
+need(nrow(src5) == 1 && near(sum(sh5$share_ha), src5$shared_ha, 1e-6) && nrow(sh5) == 8,
+     "case 5: the polygon gives shares to 8 segments, summing to its shared_ha")
 s5 <- read_case("case5", "streams")
 need(any(s5$focus) && near(s5$shared_area_ha[s5$focus],
                            sh5$share_ha[sh5$linear_feature_id == s5$linear_feature_id[s5$focus]], 1e-6),
@@ -224,6 +227,7 @@ t6x <- s6[s6$linear_feature_id == j6x$downstream_id, ]
 need(nrow(t6x) == 1 && near(as.numeric(sf::st_distance(mouth(j6x), albers(t6x))), 351, 2),
      "case 6: 212039207's mouth is 351 m from the segment its area is carried to")
 need(near(as.numeric(sf::st_distance(mouth(j6x), mouth(o6x))), 166, 2), "case 6: the two mouths are 166 m apart")
+need(near(j6x$upstream_area_ha, 9) && near(o6x$upstream_area_ha, 338), "case 6: 212039207 reads 9 ha and 212039334 338 ha")
 
 # case 7: the one main-flow difference the QA leaves without a class
 s7 <- read_case("case7", "streams")
@@ -251,7 +255,7 @@ need(sum(is.na(cs$share_lookup)) == 711 && all(cs$lookup_missing[is.na(cs$share_
 
 The main-flow tree (`extras/mainflow_tree`) gives every segment an upstream area: each fundamental watershed polygon goes to one tree segment, and the areas are summed down the tree. Its rules were written from watershed codes and then corrected from counts. This page puts seven of them on a map, one case each, so the rules can be judged on the ground.
 
-How to read a map. Streams are coloured by the tree's upstream area, over a white casing, and a segment the tree leaves out is grey. Polygons are filled by the rule that placed them (`pair`, `range`, `pair_side`, `lower`, `ancestor`). The case's own segments sit under an orange halo, and its polygon has a black outline. Click a stream or a polygon for its numbers, and use the switch at the top right to hide a layer. The data are extracts of the 2026-11 build (`article_extract.sh`), and every number on this page taken from the extracts is checked when the page renders, against `extras/mainflow_tree/README.md` where it quotes one. The province-wide counts are the README's, and a few facts are from the database as it was when this was written (that a polygon or a mouth lies outside BC, or on its edge).
+How to read a map. Streams are coloured by the tree's upstream area, over a white casing, and a segment the tree leaves out is grey. Polygons are filled by the rule that placed them (`pair`, `range`, `pair_side`, `lower`, `ancestor`). The case's own segments sit under an orange halo, and its polygon has a black outline. Click a stream or a polygon for its numbers, and use the switch at the top right to hide a layer. The data are extracts of the 2026-11 build (`article_extract.sh`), and the numbers each case and the chart take from the extracts are checked when the page renders, against `extras/mainflow_tree/README.md` where it quotes one. The province-wide counts are the README's. Some facts are from the database as it was when this was written, since the extracts cannot show them: case 2's three segments crossed, case 3's midpoint margins (4e-11 m inside, 0 m outside), case 4's polygon lying outside BC, case 6's mouth on BC's edge and its 1.6 km and 42 m, and case 7's measures along its line.
 
 ## 1. A Skeena test side channel
 
@@ -304,7 +308,7 @@ case_map("case3", "esri_satellite",
                            label = "Mapped floodplain (ff04)")))
 ```
 
-**On the ground:** the side channel is the edge of both of the first two polygons, and which of them it takes is decided by floating point. Segment 139049288 is the edge of `r k3("midpoint_inside")$polygon` for its whole 3.4 km, and its midpoint reads inside that polygon by 4e-11 m. Segment 139047882 is the edge of `r k3("midpoint_outside")$polygon` for its whole 113 m, and its midpoint reads outside at a distance of 0. Both polygons lie almost wholly in the mapped floodplain (97% and 98%), on the same side of the same side channel; one went to the side channel and one stayed with the river. The third polygon, no side channel near it, lies 5% in the floodplain on the slope beside it and stays with the river, which looks right.
+**On the ground:** the side channel is the edge of both of the first two polygons, and which of them it takes is decided by floating point. Segment 139049288 is the edge of `r k3("midpoint_inside")$polygon` for its whole 3.4 km, and its midpoint reads inside that polygon by 4e-11 m. Segment 139047882 is the edge of `r k3("midpoint_outside")$polygon` for its whole 113 m, and its midpoint reads outside at a distance of 0. Both polygons lie almost wholly in the mapped floodplain (97% and 98%), on the same side of the same side channel; one went to the side channel and one stayed with the river. The third polygon, which no side channel touches (the nearest is 44 m away), lies 5% in the floodplain on the slope beside it and stays with the river, which looks right.
 
 **Left for #53:** a side channel that is a polygon's edge. FWA draws polygon edges along streams, so a side-channel segment often lies on a polygon's boundary, and then the midpoint test reads inside or outside by a floating-point margin, not by where the land drains. Both such polygons here lie in the mapped floodplain beside the side channel; the rule split them.
 

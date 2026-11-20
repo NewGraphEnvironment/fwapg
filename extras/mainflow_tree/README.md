@@ -243,8 +243,9 @@ In the 2026-11 build (the 2026-10 tree; 3,245,453 watershed polygons):
 test side channel, a polygon moved up its line, side-channel land against mapped floodplain, the Beaver River
 cross-border polygon, a length share, a gap crossed and an outlet at BC's edge, and the main-flow difference the
 QA leaves without a class), plus a chart of the confluence share, tree against lookup
-(NewGraphEnvironment/fwapg#55). It renders from extracts committed beside it, with no database, and checks every
-number it takes from them, against this README where it quotes one; the page stays local (gitignored):
+(NewGraphEnvironment/fwapg#55). It renders from extracts committed beside it, with no database, and checks the numbers
+it takes from them, against this README where it quotes one; the page says which facts
+come from the database instead. The page stays local (gitignored):
 
     ./article/article_extract.sh     # needs DATABASE_URL; rewrites article/extracts/
     ./article/article_render.sh      # writes article/mainflow_tree_area.html
