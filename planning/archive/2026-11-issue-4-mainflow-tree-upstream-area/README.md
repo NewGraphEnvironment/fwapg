@@ -37,9 +37,8 @@ On the provincial tree (4,510,368 segments, 3,245,453 polygons), final build, 20
 
 ## Owed
 
-- Close #4 by hand with a comment naming the PR (`Closes` does not act on a merge into `newgraph`)
 - Run the SSNbler area step on LSKE, which holds the place 360216952's water meets the Skeena, on a machine with more memory (about 29,000 lines on the serial path)
 
 Follow-ups filed: #52 (`FWA_WatershedAtMeasure()` and segments with no local code), #53 (side channels and floodplain: which channel the land between them drains to). #33's body says what the tree's area no longer needs from the lookup.
 
-Closed by: PR #54 (branch `4-upstream-area-on-the-main-flow-tree-so-s` into `newgraph`).
+Closed by: PR #54 (branch `4-upstream-area-on-the-main-flow-tree-so-s` into `newgraph`), merged 2026-11-20 at 2e2037d; #4 closed by hand the same day.

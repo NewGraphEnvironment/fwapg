@@ -282,7 +282,8 @@ that reaches the cap is repeated on a machine with more memory instead of with a
 
 ## Owed at the end (reported, done after merge)
 
-- [ ] Close #4 by hand with a comment naming the PR (`Closes` does not act on a merge into `newgraph`)
+- [x] Close #4 by hand with a comment naming the PR (`Closes` does not act on a merge into `newgraph`)
+      (closed 2026-11-20 after PR #54 merged at 2e2037d)
 - [ ] Run the SSNbler area step on LSKE, which holds the place 360216952's water meets the Skeena, on a machine with more memory (about 29,000 lines on the serial path)
 
 ## Validation
