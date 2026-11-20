@@ -78,18 +78,40 @@ Decisions 3 and 6 are defaults stated in the plan and approved with it.
    `fwapg.mainflow_tree_area` (pointer, local area, method) kept for QA, as `fwapg.mainflow_tree_qa` is.
 3. **Units: hectares, `double precision`, not rounded**, as `fwa_watersheds_upstream_area` stores them.
    Taken as the conventional default, not asked.
-4. **Gaps: area is carried across the tree's dead ends and cut-offs** to the parent line the blue line
-   paths name (473 + 8), so a river's area includes a tributary whose mouth does not touch it. The step is
-   recorded by method (`node` or `junction`). The 23 `no_parent` mouths and BC's edge stay outlets.
+4. **Gaps: area is carried across the tree's dead ends and cut-offs** wherever the blue line paths lead
+   back onto the tree, so a river's area includes a tributary whose mouth does not touch it. The step is
+   recorded by method (`node`, `line` or `junction`). **Corrected 2026-11-20 after the plan review and the
+   prototype:** that is 97 segments (90 dead ends and 3 cut-offs by `junction`, 4 cut-offs by `line`), not
+   the 473 + 8 the plan gave the owner. The other 383 dead ends and 1 cut-off have no segment below them
+   on any line of their path (the network ends there), so they stay outlets, with the 23 `no_parent`
+   mouths and BC's edge; they drain 184,525 ha, the largest 50,535 ha. Reported to the owner 2026-11-20.
 5. **`FWA_WatershedAtMeasure()`'s empty answer on side channels: measured in Phase 1 and filed as its own
    issue**, not fixed on this branch (a function fix is a migration and a candidate for upstream, which
    has its own branch rules).
 6. **Polygon assignment rule** (follows the lookup's convention, area at the polygon's outlet, so main
-   flow can agree with it): a polygon goes to the uppermost tree segment that shares its watershed and
-   local codes, main flow before reattached; failing that, to the tree segment on its watershed code at
-   the next local code below; failing that, to its nearest ancestor code in the tree at the position its
-   own code gives; anything left is listed by class in a table and counted by a test. Phase 1 measures
-   each class before the rule is built, and a class the rule misplaces comes back as a question.
+   flow can agree with it). **Restated 2026-11-20 after the plan review and the prototype**, in the terms
+   of `FWA_Upstream`, which the lookup uses. In order:
+   1. A polygon whose code pair is on main-flow segments goes to the top segment of the lowest run of
+      main-flow segments, on its watershed code, whose local code is at or above the polygon's and below
+      the next local code that has a polygon. So a reach with no polygon of its own takes the polygon
+      below it on its stream (the prototype without this left 17,478 segments, 8,601 km, at zero). "Top"
+      is by measure, and the lowest run is used so a pair that reappears far up a line (77 pairs, 154
+      polygons, 36,957 ha) does not pull its polygon up there.
+   2. A polygon whose code pair is on reattached or followed segments only goes to the top one of them
+      (reattached before followed, then by blue line and measure).
+   3. Failing both, to the top segment of the reach on its watershed code at the greatest local code at
+      or below its own.
+   4. Failing that, on its nearest ancestor code in the tree, to the top segment of the reach at the
+      greatest local code strictly below the code of the branch the polygon lies on (a tributary is not
+      upstream of the reach that starts at its own junction).
+   5. Anything left is listed by class and counted by a test: 53,220 polygons whose code is on no stream
+      of the network and has no ancestor in the tree (839,778 ha), and 60 under `999`.
+   Local area is `ST_Area(geom) / 10000`, as the lookup sums it, not the `area_ha` attribute.
+7. **Streams with no polygon of their own share the polygon they lie in, by length** (owner, 2026-11-20).
+   After rule 6, 1,005 main-flow segments on 782 streams (860 km) have no polygon at or above them. Each
+   takes a share of the polygon its midpoint lies in, in proportion to its length against the length of
+   all tree segments in that polygon, taken from the segment the polygon was given to. The share is an
+   estimate and is recorded by method. Options not taken: NULL; the whole polygon counted twice.
 
 ## Phase 1: Measure what the issue says, on the database as it is now
 
@@ -103,11 +125,44 @@ One-off SQL lives in `planning/active/scripts/`, numbers in `findings.md`.
       (#52)
 - [x] Re-measure Problem 2: tree segments by lookup class (polygon of its own code, another stream's, no
       row) by `source`, against the issue's 8,111 and 2,941
-- [ ] Break down the 53,225 polygons whose watershed code is not in the tree and the 2,985 whose local
+- [x] Break down the 53,225 polygons whose watershed code is not in the tree and the 2,985 whose local
       code is not (dropped side channels, waterbodies, coast, cross-border), and settle decision 6's
       fallback steps on those numbers
-- [ ] Count tree segments with no polygon at or above them (plan-time proxy: 129), and say what area they
+- [x] Count tree segments with no polygon at or above them (plan-time proxy: 129), and say what area they
       get; a zero is not allowed by the issue's first criterion, so the rule for them is written here
+
+- [x] (added by the plan review) Prototype the whole build province-wide before the tests are written
+      (`scripts/04_prototype.sql`, 4 min 41 s; `05_prototype_measure.sql`, `06_zero_area.sql`)
+
+## Changes after the plan review (2026-11-20, `review-4.md`)
+
+The review's findings were checked against the code and the prototype (verdicts in `findings.md`). What
+they change, by phase; a box below marked (review) was added by it.
+
+- **Phase 2.** The additive test takes its node inflows from geometry, as `qa_topology.sql` does, not
+  from the pointer it is checking. "Non-decreasing" is tested along each blue line by measure. The
+  conservation test keeps only the part that can fail (the outlets' areas sum to the assigned area) and
+  gains "no unassigned polygon without a class". The side-channel test takes the tributary's expected
+  area from the polygons under its code. Every test is one aggregate with no `GROUP BY`, since a test
+  that returns no row prints nothing and is not seen by `mainflow_tree.sh`.
+- **Phase 3.** The area build runs after `sql/qa_topology.sql`, so the steps that cross a gap can be
+  tested against `fwapg.mainflow_tree_qa`. The level loop has an index on depth (prototype: 4,380
+  levels, 7 s). `fwapg.mainflow_tree_area.downstream_id` is documented as the build's own working
+  pointer, not a product (#36 decides that).
+- **Phase 4.** Classes are defined by predicates on codes, paths and the lookup, not on the area tables,
+  each with a measured ceiling. Two classes the plan did not name: a segment whose lookup polygon is on
+  its own stream at another local code (71,402), and a main-river segment beside a reattached side
+  channel, where the lookup counts the tributary by code and the tree counts it below the side channel's
+  mouth. `qa_area.sql` is built before the restore-the-bug checks, which move to the end of Phase 4.
+- **Phase 5.** The area step is switched on by an environment variable, so the positional arguments and
+  their validation stay as they are; an area failure has its own exit status and its own result line;
+  the step checks the area column directly instead of relying on a warning. Because any positive areas
+  give AFVs in (0, 1], the run also asserts the segment proportion of the four side-channel edges, which
+  the lookup's areas would fail. KLUM is timed first and the Skeena's time estimated from it.
+- **Phase 7.** The area and its tests are re-run after the last change to the SQL, and the column's
+  checksum compared with the one SSNbler ran on.
+- **Not taken.** A separate exit-status question for the owner (a script's contract, decided here); a
+  second pull request for Phase 5, unless KLUM's timing puts the Skeena run at hours.
 
 ## Phase 2: Tests first, in `extras/mainflow_tree/sql/qa.sql`
 
@@ -115,15 +170,19 @@ Each is `SELECT '<name>' AS test, <boolean> AS result`, non-NULL over no rows (`
 `name|`). They fail until Phase 3.
 
 - [ ] Every tree segment has a non-null, positive `upstream_area_ha`
-- [ ] Additive at every node: a segment's area is its local area plus the areas of the segments that
-      flow into it (node and junction steps), within float tolerance
-- [ ] Non-decreasing downstream along every pointer
-- [ ] Conservation: each polygon is assigned at most once; assigned plus listed-unassigned area equals
-      the polygons' total; the areas at the tree's outlets sum to the assigned area
+- [ ] Additive at every node: a segment's area is its local area plus the areas of the tree segments
+      whose downstream node is its upstream node (from geometry) and of the listed gap steps into it,
+      within float tolerance
+- [ ] Non-decreasing downstream along each blue line, by measure
+- [ ] Conservation: the areas at the tree's outlets sum to the assigned area; no unassigned polygon is
+      without a class
+- [ ] (review) Gap steps start only at segments the topology QA lists as dead ends or cut-offs, and every
+      tree segment with no pointer is an outlet the QA accounts for
 - [ ] Independent of the pointer: the Skeena's area at its mouth equals the area of the polygons under
       `400` that are assigned, and the same for the Nechako (`100.567134`) with its listed outlets
-- [ ] The four Skeena side channels below their entry carry the entering tributary's area (51,420;
-      228,943; 228,943 through 360222215; 302,611 ha) plus only polygons listed as their own
+- [ ] The four Skeena side channels below their entry carry the entering tributary's area, taken from the
+      polygons under the tributary's code (51,420; 228,943; 228,943 through 360222215; 302,611 ha), plus
+      at most a measured few hundred hectares of their own, and nothing like the Skeena's
 - [ ] 87078680 (the tributary mouth the lookup gives 4,558,110 ha) carries the tributary's area
 - [ ] Main flow agrees with the lookup wherever the polygon is the segment's own and nothing reattached
       or carried across a gap lies above; every other difference has a class (zero unclassed)
@@ -150,7 +209,8 @@ New file `extras/mainflow_tree/sql/mainflow_tree_area.sql`, in the style of `sql
       (`linear_feature_id`, `downstream_id`, `downstream_method`, `local_area_ha`, `upstream_area_ha`)
 - [ ] Run it from `mainflow_tree.sh` after `sql/mainflow_tree.sql`; record its time against the job's
       20 min
-- [ ] Restore-the-bug check for each new test: break the thing it guards in a copy and see it print `f`
+- [ ] (owner, decision 7) Streams with no polygon of their own take a share of the polygon they lie in,
+      by length, recorded by method
 
 ## Phase 4: Compare with the lookup, by class
 
@@ -160,6 +220,7 @@ New file `extras/mainflow_tree/sql/mainflow_tree_area.sql`, in the style of `sql
       `data/qa_area.csv` beside `data/qa_topology.csv`
 - [ ] Counts and area by class into `findings.md`; an unclassed difference is a defect in the build or a
       class to name, not a tolerance to widen
+- [ ] Restore-the-bug check for each new test: break the thing it guards in a copy and see it print `f`
 - [ ] Update #33's body: what the tree's area needs from the lookup after this (nothing, under A) and
       what stays open there
 

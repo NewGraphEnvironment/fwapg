@@ -212,7 +212,106 @@ Verdicts so far; the rest wait on the prototype (`scripts/04_prototype.sql`).
 | A8: a test that returns no rows prints nothing and passes | right | `mainflow_tree.sh` checks that the output is not empty and that no line fails to end `|t`, so one test's missing line is not seen |
 | G1: "own" must mean both codes | right | query A above: 71,402 tree segments on their own watershed code at another local code |
 
+## Phase 1: the prototype (2026-11-20)
+
+`scripts/04_prototype.sql` builds the whole thing province-wide in `fwapg.proto4_*`: 4 min 41 s
+(segments and nodes 11 s, pointer 1 min 57 s, reaches 22 s, polygon assignment 1 min 40 s, depth and
+local area 20 s, the level loop 7 s over 4,380 levels). No segment is unreached from an outlet, so the
+pointer has no cycle. `scripts/05_prototype_measure.sql` and `06_zero_area.sql` measure it.
+
+**Pointers.**
+
+| method | segments | what they are in the topology QA |
+|---|---|---|
+| node | 4,483,174 | |
+| junction | 93 | 90 dead ends, 3 cut-offs (path step 1 to 3) |
+| line | 4 | cut-offs with a tree segment lower on their own blue line |
+| none | 27,097 | 26,690 at BC's edge, 383 dead ends, 23 `no_parent`, 1 cut-off |
+
+Outlets by kind and the area they drain: BC's edge 109,951,993 ha (largest the Fraser, 23,198,766);
+dead ends 184,525 ha (largest 50,535); `no_parent` 5,360 ha; the cut-off 217 ha. Under the Fraser's code
+4 dead ends (10,999 ha) and 4 `no_parent` mouths (891 ha) do not reach its mouth.
+
+**Polygons by how the first rule placed them** (the rule before decision 6 was restated: the top segment
+of the reach at the greatest local code at or below the polygon's, else an ancestor).
+
+| class | polygons | ha |
+|---|---|---|
+| same code pair, main flow | 3,180,734 | 93,710,554 |
+| same code pair, reattached | 8,444 | 407,541 |
+| same code pair, followed | 5 | 30 |
+| own stream, a lower local code (main flow) | 1,727 | 15,828,439 |
+| own stream, a lower local code (reattached) | 56 | 158,932 |
+| an ancestor code, one level up | 1,195 | 35,759 |
+| an ancestor code, two or more levels up | 12 | 840 |
+| unassigned: no ancestor in the tree | 38,158 | 373,892 |
+| unassigned: one-label code | 15,062 | 465,886 |
+| under `999` | 60 | 3,623 |
+
+Areas here are `ST_Area(geom) / 10000`, which differ a little from the `area_ha` attribute used in the
+plan-time table above. The outlets' areas sum to the assigned polygons' area exactly (110,142,095.1 ha
+both), so the accumulation loses and adds nothing.
+
+**Zero area.** 18,489 segments accumulate nothing: 17,478 main-flow segments (8,522 streams, 8,601 km)
+on a stream that has a polygon lower down (the polygon they lie in is coded at a lower local code, and
+the first rule put it at the top of that lower reach), 1,005 main-flow segments (782 streams, 860 km, 16
+of them outlets) on a stream with no polygon at all, and 6 reattached. The plan-time proxy of 129 was
+far too low, as the review said: it counted streams with no polygon under their watershed code, and the
+miss is at the level of the code pair. By lookup class the zeros are 17,460 "own watershed code, another
+local code", 797 "another stream's polygon" (mean polygon 8,092 ha), 228 with no lookup row, 4 own
+codes. The no-polygon lines by length: 63 under 100 m, 229 of 100 to 500 m, 193 of 500 m to 1 km, 282 of
+1 to 5 km, 15 of 5 to 20 km. This is what decisions 6 (restated) and 7 answer.
+
+**Test side channels.** Each carries what enters it, not the Skeena:
+
+| side channel | segment (measure) | local ha | area ha |
+|---|---|---|---|
+| 360216952 | 1017.0 to 1676.5 | 23.9 | 1,681.2 (other main-flow water enters at its top) |
+| 360216952 | 538.9 to 983.0 | 22.0 | 53,122.7 (plus tributary 360884603, 51,419.5) |
+| 360216952 | 0 to 229.3 | 0 | 53,174.5 |
+| 360222215 | 0 to 194.0 | 0 | 228,942.8 |
+| 360222216 | 465.7 to 962.1 | 19.3 | 228,962.1 |
+| 360222216 | 0 to 192.6 | 0 | 229,062.7 |
+| 360237491 | 191.8 | 303.2 | 302,913.7 |
+| 360237491 | 0 to 100.3 | 0 | 303,115.7 |
+
+87078680, the tributary mouth the lookup gives 4,558,110 ha, carries 302,610.5.
+
+**Basins at the mouth.**
+
+| basin | tree ha | polygons under its code | lookup ha |
+|---|---|---|---|
+| Skeena (`400`) | 5,440,478.9 | 5,440,334.4 | 5,440,246.5 |
+| Nechako (`100.567134`) | 4,725,598.1 | 4,725,795.1 | no row |
+| Fraser (`100`) | 23,198,765.7 | 23,215,086.5 | 23,215,081.4 |
+
+The Skeena's tree area is 144.5 ha above the polygons under its code, so a gap step brings in a stream
+whose code is not under `400`; the Fraser's and Nechako's are below theirs by what their dead ends and
+`no_parent` mouths hold. Phase 4 classes these.
+
+**Against the lookup**, on segments whose lookup polygon has both their codes: main flow equal on
+4,299,546, tree lower on 61,704, tree higher on 26,701; reattached lower on 39,567 and higher on 300;
+followed lower on 77 and higher on 19. The "higher" class was not expected at plan time; Phase 4 has to
+name it.
+
+**Code pairs in more than one run on their line:** 77 pairs (154 polygons, 36,957 ha).
+
+## Plan review: remaining verdicts
+
+| finding | verdict | checked against |
+|---|---|---|
+| G3: zero-area segments are far more than 129 | right | 18,489 in the prototype; rule restated (decision 6) and the rest asked of the owner (decision 7) |
+| G6: a pair that reappears far up a line | right, small | 77 pairs; the lowest run is used |
+| G9: the level loop needs a depth index | right | with one, 7 s for 4,380 levels |
+| G2, A4: main-river segments beside a side channel differ from the lookup | consistent with the prototype (61,704 lower) | to be classed in Phase 4 |
+| A1 to A3, A5, A8, O1, O2, O4: tests that can only pass, and ordering | right, adopted | `task_plan.md`, "Changes after the plan review" |
+| G8, A6: the SSNbler step's contract, and that AFV limits cannot detect a wrong area | right by reading; the fork's `afv_edges` not read yet | Phase 5 |
+| G10: the fallback's unit must be a piece of a line | not needed | the level loop is fast enough, so the per-line fallback is not built |
+| gate question on the exit status | not the owner's | a script's contract; decided in Phase 5 |
+
 ## Errors Encountered
 
 | Error | Resolution |
 |-------|------------|
+| A classification query with a correlated `EXISTS` over 3.2 million polygons ran 12 min without finishing (`03_lookup_classes.sql`, query D) | Cancelled; the prototype's assignment answers the same question in 1 min 40 s with an indexed lateral lookup |
+| Piping `psql` through `grep` to a file hid rows until exit (grep block-buffers when not on a terminal) | Read the result after the command ends, or write psql's output to the file directly |
