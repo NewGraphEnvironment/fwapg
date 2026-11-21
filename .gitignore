@@ -23,3 +23,6 @@ postgres-data
 # Sphinx documentation
 docs/_build/
 .buildinfo
+# extras/mainflow_tree/article: the rendered page stays local (fwapg#55)
+extras/mainflow_tree/article/*.html
+extras/mainflow_tree/article/*_files/

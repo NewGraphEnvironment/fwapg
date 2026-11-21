@@ -1,0 +1,402 @@
+---
+title: "Does the main-flow tree's upstream area make sense on the ground?"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    self_contained: true
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(sf)
+sf_use_s2(FALSE)
+library(gq)
+ex <- function(f) file.path("extracts", f)
+read_case <- function(case, what) sf::read_sf(ex(paste0(case, "_", what, ".geojson")))
+```
+
+```{r helpers, include = FALSE}
+# Streams by the tree's upstream area, five ordinal classes of one blue
+# (validated with the dataviz skill's validator: monotone, gaps >= 0.06 L).
+area_breaks <- c(0, 100, 1e3, 1e4, 1e5, Inf)
+area_labels <- c("under 100 ha", "100 to 1,000 ha", "1,000 to 10,000 ha",
+                 "10,000 to 100,000 ha", "100,000 ha or more")
+area_cols <- c("#86b6ef", "#3987e5", "#256abf", "#184f95", "#0d366b")
+# Polygons by the rule that placed them: pair (most of them) neutral, the rest
+# in the next categorical slots (validated: CVD and normal-vision pass).
+rule_values <- c("pair", "range", "pair_side", "lower", "ancestor", "unassigned")
+rule_cols <- c("#d4d2cc", "#1baf7a", "#eb6834", "#eda100", "#e87ba4", "#ffffff")
+fmt <- function(x, d = 0) ifelse(is.na(x), NA, formatC(x, format = "f", digits = d, big.mark = ","))
+ha <- function(x, d = 0) paste(fmt(x, d), "ha")
+
+prep_streams <- function(s) {
+  s$area_class <- ifelse(s$tree, as.character(cut(s$upstream_area_ha, area_breaks, area_labels, right = FALSE)),
+                         "not in the tree")
+  s$segment <- as.character(s$linear_feature_id)
+  s$line <- as.character(s$blue_line_key)
+  s$kind <- ifelse(s$tree, s$source, "dropped (not in the tree)")
+  s$tree_area <- fmt(s$upstream_area_ha)
+  s$lookup_area <- fmt(s$lookup_area_ha)
+  s$local <- fmt(s$local_area_ha, 1)
+  s$shared <- fmt(s$shared_area_ha, 1)
+  s$down <- ifelse(!s$tree, NA, ifelse(is.na(s$downstream_method), "outlet", s$downstream_method))
+  s$gap <- s$qa_kind
+  s
+}
+prep_polys <- function(p) {
+  p$rule <- ifelse(is.na(p$method), "unassigned", p$method)
+  p$polygon <- as.character(p$watershed_feature_id)
+  p$given_to <- as.character(p$linear_feature_id)
+  p$area <- fmt(p$area_ha, 1)
+  p$shared_out <- fmt(p$shared_ha, 1)
+  p
+}
+
+# One case map: polygons by rule, the case's own polygons outlined, streams by
+# area over a white casing, the case's own segments under an orange halo, and
+# any extra layers (list of list(id, x, color, label)) beneath the streams.
+case_map <- function(case, basemap = "positron", extra = list(), fit_ids = NULL) {
+  s <- prep_streams(read_case(case, "streams"))
+  p <- prep_polys(read_case(case, "polygons"))
+  # the view: the case's own segments and polygon (and fit_ids), with a margin
+  # of a quarter of their size and at least 400 m
+  g <- c(sf::st_geometry(s[s$focus | s$linear_feature_id %in% fit_ids, ]), sf::st_geometry(p[p$focus, ]))
+  if (!length(g)) g <- sf::st_geometry(p)
+  bb <- sf::st_bbox(sf::st_transform(g, 3005))
+  pad <- max(400, 0.25 * max(bb["xmax"] - bb["xmin"], bb["ymax"] - bb["ymin"]))
+  view <- sf::st_bbox(c(xmin = bb[["xmin"]] - pad, ymin = bb[["ymin"]] - pad,
+                        xmax = bb[["xmax"]] + pad, ymax = bb[["ymax"]] + pad), crs = 3005)
+  sp <- gq_mapgl_popup(s[c("segment", "line", "gnis_name", "kind", "tree_area", "lookup_area", "local",
+                           "shared", "down", "gap", "area_class")],
+                       c(Segment = "segment", "Blue line" = "line", Name = "gnis_name", "In the tree as" = "kind",
+                         "Upstream area, tree (ha)" = "tree_area", "Upstream area, lookup (ha)" = "lookup_area",
+                         "Own polygons (ha)" = "local", "Length share (ha)" = "shared",
+                         "Area goes down by" = "down", "Gap" = "gap"))
+  p$case <- c(midpoint_inside = "a side channel is its edge; midpoint read inside",
+              midpoint_outside = "a side channel is its edge; midpoint read outside",
+              not_touching = "no side channel touches it")[p$kind]
+  pp <- gq_mapgl_popup(p[c("polygon", "case", "rule", "given_to", "area", "shared_out", "wscode", "localcode")],
+                       c(Polygon = "polygon", Case = "case", Rule = "rule", "Given to segment" = "given_to", "Area (ha)" = "area",
+                         "Shared out as length shares (ha)" = "shared_out", "Watershed code" = "wscode",
+                         "Local code" = "localcode"))
+  rules <- rule_values %in% p$rule
+  m <- gq_mapgl_basemap(view, basemap) |>
+    gq_mapgl_layer("polygons", pp$data, classes = list(field = "rule", values = rule_values[rules],
+                                                       colors = rule_cols[rules]),
+                   opacity = 0.4, legend_title = "Polygon, by the rule that placed it", popup = pp$expr) |>
+    gq_mapgl_layer("polygon_edges", NULL, source = "polygons", type = "line", color = "#6b6a66",
+                   width = 0.7, legend = FALSE)
+  for (e in extra) {
+    m <- gq_mapgl_layer(m, e$id, e$x, color = e$color, opacity = e$opacity %||% 0.35,
+                        legend_title = e$label, type = e$type %||% NULL, width = e$width %||% NULL)
+  }
+  f <- p[p$focus, "polygon"]
+  if (nrow(f)) {
+    m <- gq_mapgl_layer(m, "case_polygons", f, type = "line", color = "#1a1a19", width = 3,
+                        legend_title = "The case's polygon")
+  }
+  fs <- s[s$focus, "segment"]
+  if (nrow(fs)) {
+    m <- gq_mapgl_layer(m, "case_segments", fs, color = "#eb6834", width = 10, opacity = 0.55,
+                        legend_title = "The case's segments")
+  }
+  classes <- c(area_labels, "not in the tree")
+  cols <- c(area_cols, "#a8a6a0")
+  used <- classes %in% s$area_class
+  m <- m |>
+    gq_mapgl_layer("streams_casing", sp$data, color = "#ffffff", width = 4.5, legend = FALSE) |>
+    gq_mapgl_layer("streams", NULL, source = "streams_casing", type = "line",
+                   classes = list(field = "area_class", values = classes[used], colors = cols[used]),
+                   width = 2.5, legend_title = "Upstream area, tree", popup = sp$expr)
+  sw <- c(Polygons = "polygons", "Polygon edges" = "polygon_edges")
+  for (e in extra) sw[e$label] <- e$id
+  if (nrow(f)) sw["The case's polygon"] <- "case_polygons"
+  if (nrow(fs)) sw["The case's segments"] <- "case_segments"
+  gq_mapgl_controls(m, c(sw, Streams = "streams", "Stream casing" = "streams_casing"))
+}
+`%||%` <- function(a, b) if (is.null(a)) b else a
+```
+
+```{r checks, include = FALSE}
+# The key figures of each case and the chart, held to the extracts and, where
+# the README of extras/mainflow_tree quotes one, to the README (the 2026-11
+# build). A render whose extracts disagree stops here.
+need <- function(ok, msg) if (!isTRUE(ok)) stop("check failed: ", msg, call. = FALSE)
+near <- function(x, want, tol = 0.5) length(x) == 1L && !is.na(x) && abs(x - want) <= tol
+area_of <- function(s, id) s$upstream_area_ha[s$linear_feature_id == id]
+albers <- function(x) sf::st_transform(x, 3005)
+# A midpoint within 5 cm of a polygon (the extracts' 6 decimals of a degree
+# move a point by up to about 5 cm). Not the build's test, which a rounded
+# extract cannot reproduce on a polygon's edge; used only where the midpoint
+# is far from the edge (case 2: 720 m).
+mid <- function(x) sf::st_line_sample(sf::st_cast(sf::st_geometry(albers(x)), "LINESTRING"), sample = 0.5)
+lies_in <- function(pts, poly) sf::st_is_within_distance(pts, poly, 0.05, sparse = FALSE)[, 1]
+mouth <- function(x) sf::st_line_sample(sf::st_cast(sf::st_geometry(albers(x)), "LINESTRING"), sample = 0)
+
+# case 1: a Skeena test side channel and the tributary that enters it
+s1 <- read_case("case1", "streams")
+need(near(area_of(s1, 123039830), 53007), "case 1: 123039830 reads 53,007 ha")
+need(near(area_of(s1, 123039760), 51420), "case 1: tributary 360884603's mouth segment reads 51,420 ha")
+need(near(area_of(s1, 123039759), 1580) && near(area_of(s1, 123039469), 1580),
+     "case 1: 123039759 and 123039469 read 1,580 ha")
+need(near(area_of(s1, 123041439), 53058) && near(area_of(s1, 123040995), 53058),
+     "case 1: the bottom two segments read 53,058 ha")
+need(near(area_of(s1, 123040522), 51.8, 0.05) && s1$downstream_id[s1$linear_feature_id == 123040522] == 123040995,
+     "case 1: the 52 ha stream joins above 123040995")
+lk1 <- s1$lookup_area_ha[s1$blue_line_key == 360216952 & s1$tree]
+need(length(lk1) > 0 && all(lk1 >= 4.26e6 & lk1 < 5.115e6), "case 1: the lookup gives 360216952 within the README's 4.26 to 5.11 million ha")
+cs <- read.csv(ex("confluence_share.csv"))
+need(near(cs$share_tree[cs$linear_feature_id == 123043588], 0.0104, 0.0005) &&
+       near(cs$share_lookup[cs$linear_feature_id == 123043588], 0.5, 0.001),
+     "case 1: side-channel mouth 123043588 carries about 0.0104 of its confluence, half with the lookup")
+
+# case 2: a polygon moved up its line
+p2 <- read_case("case2", "polygons")
+f2 <- p2[p2$focus, ]
+s2 <- read_case("case2", "streams")
+g2 <- s2[s2$linear_feature_id %in% f2$linear_feature_id, ]
+need(nrow(f2) == 1 && f2$method == "pair" && nrow(g2) == 1 && near(f2$area_ha, 363) &&
+       startsWith(f2$localcode, paste0(f2$wscode, ".")) && g2$wscode == f2$wscode &&
+       g2$localcode != f2$localcode,
+     "case 2: one `pair` polygon given to a segment of another local code on its own watershed code")
+d2 <- as.numeric(sf::st_distance(mid(g2), sf::st_boundary(albers(f2))))
+need(isTRUE(as.logical(lies_in(mid(g2), albers(f2)))) && near(d2, 720, 5) &&
+       near(as.numeric(sf::st_length(sf::st_intersection(sf::st_geometry(albers(g2)), sf::st_geometry(albers(f2))))),
+            as.numeric(sf::st_length(albers(g2))), 1),
+     "case 2: the segment it went to lies wholly inside it, its midpoint 720 m from the edge")
+
+# case 3: side-channel land, three kinds
+p3 <- read_case("case3", "polygons")
+# the three labels are case3.sql's own: this checks the selection, not the kinds
+need(setequal(p3$kind[!is.na(p3$kind)], c("midpoint_inside", "midpoint_outside", "not_touching")) &&
+       sum(!is.na(p3$kind)) == 3, "case 3: one polygon of each kind")
+need(p3$method[p3$kind %in% "midpoint_inside"] == "pair_side", "case 3: the polygon with a side-channel midpoint in it is `pair_side`")
+fp3 <- sf::read_sf(ex("case3_floodplain.geojson"))
+need(nrow(fp3) > 0, "case 3: mapped floodplain in the view")
+s3 <- read_case("case3", "streams")
+sc3 <- albers(s3[s3$tree & s3$source %in% c("reattached", "followed"), ])
+fpu <- sf::st_union(albers(fp3))
+k3x <- albers(p3[!is.na(p3$kind), ])
+k3x$fp_share <- as.numeric(sf::st_area(sf::st_intersection(sf::st_geometry(k3x), fpu))) / as.numeric(sf::st_area(k3x))
+k3x$side_m <- vapply(seq_len(nrow(k3x)), function(i)
+  sum(as.numeric(sf::st_length(sf::st_intersection(sf::st_geometry(sc3), sf::st_geometry(k3x)[i])))), numeric(1))
+# the side channel's length along each polygon's edge (within 1 cm of its boundary)
+k3x$edge_m <- vapply(seq_len(nrow(k3x)), function(i)
+  sum(as.numeric(sf::st_length(sf::st_intersection(sf::st_geometry(sc3),
+    sf::st_buffer(sf::st_boundary(sf::st_geometry(k3x)[i]), 0.01))))), numeric(1))
+kk <- function(k, col) k3x[[col]][k3x$kind == k]
+need(near(kk("midpoint_inside", "fp_share"), 0.97, 0.005) && near(kk("midpoint_inside", "side_m"), 3409, 50) &&
+       near(kk("midpoint_inside", "edge_m"), 3409, 50),
+     "case 3: midpoint inside: 97% floodplain, 3.4 km of side channel, all of it on the polygon's edge")
+need(near(kk("midpoint_outside", "fp_share"), 0.98, 0.005) && near(kk("midpoint_outside", "side_m"), 113, 5) &&
+       near(kk("midpoint_outside", "edge_m"), 113, 5) && p3$method[p3$kind %in% "midpoint_outside"] == "lower",
+     "case 3: midpoint outside: 98% floodplain, 113 m of side channel, all of it on the polygon's edge, `lower`")
+need(near(kk("not_touching", "fp_share"), 0.05, 0.005) && kk("not_touching", "side_m") == 0 &&
+       near(min(as.numeric(sf::st_distance(sf::st_geometry(k3x)[k3x$kind == "not_touching"], sc3))), 44.3, 0.5) &&
+       p3$method[p3$kind %in% "not_touching"] == "lower", "case 3: not touching: 5% floodplain, 44 m from the side channel, `lower`")
+
+# case 4: the Beaver River cross-border polygon
+p4 <- read_case("case4", "polygons")
+b4 <- p4[p4$watershed_feature_id == 1000002557, ]
+need(nrow(b4) == 1 && b4$method == "lower" && b4$assigned_blue_line_key == 359572098 &&
+       near(b4$area_ha, 767000, 1000), "case 4: 1000002557 is `lower` on blue line 359572098, about 767,000 ha")
+s4 <- read_case("case4", "streams")
+g4 <- s4[s4$linear_feature_id == b4$linear_feature_id, ]
+d4 <- as.numeric(sf::st_distance(mid(g4), albers(b4)))
+need(nrow(g4) == 1 && d4 > 0 && d4 < 1.5, "case 4: the connector's midpoint is about 1 m outside the polygon")
+
+# case 5: a length share
+sh5 <- read.csv(ex("case5_shares.csv"))
+p5 <- read_case("case5", "polygons")
+src5 <- p5[p5$focus, ]
+need(nrow(src5) == 1 && near(sum(sh5$share_ha), src5$shared_ha, 1e-6) && nrow(sh5) == 8,
+     "case 5: the polygon gives shares to 8 segments, summing to its shared_ha")
+s5 <- read_case("case5", "streams")
+need(any(s5$focus) && near(s5$shared_area_ha[s5$focus],
+                           sh5$share_ha[sh5$linear_feature_id == s5$linear_feature_id[s5$focus]], 1e-6),
+     "case 5: the segment's share is its shares row")
+
+# case 6: a gap crossed and a network that ends
+s6 <- read_case("case6", "streams")
+need(any(s6$qa_kind %in% "dead_end" & s6$downstream_method %in% "junction"), "case 6: a dead end carried across a gap")
+need(any(s6$qa_kind %in% "dead_end" & is.na(s6$downstream_method)), "case 6: a dead end that is an outlet")
+j6x <- s6[s6$linear_feature_id == 212039207, ]
+o6x <- s6[s6$linear_feature_id == 212039334, ]
+t6x <- s6[s6$linear_feature_id == j6x$downstream_id, ]
+need(nrow(t6x) == 1 && near(as.numeric(sf::st_distance(mouth(j6x), albers(t6x))), 351, 2),
+     "case 6: 212039207's mouth is 351 m from the segment its area is carried to")
+need(near(as.numeric(sf::st_distance(mouth(j6x), mouth(o6x))), 166, 2), "case 6: the two mouths are 166 m apart")
+need(near(j6x$upstream_area_ha, 9) && near(o6x$upstream_area_ha, 338), "case 6: 212039207 reads 9 ha and 212039334 338 ha")
+
+# case 7: the one main-flow difference the QA leaves without a class
+s7 <- read_case("case7", "streams")
+u7 <- s7[s7$linear_feature_id == 212038783, ]
+need(nrow(u7) == 1 && near(u7$upstream_area_ha, 863.6, 0.1) && near(u7$lookup_area_ha, 865.3, 0.1),
+     "case 7: 212038783 reads 863.6 ha against the lookup's 865.3")
+p7 <- read_case("case7", "polygons")
+two7 <- p7[p7$watershed_feature_id %in% c(8628560, 8632200), ]
+code7 <- function(id) s7$localcode[s7$linear_feature_id == id]
+need(nrow(two7) == 2 && all(two7$linear_feature_id == 212038745) &&
+       near(two7$area_ha[two7$watershed_feature_id == 8628560], 0.214, 0.0005) &&
+       near(two7$area_ha[two7$watershed_feature_id == 8632200], 1.418, 0.0005) &&
+       near(sum(two7$area_ha), u7$lookup_area_ha - u7$upstream_area_ha, 1e-6),
+     "case 7: polygons 8628560 and 8632200 go to 212038745 and are the whole difference")
+need(identical(code7(212038745), code7(212038783)) && code7(212038785) < code7(212038783),
+     "case 7: 212038745 and 212038783 share a local code, with a lower one between them")
+
+# the chart: the share of the confluence a side channel takes
+need(nrow(cs) == 16745, "chart: 16,745 places")
+need(sum(cs$share_tree < 0.2) == 15864, "chart: 15,864 under a fifth")
+need(near(median(cs$share_tree), 0.005, 0.001), "chart: tree median about 0.5%")
+need(near(median(cs$share_lookup, na.rm = TRUE), 0.5, 0.01), "chart: lookup median about 50%")
+need(sum(is.na(cs$share_lookup)) == 711 && all(cs$lookup_missing[is.na(cs$share_lookup)] > 0),
+     "chart: 711 places with an inflow that has no lookup row")
+```
+
+
+The main-flow tree (`extras/mainflow_tree`) gives every segment an upstream area: each fundamental watershed polygon goes to one tree segment, and the areas are summed down the tree. Its rules were written from watershed codes and then corrected from counts. This page puts seven of them on a map, one case each, so the rules can be judged on the ground.
+
+How to read a map. Streams are coloured by the tree's upstream area, over a white casing, and a segment the tree leaves out is grey. Polygons are filled by the rule that placed them (`pair`, `range`, `pair_side`, `lower`, `ancestor`). The case's own segments sit under an orange halo, and its polygon has a black outline. Click a stream or a polygon for its numbers, and use the switch at the top right to hide a layer. The data are extracts of the 2026-11 build (`article_extract.sh`), and when the page renders, a `checks` chunk holds the key figures of each case and of the chart to the extracts, and to `extras/mainflow_tree/README.md` where it quotes one. The province-wide counts are the README's. The other figures in the readings were measured against the database on 2026-11-20, among them the ones the extracts cannot show: case 3's midpoint margins (4e-11 m inside, 0 m outside), case 4's polygon lying outside BC, and case 6's mouth on BC's edge.
+
+## 1. A Skeena test side channel
+
+```{r case1-numbers}
+s1d <- sf::st_drop_geometry(s1)
+```
+
+Side channel 360216952 (LSKE) is one of the Skeena side channels the README tests. The Exchamsiks River (360884603) enters it, and its water goes on through a second side channel, 360216962, to the Skeena. The lookup gives each side channel its river's area, so 360216952 reads `r fmt(min(lk1) / 1e6, 2)` to `r fmt(max(lk1) / 1e6, 2)` million ha in the lookup (the README: 4.26 to 5.11 million across the test side channels).
+
+In the tree it carries what enters it: `r ha(area_of(s1, 123039469))` above the Exchamsiks, `r ha(area_of(s1, 123039830))` below it (the Exchamsiks' mouth segment reads `r ha(area_of(s1, 123039760))`), and `r ha(area_of(s1, 123041439))` at its foot, where a 52 ha stream (360681805) has joined. Its mouth on main flow, 123043588, takes `r fmt(100 * cs$share_tree[cs$linear_feature_id == 123043588], 1)`% of that confluence; with the lookup's areas it would take half.
+
+```{r case1-map, fig.height = 6}
+case_map("case1", "esri_satellite")
+```
+
+**On the ground:** it looks right. The two side channels run on the north side of the valley, apart from the Skeena, and the Exchamsiks enters the first of them; what the side channel carries below that is the Exchamsiks' water, not the Skeena's. The lookup's 5 million ha would weight this back channel as if it were the river.
+
+## 2. A polygon moved up its line
+
+```{r case2-numbers}
+f2 <- prep_polys(f2)
+```
+
+A polygon whose codes are on main flow goes to the top segment of its reach, and from there up its line to the highest segment in its range whose midpoint is inside it. Of the polygons rule 1 placed, 15,867 (3,547,842 ha) moved up their line this way. Polygon `r f2$polygon` (LSKE, `r ha(f2$area_ha)`) is the one in LSKE or KLUM, 50 to 500 ha, that crossed the most segments: its local code is `r f2$localcode`, and it went to segment `r f2$given_to`, past three segments of its line that have no polygon of their own.
+
+```{r case2-map, fig.height = 5}
+case_map("case2")
+```
+
+**On the ground:** it looks right. The segment the polygon went to lies wholly inside it, its midpoint 720 m from the polygon's edge, so area at that segment's foot includes the land it drains. The segments below it, down to the polygon's own reach, carry its area too, as any segment downstream does.
+
+## 3. Side-channel land, three kinds
+
+```{r case3-numbers}
+p3d <- prep_polys(p3)
+k3 <- function(k) p3d[p3d$kind %in% k, ]
+```
+
+Land between a river and its side channels has codes that do not say which channel it drains to. A side channel takes a polygon only when one of its segments' midpoints is inside it and no main flow of the polygon's own stream is (`pair_side`: 1,820 polygons, 95,860 ha). Three neighbouring polygons in MORR, the first of the groups with mapped floodplain to hold all three kinds together (`sql/case3_search.sql`):
+
+- `r k3("midpoint_inside")$polygon`, with a side-channel segment's midpoint in it: `r k3("midpoint_inside")$rule`, given to `r k3("midpoint_inside")$given_to`;
+- `r k3("midpoint_outside")$polygon`, which a side-channel segment touches with no midpoint in it: `r k3("midpoint_outside")$rule`, given to `r k3("midpoint_outside")$given_to`;
+- `r k3("not_touching")$polygon`, whose codes are on side-channel segments only and which no side channel touches: `r k3("not_touching")$rule`, given to `r k3("not_touching")$given_to`.
+
+The green outline is the mapped floodplain (ff04, the functional floodplain) from `stac-floodplains-bc`.
+
+```{r case3-map, fig.height = 6}
+case_map("case3", "esri_satellite",
+         extra = list(list(id = "floodplain", x = fp3["scenario"], color = "#008300", opacity = 0.15,
+                           label = "Mapped floodplain (ff04)")))
+```
+
+**On the ground:** the side channel is the edge of both of the first two polygons, and which of them it takes is decided by floating point. Segment 139049288 is the edge of `r k3("midpoint_inside")$polygon` for its whole 3.4 km, and its midpoint reads inside that polygon by 4e-11 m. Segment 139047882 is the edge of `r k3("midpoint_outside")$polygon` for its whole 113 m, and its midpoint reads outside at a distance of 0. Both polygons lie almost wholly in the mapped floodplain (97% and 98%), on the same side of the same side channel; one went to the side channel and one stayed with the river. The third polygon, which no side channel touches (the nearest is 44 m away), lies 5% in the floodplain on the slope beside it and stays with the river, which looks right.
+
+**Left for #53:** a side channel that is a polygon's edge. FWA draws polygon edges along streams, so a side-channel segment often lies on a polygon's boundary, and then the midpoint test reads inside or outside by a floating-point margin, not by where the land drains. Both such polygons here lie in the mapped floodplain beside the side channel; the rule split them.
+
+## 4. The Beaver River cross-border polygon
+
+```{r case4-numbers}
+b4p <- prep_polys(b4)
+```
+
+Polygon 1000002557 (BEAV) is `r ha(b4p$area_ha)` of land, most of it across the border, on the Beaver River's watershed code. That code has two main lines, 359572098 and 359024601; `overrides.csv` keeps 359572098. A version of the rules that went by codes alone moved this polygon to the wrong line. Now it is placed by rule 4 (`lower`), on segment `r b4p$given_to`, a connector on 359572098. Rule 4 does not use the midpoint test: it takes the top segment of the main-flow reach at the greatest local code at or below the polygon's own, so the segment need not lie in the polygon.
+
+```{r case4-map, fig.height = 6}
+case_map("case4")
+```
+
+**On the ground:** it looks right. The polygon lies wholly in the Yukon and drains south across 60° N into the Beaver River; it goes to the connector at the border on the main line `overrides.csv` keeps. The connector's midpoint is 1 m outside the polygon, which rule 4 does not test.
+
+## 5. A stream with no polygon of its own
+
+```{r case5-numbers}
+s5d <- prep_streams(s5)
+f5 <- s5d[s5d$focus, ]
+src5d <- prep_polys(src5)
+```
+
+A tree segment with no polygon at or above it takes a share of the polygon its midpoint is in, in proportion to its length against all tree segments in that polygon. 1,898 segments carry such a share (181,075 ha in all, median 14 ha). Segment `r f5$segment` (SHEK) is the one whose share is nearest the median: `r ha(f5$shared_area_ha, 1)`, from polygon `r src5d$polygon` (`r ha(src5d$area_ha)`), which gives `r nrow(sh5)` segments `r ha(sum(sh5$share_ha), 1)` between them and keeps the rest on segment `r src5d$given_to`.
+
+```{r case5-map, fig.height = 5}
+case_map("case5")
+```
+
+**On the ground:** plausible, and an estimate the map cannot confirm. The segments sharing the polygon are short streams mapped inside it with no polygon of their own; their length is a fair stand-in for the land each drains where nothing better is mapped, but the true split could differ.
+
+## 6. A gap crossed, and a network that ends
+
+```{r case6-numbers}
+s6d <- prep_streams(s6)
+j6 <- s6d[s6d$segment == "212039207", ]
+o6 <- s6d[s6d$segment == "212039334", ]
+```
+
+Where a tree segment's downstream end touches nothing (a dead end), area is carried to the first line on the blue line path with a tree segment below the junction, or, where there is none, the segment is an outlet. Of 473 dead ends, 90 are carried across this way and 383 are outlets. Two in TUTR have their mouths 166 m apart: `r j6$segment` (`r ha(j6$upstream_area_ha)`) is carried to segment `r j6$downstream_id`, and `r o6$segment` (`r ha(o6$upstream_area_ha)`) is an outlet, its area stopping there.
+
+```{r case6-map, fig.height = 5}
+case_map("case6", fit_ids = 212039249)
+```
+
+**On the ground:** both look right for what the atlas holds. Segment 212039207, a side channel reached by a fallback junction, has its mouth 351 m from 212039249 (the two segments come within 42 m of each other further up), and its area is carried there, across ground with no mapped channel. Segment 212039334 ends on the Alaska border; its code junction on line 360864386 is 1.6 km away, across ground the atlas does not map, so its area stops at the border. The water does not stop there: the outlet is where the atlas ends, not the stream.
+
+## 7. The one main-flow difference the QA leaves without a class
+
+Segment 212038783 (TUTR) is the one main-flow segment whose area differs from the lookup's with nothing routed differently above it and nothing odd in its codes: `r ha(u7$upstream_area_ha, 1)` in the tree against `r ha(u7$lookup_area_ha, 1)` in the lookup. The polygon the lookup gives it has a black outline.
+
+```{r case7-map, fig.height = 5}
+case_map("case7")
+```
+
+**On the ground:** it has an explanation. Blue line 360860536 carries local code `…077907` on two reaches, at measures 314 and 667, with a lower code (`…059087`) at 506 between them: its local codes are out of order. The tree gives the code's two polygons (8628560, 0.214 ha, and 8632200, 1.418 ha) to the lower reach, 212038745; the lookup counts them above 212038783. The difference, 1.632 ha, is exactly those two polygons. `qa_area.sql` gives the segment between them the class "local codes out of order" but leaves 212038783 without a class (#57).
+
+## The share of the confluence a side channel takes
+
+```{r chart-numbers}
+n_lk <- sum(!is.na(cs$share_lookup))
+```
+
+Where a side channel flows into main flow, its share of the confluence (its area over the areas of all the segments flowing into the same segment) is what a spatial stream network model's weights are made of. Over the 16,745 such places, the tree's area gives a median share of `r fmt(100 * median(cs$share_tree), 1)`%, and 15,864 places under a fifth. The lookup's area, at the `r fmt(n_lk)` places where every inflow has a lookup row, gives a median of `r fmt(100 * median(cs$share_lookup, na.rm = TRUE))`%: it gives a side channel its river's area, so the side channel and the river split the confluence evenly.
+
+```{r chart, fig.height = 4, fig.width = 8, fig.cap = "Share of the confluence a side channel takes where it meets main flow, as the cumulative share of places, with the tree's area (blue) and the lookup's (orange). The lookup line leaves out the 711 places where an inflow has no lookup row."}
+library(ggplot2)
+d <- rbind(data.frame(area = "tree", share = cs$share_tree),
+           data.frame(area = "lookup", share = cs$share_lookup[!is.na(cs$share_lookup)]))
+d$share <- pmax(d$share, 1e-6)
+ggplot(d, aes(share, colour = area)) +
+  stat_ecdf(linewidth = 0.7) +
+  scale_x_log10(breaks = c(1e-6, 1e-4, 1e-2, 0.2, 1), labels = c("0.0001%", "0.01%", "1%", "20%", "100%")) +
+  scale_y_continuous(labels = function(x) paste0(100 * x, "%")) +
+  scale_colour_manual(values = c(tree = "#2a78d6", lookup = "#eb6834"),
+                      labels = c(tree = "tree's area", lookup = "lookup's area"), name = NULL) +
+  annotate("text", x = 2e-5, y = 0.75, label = "tree's area", colour = "#2b2a28", hjust = 0, size = 3.5) +
+  annotate("text", x = 0.3, y = 0.3, label = "lookup's area", colour = "#2b2a28", hjust = 1, size = 3.5) +
+  labs(x = "share of the confluence (log scale)", y = "places at or below") +
+  theme_minimal(base_size = 11) +
+  theme(panel.grid.minor = element_blank(), legend.position = "top")
+```
+
+## What the maps leave for #53
+
+Case 3 shows the midpoint test deciding by floating point where a side channel is a polygon's edge: two polygons on the same side of one side channel, both almost wholly in the mapped floodplain, one given to the side channel (its midpoint inside by 4e-11 m) and one to the river (its midpoint outside at distance 0). How often a side-channel segment lies on a polygon's edge across the province is not measured here. Which channel such land drains to needs a rule that does not hang on a midpoint, perhaps the floodplain itself: #53's question. The other cases leave nothing for #53: case 7 is a code anomaly the QA could class, and case 6 is the edge of the atlas.
