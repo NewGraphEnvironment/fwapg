@@ -73,7 +73,7 @@ Plan review (`review-plan.md`, findings 2, 5, 8, 10) changed this phase: checks 
 - [x] #53's body: a pointer to the article and what the case-3 maps showed
 
 ## Owed at the end (reported, done after merge)
-- [ ] After the gq PR merges and releases: name the gq version the article needs in `article/` and the README
+- [x] After the gq PR merges and releases: name the gq version the article needs in `article/` and the README (gq 0.25.0, released 2026-11-20)
 
 ## Validation
 - [x] Tests pass: the `checks` chunk; and with one extract number changed by hand, the render stops (restore the bug)

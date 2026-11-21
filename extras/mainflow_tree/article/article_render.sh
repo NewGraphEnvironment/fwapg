@@ -7,11 +7,12 @@
 set -euo pipefail
 cd "$(dirname "$0")" || exit 1
 
-# The maps need gq's esri_satellite basemap (NewGraphEnvironment/gq#123).
-GQ_PIN="NewGraphEnvironment/gq@02c6531"
-Rscript --vanilla -e 'ok <- requireNamespace("gq", quietly = TRUE) &&
+# The maps need gq's esri_satellite basemap, released in gq 0.25.0
+# (NewGraphEnvironment/gq#123).
+GQ_PIN="NewGraphEnvironment/gq@v0.25.0"
+Rscript --vanilla -e 'ok <- requireNamespace("gq", quietly = TRUE) && packageVersion("gq") >= "0.25.0" &&
   "esri_satellite" %in% eval(formals(gq::gq_mapgl_basemap)$basemap); quit(status = !ok)' \
-  || { echo "REFUSE: the installed gq has no esri_satellite basemap. Install it with:"
+  || { echo "REFUSE: the maps need gq 0.25.0 or later (its esri_satellite basemap). Install it with:"
        echo "  Rscript -e 'pak::pak(\"$GQ_PIN\")'"; exit 1; }
 
 rm -f mainflow_tree_area.html

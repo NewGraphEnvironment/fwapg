@@ -250,8 +250,8 @@ measured against the database instead. The page stays local (gitignored):
     ./article/article_extract.sh     # needs DATABASE_URL; rewrites article/extracts/
     ./article/article_render.sh      # writes article/mainflow_tree_area.html
 
-The maps need gq's `esri_satellite` basemap (NewGraphEnvironment/gq#123); the render script says how to install
-it if it is missing.
+The maps need gq 0.25.0 or later, for its `esri_satellite` basemap (NewGraphEnvironment/gq#123); the render script
+says how to install it if it is missing.
 
 
 ## SSNbler check
